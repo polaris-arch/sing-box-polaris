@@ -94,7 +94,7 @@ func (p *DarwinSystemProxy) disableLocked() error {
 }
 
 func (p *DarwinSystemProxy) routeUpdate(defaultInterface *control.Interface, flags int) {
-	if defaultInterface == nil {
+	if defaultInterface == nil || flags&tun.FlagDNSServersUpdate != 0 {
 		return
 	}
 	updateContext, updateCancel := context.WithCancel(p.ctx)

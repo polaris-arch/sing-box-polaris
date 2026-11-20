@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"net"
+	"net/netip"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -51,9 +52,11 @@ func (*handoffConnFixture) SetWriteDeadline(time.Time) error { return nil }
 
 type handoffRouterFixture struct {
 	adapter.Router
-	connection net.Conn
-	onClose    N.CloseHandlerFunc
-	terminal   bool
+	connection  net.Conn
+	destination netip.Addr
+	domain      string
+	onClose     N.CloseHandlerFunc
+	terminal    bool
 }
 
 func TestSOCKSAndMixedConstructorsPreserveSuccessfulHandoff(t *testing.T) {
@@ -92,21 +95,28 @@ func TestSOCKSAndMixedConstructorsPreserveSuccessfulHandoff(t *testing.T) {
 	}
 }
 
-func (r *handoffRouterFixture) RouteConnectionEx(_ context.Context, conn net.Conn, _ adapter.InboundContext, onClose N.CloseHandlerFunc) {
+func (r *handoffRouterFixture) RouteConnectionEx(_ context.Context, conn net.Conn, metadata adapter.InboundContext, onClose N.CloseHandlerFunc) {
 	r.connection, r.onClose = conn, onClose
+	r.destination, r.domain = metadata.Destination.Addr, metadata.Destination.Fqdn
 	if r.terminal {
 		onClose(nil)
 	}
 }
 
 func TestSOCKSConnectSuccessTransfersOwnedCarrier(t *testing.T) {
+	// reqwest's guarded SOCKS connector sends this IPv6 literal in the DOMAIN field.
+	const bracketedIPv6 = "[2606:4700::6810:859]"
+	ipv6Request := append([]byte{5, 1, 0, 5, 1, 0, 3, byte(len(bracketedIPv6))}, bracketedIPv6...)
+	ipv6Request = append(ipv6Request, 0, 80)
 	for _, test := range []struct {
-		name     string
-		request  []byte
-		response []byte
+		name        string
+		request     []byte
+		response    []byte
+		destination netip.Addr
 	}{
-		{"SOCKS4", []byte{4, 1, 0, 80, 203, 0, 113, 10, 0}, []byte{0, 90, 39, 16, 127, 0, 0, 1}},
-		{"SOCKS5", []byte{5, 1, 0, 5, 1, 0, 1, 203, 0, 113, 10, 0, 80}, []byte{5, 0, 5, 0, 0, 1, 127, 0, 0, 1, 39, 16}},
+		{"SOCKS4", []byte{4, 1, 0, 80, 203, 0, 113, 10, 0}, []byte{0, 90, 39, 16, 127, 0, 0, 1}, netip.MustParseAddr("203.0.113.10")},
+		{"SOCKS5", []byte{5, 1, 0, 5, 1, 0, 1, 203, 0, 113, 10, 0, 80}, []byte{5, 0, 5, 0, 0, 1, 127, 0, 0, 1, 39, 16}, netip.MustParseAddr("203.0.113.10")},
+		{"SOCKS5 bracketed IPv6", ipv6Request, []byte{5, 0, 5, 0, 0, 1, 127, 0, 0, 1, 39, 16}, netip.MustParseAddr(bracketedIPv6[1 : len(bracketedIPv6)-1])},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			raw := &handoffConnFixture{input: bytes.NewReader(test.request)}
@@ -114,14 +124,20 @@ func TestSOCKSConnectSuccessTransfersOwnedCarrier(t *testing.T) {
 			owned := outbound.WrapRuntimeConn(context.Background(), func() { releases.Add(1) }, raw)
 			defer owned.Close()
 			router := new(handoffRouterFixture)
-			h := &Inbound{router: router, logger: log.NewNOPFactory().Logger()}
+			h, err := NewInbound(context.Background(), router, log.NewNOPFactory().Logger(), "update-in", option.SocksInboundOptions{})
+			if err != nil {
+				t.Fatal(err)
+			}
 			terminals := 0
-			h.NewConnection(context.Background(), owned, adapter.InboundContext{}, func(error) {
+			h.(adapter.ConnectionHandler).NewConnection(context.Background(), owned, adapter.InboundContext{}, func(error) {
 				terminals++
 				_ = owned.Close()
 			})
 			if router.connection == nil || terminals != 0 || releases.Load() != 0 || raw.closed {
 				t.Fatal("asynchronous handoff was mistaken for terminal connection completion")
+			}
+			if router.destination != test.destination || router.domain != "" {
+				t.Fatalf("route destination = %v, domain = %q, want numeric destination %v", router.destination, router.domain, test.destination)
 			}
 			// Force success through the actual LazyConn before any application I/O.
 			if err := N.ReportConnHandshakeSuccess(router.connection, raw); err != nil {

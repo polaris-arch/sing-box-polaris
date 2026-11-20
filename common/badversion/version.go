@@ -128,6 +128,28 @@ func IsValid(versionName string) bool {
 	return semver.IsValid("v" + versionName)
 }
 
+// IsCanonicalPolaris accepts the raw release identity used by producers and
+// consumers, including arbitrarily large series/patch numbers.
+func IsCanonicalPolaris(versionName string) bool {
+	if !IsValid(versionName) {
+		return false
+	}
+	base, prerelease, found := strings.Cut(versionName, "-polaris-")
+	if !found || strings.Count(base, ".") != 2 || strings.ContainsAny(base, "-+") {
+		return false
+	}
+	parts := strings.Split(prerelease, ".")
+	if len(parts) < 2 || len(parts) > 3 || parts[0] != "alpha" && parts[0] != "beta" && parts[0] != "rc" {
+		return false
+	}
+	for _, part := range parts[1:] {
+		if !isCanonicalNumber(part) {
+			return false
+		}
+	}
+	return true
+}
+
 func Parse(versionName string) (version Version) {
 	versionName = strings.TrimPrefix(versionName, "v")
 	if strings.Contains(versionName, "-") {

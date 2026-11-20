@@ -20,6 +20,7 @@ const (
 	webSocketSubprotocol  = "grpc-websockets"
 	webSocketReadLimit    = 1 << 22
 	webSocketPingInterval = 30 * time.Second
+	webSocketIOTimeout    = 10 * time.Second
 )
 
 func isWebSocketGRPCRequest(request *http.Request) bool {
@@ -43,7 +44,9 @@ func (b *webBridge) serveWebSocket(writer http.ResponseWriter, request *http.Req
 	conn.SetReadLimit(webSocketReadLimit)
 	ctx, cancel := context.WithCancel(request.Context())
 	defer cancel()
-	messageType, firstMessage, err := conn.Read(ctx)
+	metadataCtx, cancelMetadata := context.WithTimeout(ctx, webSocketIOTimeout)
+	messageType, firstMessage, err := conn.Read(metadataCtx)
+	cancelMetadata()
 	if err != nil {
 		conn.CloseNow()
 		return
@@ -100,8 +103,11 @@ func keepWebSocketAlive(ctx context.Context, conn *websocket.Conn) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			err := conn.Ping(ctx)
+			pingCtx, cancel := context.WithTimeout(ctx, webSocketIOTimeout)
+			err := conn.Ping(pingCtx)
+			cancel()
 			if err != nil {
+				conn.CloseNow()
 				return
 			}
 		}
@@ -134,11 +140,17 @@ func (w *webSocketResponseWriter) Write(content []byte) (int, error) {
 	if !w.wroteHeaders {
 		w.WriteHeader(http.StatusOK)
 	}
-	err := w.conn.Write(w.ctx, websocket.MessageBinary, content)
+	err := w.writeMessage(content)
 	if err != nil {
 		return 0, err
 	}
 	return len(content), nil
+}
+
+func (w *webSocketResponseWriter) writeMessage(content []byte) error {
+	ctx, cancel := context.WithTimeout(w.ctx, webSocketIOTimeout)
+	defer cancel()
+	return w.conn.Write(ctx, websocket.MessageBinary, content)
 }
 
 func (w *webSocketResponseWriter) WriteHeader(statusCode int) {
@@ -167,7 +179,7 @@ func (w *webSocketResponseWriter) writeHeaderFrame(header http.Header) {
 	frame := make([]byte, 0, 5+headerBuffer.Len())
 	frame = append(frame, webMetadataFrameHeader(headerBuffer.Len())...)
 	frame = append(frame, headerBuffer.Bytes()...)
-	w.conn.Write(w.ctx, websocket.MessageBinary, frame)
+	w.writeMessage(frame)
 }
 
 func (w *webSocketResponseWriter) writeTrailerFrame() {

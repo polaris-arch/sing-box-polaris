@@ -3,6 +3,8 @@ package adapter
 import (
 	"context"
 	"errors"
+
+	"github.com/sagernet/sing/service"
 )
 
 // The logical endpoint owns these actual physical-child completion signals.
@@ -17,20 +19,96 @@ type RuntimeTailscaleChildRequest struct {
 	CloseResult                            func() error
 	StoreScopes                            func() []TailscaleStoreNode
 	DirectoryScopes                        func() []TailscaleDirectoryNode
+	NativeWriter                           *RuntimeTailscaleDirectories
 }
+
+// RuntimeTailscaleDirectories are the configured paths resolved by the actual
+// constructor. The native host resolves aliases in its own ownership domain.
+type RuntimeTailscaleDirectories struct {
+	State, Taildrop string
+}
+
+type RuntimeTailscaleWriterScope struct {
+	ResourceID  RuntimeResourceID
+	Generation  uint64
+	Binding     TailscaleStoreRunBinding
+	Tag         string
+	Directories RuntimeTailscaleDirectories
+}
+
+// RuntimeTailscaleWriterPlatform is optional. Platforms requiring this fence
+// may enable a warm writer only via their original native command owner.
+type RuntimeTailscaleWriterPlatform interface {
+	RequiresRuntimeTailscaleWriter() bool
+	ValidateRuntimeTailscaleWriter(tag string, directories RuntimeTailscaleDirectories) bool
+	ClaimRuntimeTailscaleWriter(scope RuntimeTailscaleWriterScope) (bool, error)
+	ReleaseRuntimeTailscaleWriter(scope RuntimeTailscaleWriterScope, acquired bool) error
+}
+
+func RuntimeTailscaleWriterFromContext(ctx context.Context) RuntimeTailscaleWriterPlatform {
+	platform, _ := service.FromContext[PlatformInterface](ctx).(RuntimeTailscaleWriterPlatform)
+	if platform == nil || !platform.RequiresRuntimeTailscaleWriter() {
+		return nil
+	}
+	return platform
+}
+
 type RuntimeTailscaleChildRegistration interface {
 	Context() context.Context
 	Prepare(context.Context) error
 	Constructed() error
 	Abort() error
 }
+
+// RuntimeTailscaleNativeClose observes completion of the native writer host
+// after the physical owner's own CloseDone. The wait is bounded and sticky.
+type RuntimeTailscaleNativeClose interface {
+	WaitOriginalNativeClose() error
+}
+
+// RuntimeTailscaleStartupClose optionally joins the original startup census
+// observer after the physical owner's CloseDone. It does not release a JNI claim.
+type RuntimeTailscaleStartupClose interface {
+	WaitOriginalStartupClose() error
+}
 type (
 	RuntimeTailscaleChildRegistrar    func(context.Context, RuntimeTailscaleChildRequest) (RuntimeTailscaleChildRegistration, error)
 	runtimeTailscaleChildRegistrarKey struct{}
+	runtimeTailscaleChildCapacityKey  struct{}
+	runtimeTailscaleNativeWriterKey   struct{}
+	runtimeTailscaleStartupChildKey   struct{}
 )
+
+// Only the original initial graph builder marks a constructor with this key.
+func ContextWithRuntimeTailscaleStartupChild(ctx context.Context) context.Context {
+	return context.WithValue(ctx, runtimeTailscaleStartupChildKey{}, true)
+}
+
+func RuntimeTailscaleStartupChild(ctx context.Context) bool {
+	initial, _ := ctx.Value(runtimeTailscaleStartupChildKey{}).(bool)
+	return initial
+}
 
 func ContextWithRuntimeTailscaleChildRegistrar(ctx context.Context, registrar RuntimeTailscaleChildRegistrar) context.Context {
 	return context.WithValue(ctx, runtimeTailscaleChildRegistrarKey{}, registrar)
+}
+
+func ContextWithRuntimeTailscaleChildCapacity(ctx context.Context, check func() bool) context.Context {
+	return context.WithValue(ctx, runtimeTailscaleChildCapacityKey{}, check)
+}
+
+func RuntimeTailscaleChildHasCapacity(ctx context.Context) bool {
+	check, _ := ctx.Value(runtimeTailscaleChildCapacityKey{}).(func() bool)
+	return check != nil && check()
+}
+
+func ContextWithRuntimeTailscaleNativeWriter(ctx context.Context) context.Context {
+	return context.WithValue(ctx, runtimeTailscaleNativeWriterKey{}, true)
+}
+
+func RuntimeTailscaleNativeWriterRequired(ctx context.Context) bool {
+	required, _ := ctx.Value(runtimeTailscaleNativeWriterKey{}).(bool)
+	return required
 }
 
 func RegisterRuntimeTailscaleChild(ctx context.Context, request RuntimeTailscaleChildRequest) (RuntimeTailscaleChildRegistration, error) {
@@ -59,6 +137,19 @@ func ContextWithRuntimeTailscaleConfiguration(ctx context.Context, canonical []b
 func RuntimeTailscaleConfiguration(ctx context.Context) ([]byte, bool) {
 	canonical, ok := ctx.Value(runtimeTailscaleConfigurationKey{}).([]byte)
 	return append([]byte(nil), canonical...), ok && len(canonical) > 0
+}
+
+type runtimeTailscalePlanDigestKey struct{}
+
+// The Plan digest identifies the exact accepted canonical configuration. It is
+// distinct from construction options that already embed frozen source data.
+func ContextWithRuntimeTailscalePlanDigest(ctx context.Context, digest string) context.Context {
+	return context.WithValue(ctx, runtimeTailscalePlanDigestKey{}, digest)
+}
+
+func RuntimeTailscalePlanDigest(ctx context.Context) (string, bool) {
+	digest, _ := ctx.Value(runtimeTailscalePlanDigestKey{}).(string)
+	return digest, digest != ""
 }
 
 // The registration context still identifies the original logical birth and

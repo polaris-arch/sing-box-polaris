@@ -36,6 +36,7 @@ func (c *runtimeCoordinator) SelectRuntimeOutbound(expected adapter.RuntimeResou
 	}
 	changed, accepted, effect := selector.RuntimeSelect(selected)
 	if changed {
+		c.cancelRuntimeExitIPProbeLocked()
 		c.active.ControlRevision++
 		c.pendingPersistence = nil
 	}
@@ -81,6 +82,7 @@ func (c *runtimeCoordinator) SetRuntimeClashMode(mode string) bool {
 	}
 	changed, accepted, effect := c.clashMode.RuntimeSetMode(mode)
 	if changed {
+		c.cancelRuntimeExitIPProbeLocked()
 		c.active.ControlRevision++
 		c.pendingPersistence = nil
 	}

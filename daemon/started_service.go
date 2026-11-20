@@ -67,6 +67,7 @@ type StartedService struct {
 	cleanupErr                error                     // protected by lifecycleAccess; sticky for strict transient hosts
 	tailscaleRetirementAccess sync.Mutex                // registry only; no native callbacks under this guard
 	tailscaleRetirementRuns   []*tailscaleRetirementRun // immutable original births; registry guard
+	tailscaleReservedRuns     int                       // unclassified opt-in births; registry guard
 	startInterrupted          bool
 	serviceStatus             *ServiceStatus
 	serviceStatusSubscriber   *observable.Subscriber[*ServiceStatus]
@@ -327,6 +328,18 @@ func (s *StartedService) StartOrReloadService(ctx context.Context, profileConten
 // under the same lifecycle lock as the terminal check. A closed old host must
 // never write shared configuration after its CloseService acknowledged.
 func (s *StartedService) StartOrReloadServiceWithBeforeStart(ctx context.Context, profileContent string, options *OverrideOptions, beforeStart func()) error {
+	return s.startOrReloadService(ctx, profileContent, options, beforeStart, nil)
+}
+
+// StartOrReloadServiceWithTailscaleStartup takes the startup census before
+// another management listener can replace this exact successfully started Box.
+func (s *StartedService) StartOrReloadServiceWithTailscaleStartup(ctx context.Context, profileContent string, options *OverrideOptions, beforeStart func()) (string, error) {
+	var startup string
+	err := s.startOrReloadService(ctx, profileContent, options, beforeStart, &startup)
+	return startup, err
+}
+
+func (s *StartedService) startOrReloadService(ctx context.Context, profileContent string, options *OverrideOptions, beforeStart func(), startup *string) error {
 	s.interruptStart()
 	s.lifecycleAccess.Lock()
 	defer s.lifecycleAccess.Unlock()
@@ -363,7 +376,18 @@ func (s *StartedService) StartOrReloadServiceWithBeforeStart(ctx context.Context
 		}
 		return err
 	}
-	if err := s.admitTailscaleRetirementRun(); err != nil {
+	if startup != nil {
+		count := 1 // the original whole-configuration parent
+		if prepared.runtimeGraph {
+			count += len(tailscaleRetirementTags(prepared.options.Endpoints))
+		}
+		reservation, err := s.reserveTailscaleStartupRuns(count)
+		if err != nil {
+			return err
+		}
+		prepared.startupReservation = reservation
+		defer reservation.releaseUnused()
+	} else if err := s.admitTailscaleRetirementRun(); err != nil {
 		return err
 	}
 	if err := s.prepareReloadAdmission(ctx, prepared, beforeStart, s.prepareManagedDirectories); err != nil {
@@ -442,6 +466,10 @@ func (s *StartedService) StartOrReloadServiceWithBeforeStart(ctx context.Context
 		return E.Cause(err, "start service instance")
 	}
 	s.startedAt = time.Now()
+	cohort := instance.tailscaleRetirement.sealStartup(startup != nil)
+	if startup != nil {
+		*startup = cohort
+	}
 	s.updateStatus(ServiceStatus_STARTED)
 	s.serviceAccess.Unlock()
 	runtimeDebug.FreeOSMemory()
@@ -1162,11 +1190,11 @@ func (s *StartedService) applyConnectionEvent(event trafficcontrol.ConnectionEve
 
 func (s *StartedService) buildTrafficUpdates(manager *trafficcontrol.Manager, snapshots map[uuid.UUID]connectionSnapshot) []*ConnectionEvent {
 	activeConnections := manager.Connections()
-	activeIndex := make(map[uuid.UUID]*trafficcontrol.TrackerMetadata, len(activeConnections))
+	previousCount := len(snapshots)
+	matched := 0
 	var events []*ConnectionEvent
 
 	for _, metadata := range activeConnections {
-		activeIndex[metadata.ID] = metadata
 		currentUpload := metadata.Upload.Load()
 		currentDownload := metadata.Download.Load()
 		snapshot, exists := snapshots[metadata.ID]
@@ -1182,6 +1210,7 @@ func (s *StartedService) buildTrafficUpdates(manager *trafficcontrol.Manager, sn
 			})
 			continue
 		}
+		matched++
 		uplinkDelta := currentUpload - snapshot.uplink
 		downlinkDelta := currentDownload - snapshot.downlink
 		if uplinkDelta < 0 || downlinkDelta < 0 {
@@ -1226,6 +1255,15 @@ func (s *StartedService) buildTrafficUpdates(manager *trafficcontrol.Manager, sn
 		}
 	}
 
+	// A matching sample has no missed close to reconcile. Build the index only
+	// for the recovery path, using the same sample used for traffic deltas.
+	if matched == previousCount {
+		return events
+	}
+	activeIndex := make(map[uuid.UUID]struct{}, len(activeConnections))
+	for _, metadata := range activeConnections {
+		activeIndex[metadata.ID] = struct{}{}
+	}
 	var closedIndex map[uuid.UUID]*trafficcontrol.TrackerMetadata
 	for id := range snapshots {
 		if _, exists := activeIndex[id]; exists {

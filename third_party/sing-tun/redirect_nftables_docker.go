@@ -4,13 +4,17 @@ package tun
 
 import (
 	"bytes"
+	"errors"
+	"reflect"
 	"slices"
 	"strings"
+	"syscall"
 
-	"github.com/sagernet/nftables"
-	"github.com/sagernet/nftables/expr"
-	"github.com/sagernet/nftables/userdata"
 	E "github.com/sagernet/sing/common/exceptions"
+
+	"github.com/google/nftables"
+	"github.com/google/nftables/expr"
+	"github.com/google/nftables/userdata"
 )
 
 const (
@@ -19,6 +23,11 @@ const (
 )
 
 func (r *autoRedirect) startDockerFirewallMonitor() {
+	r.dockerFirewallAccess.Lock()
+	defer r.dockerFirewallAccess.Unlock()
+	if r.dockerFirewallClosed {
+		return
+	}
 	if r.dockerFirewallMonitor != nil {
 		return
 	}
@@ -53,13 +62,15 @@ func (r *autoRedirect) startDockerFirewallMonitor() {
 }
 
 func (r *autoRedirect) stopDockerFirewallMonitor() {
-	if r.dockerFirewallMonitor == nil {
-		return
+	r.dockerFirewallAccess.Lock()
+	r.dockerFirewallClosed = true
+	monitor, done := r.dockerFirewallMonitor, r.dockerFirewallDone
+	r.dockerFirewallMonitor, r.dockerFirewallDone = nil, nil
+	r.dockerFirewallAccess.Unlock()
+	if monitor != nil {
+		_ = monitor.Close()
+		<-done
 	}
-	_ = r.dockerFirewallMonitor.Close()
-	<-r.dockerFirewallDone
-	r.dockerFirewallMonitor = nil
-	r.dockerFirewallDone = nil
 }
 
 func (r *autoRedirect) loopDockerFirewallMonitor(events <-chan *nftables.MonitorEvents, doneCh chan<- struct{}) {
@@ -82,60 +93,72 @@ func (r *autoRedirect) loopDockerFirewallMonitor(events <-chan *nftables.Monitor
 }
 
 func (r *autoRedirect) configureDockerFirewall(cleanup bool) error {
+	r.dockerFirewallAccess.Lock()
+	defer r.dockerFirewallAccess.Unlock()
+	if r.dockerFirewallClosed && !cleanup {
+		return nil
+	}
 	nft, err := nftables.New()
 	if err != nil {
-		return E.Cause(err, "create nftables connection")
+		return err
 	}
 	defer nft.CloseLasting()
-
-	err = r.configureDockerFirewallWithConn(nft, cleanup)
-	if err != nil {
-		return err
-	}
-	return nft.Flush()
-}
-
-func (r *autoRedirect) configureDockerFirewallWithConn(nft *nftables.Conn, cleanup bool) error {
-	var err error
-	if r.enableIPv4 {
-		err = E.Errors(err, r.configureDockerFirewallForFamily(nft, nftables.TableFamilyIPv4, cleanup))
-	}
-	if r.enableIPv6 {
-		err = E.Errors(err, r.configureDockerFirewallForFamily(nft, nftables.TableFamilyIPv6, cleanup))
-	}
-	return err
-}
-
-func (r *autoRedirect) configureDockerFirewallForFamily(nft *nftables.Conn, family nftables.TableFamily, cleanup bool) error {
-	table, chain, loaded, err := nftablesLoadDockerUserChain(nft, family)
-	if err != nil || !loaded {
-		return err
-	}
-	err = r.configureDockerFirewallRules(nft, table, chain, cleanup)
-	return err
-}
-
-func (r *autoRedirect) configureDockerFirewallRules(nft *nftables.Conn, table *nftables.Table, chain *nftables.Chain, cleanup bool) error {
-	rules, err := nft.GetRules(table, chain)
-	if err != nil {
-		return E.Cause(err, "list docker user rules")
-	}
-	if cleanup {
-		return r.cleanupDockerFirewallRules(nft, rules)
-	}
-	return r.reconcileDockerFirewallRules(nft, table, chain, rules)
-}
-
-func nftablesLoadDockerUserChain(nft *nftables.Conn, family nftables.TableFamily) (*nftables.Table, *nftables.Chain, bool, error) {
-	table, err := nft.ListTableOfFamily(nftablesDockerFilterTable, family)
-	if err != nil {
-		return nil, nil, false, nil
-	}
-	chain, err := nft.ListChain(table, nftablesDockerUserChain)
-	if err != nil {
-		return nil, nil, false, nil
-	}
-	return table, chain, true, nil
+	return r.transactDockerFirewall(dockerNFTIO{
+		generation: func() (uint32, error) {
+			gen, err := nft.GetGen()
+			if err != nil {
+				return 0, err
+			}
+			if gen == nil {
+				return 0, E.New("missing Docker generation")
+			}
+			return gen.ID, nil
+		},
+		probe: probeNFTablesGeneration,
+		snapshot: func(family nftables.TableFamily) (dockerNFTSnapshot, error) {
+			table, err := nft.ListTableOfFamily(nftablesDockerFilterTable, family)
+			if errors.Is(err, syscall.ENOENT) {
+				return dockerNFTSnapshot{}, nil
+			}
+			if err != nil {
+				return dockerNFTSnapshot{}, err
+			}
+			handle, err := getDockerNFTObjectHandle(family, table.Name, "")
+			if err != nil {
+				return dockerNFTSnapshot{}, err
+			}
+			chain, err := nft.ListChain(table, nftablesDockerUserChain)
+			if errors.Is(err, syscall.ENOENT) {
+				return dockerNFTSnapshot{table: table, tableHandle: handle}, nil
+			}
+			if err != nil {
+				return dockerNFTSnapshot{}, err
+			}
+			chainHandle, err := getDockerNFTObjectHandle(family, table.Name, chain.Name)
+			if err != nil {
+				return dockerNFTSnapshot{}, err
+			}
+			rules, err := nft.GetRules(table, chain)
+			return dockerNFTSnapshot{table: table, chain: chain, tableHandle: handle, chainHandle: chainHandle, rules: rules}, err
+		},
+		chainHandles: func(family nftables.TableFamily) ([]uint64, error) {
+			chains, err := nft.ListChainsOfTableFamily(family)
+			if err != nil {
+				return nil, err
+			}
+			var handles []uint64
+			for _, chain := range chains {
+				if chain == nil || chain.Table == nil || chain.Table.Family != family || chain.Handle == 0 {
+					return nil, E.New("incomplete Docker chain identity")
+				}
+				if chain.Table.Name == nftablesDockerFilterTable {
+					handles = append(handles, chain.Handle)
+				}
+			}
+			return handles, nil
+		},
+		insert: nft.InsertRule, remove: nft.DelRule, flush: nft.FlushWithGenID,
+	}, cleanup)
 }
 
 func nftablesDockerFirewallEventsRelevant(events *nftables.MonitorEvents) bool {
@@ -167,43 +190,6 @@ func nftablesIsDockerFirewallTable(table *nftables.Table) bool {
 		(table.Family == nftables.TableFamilyIPv4 || table.Family == nftables.TableFamilyIPv6)
 }
 
-func (r *autoRedirect) cleanupDockerFirewallRules(nft *nftables.Conn, rules []*nftables.Rule) error {
-	var deleteErr error
-	for _, rule := range rules {
-		if r.nftablesIsDockerCompatibilityRule(rule) {
-			deleteErr = E.Errors(deleteErr, nft.DelRule(rule))
-		}
-	}
-	return deleteErr
-}
-
-func (r *autoRedirect) reconcileDockerFirewallRules(nft *nftables.Conn, table *nftables.Table, chain *nftables.Chain, rules []*nftables.Rule) error {
-	outputComment := r.nftablesDockerCompatibilityComment("output to tun")
-	inputComment := r.nftablesDockerCompatibilityComment("input from tun")
-	var hasOutputRule bool
-	var hasInputRule bool
-	var deleteErr error
-	for _, rule := range rules {
-		if nftablesDockerCompatibilityRuleMatches(rule, r.tunOptions.Name, expr.MetaKeyOIFNAME, outputComment) && !hasOutputRule {
-			hasOutputRule = true
-		} else if nftablesDockerCompatibilityRuleMatches(rule, r.tunOptions.Name, expr.MetaKeyIIFNAME, inputComment) && !hasInputRule {
-			hasInputRule = true
-		} else if r.nftablesIsDockerCompatibilityRule(rule) {
-			deleteErr = E.Errors(deleteErr, nft.DelRule(rule))
-		}
-	}
-	if deleteErr != nil {
-		return deleteErr
-	}
-	if !hasOutputRule {
-		nft.InsertRule(nftablesDockerCompatibilityRule(table, chain, r.tunOptions.Name, expr.MetaKeyOIFNAME, outputComment))
-	}
-	if !hasInputRule {
-		nft.InsertRule(nftablesDockerCompatibilityRule(table, chain, r.tunOptions.Name, expr.MetaKeyIIFNAME, inputComment))
-	}
-	return nil
-}
-
 func nftablesDockerCompatibilityRule(table *nftables.Table, chain *nftables.Chain, ifName string, ifNameKey expr.MetaKey, comment string) *nftables.Rule {
 	return &nftables.Rule{
 		Table: table,
@@ -228,24 +214,22 @@ func nftablesDockerCompatibilityRule(table *nftables.Table, chain *nftables.Chai
 }
 
 func nftablesDockerCompatibilityRuleMatches(rule *nftables.Rule, ifName string, ifNameKey expr.MetaKey, comment string) bool {
-	ruleComment, loaded := userdata.GetString(rule.UserData, userdata.TypeComment)
-	if !loaded || ruleComment != comment || len(rule.Exprs) != 4 {
+	expected := nftablesDockerCompatibilityRule(rule.Table, rule.Chain, ifName, ifNameKey, comment)
+	if rule.Flags != 0 || !bytes.Equal(rule.UserData, expected.UserData) || len(rule.Exprs) != len(expected.Exprs) {
 		return false
 	}
-	meta, loaded := rule.Exprs[0].(*expr.Meta)
-	if !loaded || meta.Key != ifNameKey || meta.Register != 1 {
-		return false
+	for i, expression := range rule.Exprs {
+		if i == 2 {
+			if _, ok := expression.(*expr.Counter); !ok {
+				return false
+			}
+			continue
+		}
+		if !reflect.DeepEqual(expression, expected.Exprs[i]) {
+			return false
+		}
 	}
-	cmp, loaded := rule.Exprs[1].(*expr.Cmp)
-	if !loaded || cmp.Op != expr.CmpOpEq || cmp.Register != 1 || !bytes.Equal(cmp.Data, nftablesIfname(ifName)) {
-		return false
-	}
-	_, loaded = rule.Exprs[2].(*expr.Counter)
-	if !loaded {
-		return false
-	}
-	verdict, loaded := rule.Exprs[3].(*expr.Verdict)
-	return loaded && verdict.Kind == expr.VerdictAccept
+	return true
 }
 
 func (r *autoRedirect) nftablesIsDockerCompatibilityRule(rule *nftables.Rule) bool {

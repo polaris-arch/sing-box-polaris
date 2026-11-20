@@ -98,12 +98,20 @@ func ReloadSetupOptions(options *SetupOptions) {
 		sPlatformMetadata = nil
 	}
 	if sOOMKillerEnabled {
-		if sOOMMemoryLimit == 0 && C.IsIos {
-			sOOMMemoryLimit = oomkiller.DefaultAppleNetworkExtensionMemoryLimit
+		if C.IsIos {
+			if sOOMMemoryLimit == 0 {
+				sOOMMemoryLimit = oomkiller.DefaultAppleNetworkExtensionMemoryLimit
+			}
 			debug.SetGCPercent(oomkiller.DefaultAppleNetworkExtensionGCPercent)
 		}
 		if sOOMMemoryLimit > 0 {
-			debug.SetMemoryLimit(int64(oomkiller.RuntimeMemoryLimit(uint64(sOOMMemoryLimit))))
+			limit := oomkiller.RuntimeMemoryLimit(uint64(sOOMMemoryLimit))
+			if C.IsIos {
+				// The kernel's process limit includes native allocations and short
+				// bursts that the Go heap target and pressure timer cannot see.
+				limit = min(limit, oomkiller.AppleNetworkExtensionGoMemoryLimit)
+			}
+			debug.SetMemoryLimit(int64(limit))
 		} else {
 			debug.SetMemoryLimit(math.MaxInt64)
 		}

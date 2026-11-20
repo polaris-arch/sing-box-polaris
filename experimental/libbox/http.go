@@ -237,12 +237,20 @@ type httpResponse struct {
 	contentError   error
 }
 
+// Error responses are diagnostics, not downloads. Bound the retained body even
+// when the server sends a chunked response or omits Content-Length.
+const httpErrorBodyLimit = 64 * 1024
+
 func (h *httpResponse) errorString() string {
-	content, err := h.GetContent()
+	defer h.Body.Close()
+	content, err := io.ReadAll(io.LimitReader(h.Body, httpErrorBodyLimit+1))
 	if err != nil {
 		return fmt.Sprint("HTTP ", h.Status)
 	}
-	return fmt.Sprint("HTTP ", h.Status, ": ", content)
+	if len(content) > httpErrorBodyLimit {
+		return fmt.Sprint("HTTP ", h.Status, ": ", string(content[:httpErrorBodyLimit]), " [truncated]")
+	}
+	return fmt.Sprint("HTTP ", h.Status, ": ", string(content))
 }
 
 func (h *httpResponse) GetContent() (*StringBox, error) {

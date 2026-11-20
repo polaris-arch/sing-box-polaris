@@ -12302,7 +12302,7 @@ Public License instead of this License.
 
 
 
-===== go1.27.2 :: LICENSE =====
+===== go1.27.4 :: LICENSE =====
 Copyright 2009 The Go Authors.
 
 Redistribution and use in source and binary forms, with or without
@@ -12332,7 +12332,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-===== go1.27.2 :: PATENTS =====
+===== go1.27.4 :: PATENTS =====
 Additional IP Rights Grant (Patents)
 
 "This implementation" means the copyrightable works distributed by

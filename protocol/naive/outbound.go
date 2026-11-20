@@ -34,10 +34,11 @@ func RegisterOutbound(registry *outbound.Registry) {
 type Outbound struct {
 	runtime *outboundRuntime
 	outbound.Adapter
-	ctx       context.Context
-	logger    logger.ContextLogger
-	client    *cronet.NaiveClient
-	uotClient *uot.Client
+	ctx           context.Context
+	logger        logger.ContextLogger
+	client        *cronet.NaiveClient
+	clientOptions cronet.NaiveClientOptions
+	uotClient     *uot.Client
 }
 
 func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextLogger, tag string, options option.NaiveOutboundOptions) (result adapter.Outbound, resultErr error) {
@@ -175,7 +176,7 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 	default:
 		return nil, E.New("unknown quic congestion control: ", options.QUICCongestionControl)
 	}
-	client, err := cronet.NewNaiveClient(runtime.guardClientOptions(cronet.NaiveClientOptions{
+	clientOptions := cronet.NaiveClientOptions{
 		Context:                  ctx,
 		Logger:                   logger,
 		ServerAddress:            serverAddress,
@@ -194,7 +195,8 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 		QUIC:                     options.QUIC,
 		QUICCongestionControl:    quicCongestionControl,
 		QUICSessionReceiveWindow: options.QUICSessionReceiveWindow.Value(),
-	}))
+	}
+	client, err := cronet.NewNaiveClient(runtime.guardClientOptions(clientOptions))
 	if err != nil {
 		return nil, err
 	}
@@ -218,12 +220,13 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 	}
 	constructed = true
 	return &Outbound{
-		runtime:   runtime,
-		Adapter:   outbound.NewAdapterWithDialerOptions(C.TypeNaive, tag, networks, options.DialerOptions),
-		ctx:       ctx,
-		logger:    logger,
-		client:    client,
-		uotClient: uotClient,
+		runtime:       runtime,
+		Adapter:       outbound.NewAdapterWithDialerOptions(C.TypeNaive, tag, networks, options.DialerOptions),
+		ctx:           ctx,
+		logger:        logger,
+		client:        client,
+		clientOptions: clientOptions,
+		uotClient:     uotClient,
 	}, nil
 }
 
@@ -237,11 +240,7 @@ func (h *Outbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 	}
 	err = func() error {
 		defer leave()
-		startErr := h.client.Start()
-		if startErr == nil {
-			h.logger.Info("NaiveProxy started, version: ", h.client.Version())
-		}
-		return startErr
+		return h.client.StartOnDemand()
 	}()
 	if err != nil {
 		return errors.Join(err, h.runtime.close())

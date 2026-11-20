@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"sync"
 	"syscall"
@@ -31,6 +32,7 @@ import (
 
 type CommandServer struct {
 	transient       bool
+	strictCleanup   bool
 	directoryDomain *adapter.TailscaleDirectoryDomain
 	*daemon.StartedService
 	ctx                  context.Context
@@ -89,13 +91,15 @@ func newCommandServer(handler CommandServerHandler, platformInterface PlatformIn
 	powerManager := powerreport.NewManager()
 	service.MustRegister[*powerreport.Manager](ctx, powerManager)
 	platformWrapper := &platformInterfaceWrapper{
-		iif:          platformInterface,
-		useProcFS:    platformInterface.UseProcFS(),
-		powerManager: powerManager,
+		iif:                  platformInterface,
+		useProcFS:            platformInterface.UseProcFS(),
+		powerManager:         powerManager,
+		androidTailscaleHost: runtime.GOOS == "android",
 	}
 	service.MustRegister[adapter.PlatformInterface](ctx, platformWrapper)
 	server := &CommandServer{
 		transient:         transient,
+		strictCleanup:     strictCleanup,
 		directoryDomain:   domain,
 		ctx:               ctx,
 		handler:           handler,
@@ -308,13 +312,15 @@ type OverrideOptions struct {
 }
 
 func (s *CommandServer) StartOrReloadService(configContent string, options *OverrideOptions) error {
-	return s.startOrReloadServiceWithRuntimePersistence(configContent, options, nil, false)
+	_, err := s.startOrReloadServiceWithRuntimePersistence(configContent, options, nil, false, false)
+	return err
 }
 
 // StartOrReloadServiceWithRuntimePersistence captures this host owner for the
 // new instance. A fresh handler must be supplied for each full start/reload.
 func (s *CommandServer) StartOrReloadServiceWithRuntimePersistence(configContent string, options *OverrideOptions, handler RuntimePersistenceHandler) error {
-	return s.startOrReloadServiceWithRuntimePersistence(configContent, options, handler, false)
+	_, err := s.startOrReloadServiceWithRuntimePersistence(configContent, options, handler, false, false)
+	return err
 }
 
 // StartOrReloadServiceWithRetryableRuntimePersistence explicitly promises that
@@ -324,12 +330,20 @@ func (s *CommandServer) StartOrReloadServiceWithRetryableRuntimePersistence(conf
 	if handler == nil {
 		return errors.New("retryable persistence owner is required")
 	}
-	return s.startOrReloadServiceWithRuntimePersistence(configContent, options, handler, true)
+	_, err := s.startOrReloadServiceWithRuntimePersistence(configContent, options, handler, true, false)
+	return err
 }
 
-func (s *CommandServer) startOrReloadServiceWithRuntimePersistence(configContent string, options *OverrideOptions, handler RuntimePersistenceHandler, retrySafe bool) error {
+// StartOrReloadServiceWithTailscaleStartup returns the exact original startup
+// census in the same call. A supplied handler has the same retryable owner
+// contract as StartOrReloadServiceWithRetryableRuntimePersistence.
+func (s *CommandServer) StartOrReloadServiceWithTailscaleStartup(configContent string, options *OverrideOptions, handler RuntimePersistenceHandler) (string, error) {
+	return s.startOrReloadServiceWithRuntimePersistence(configContent, options, handler, handler != nil, true)
+}
+
+func (s *CommandServer) startOrReloadServiceWithRuntimePersistence(configContent string, options *OverrideOptions, handler RuntimePersistenceHandler, retrySafe, captureStartup bool) (string, error) {
 	if s.directoryDomain != nil && !s.directoryDomain.Activated() {
-		return errors.New("managed directory bootstrap has not been activated")
+		return "", errors.New("managed directory bootstrap has not been activated")
 	}
 	// Managed profiles stay in the original owner; in particular raw physical
 	// paths cannot reach a shared snapshot before the daemon poison gate.
@@ -348,21 +362,28 @@ func (s *CommandServer) startOrReloadServiceWithRuntimePersistence(configContent
 		var err error
 		startContext, err = daemon.ContextWithRuntimePersistenceOptions(startContext, runtimeHostPersistence(handler, mode), mode, retrySafe)
 		if err != nil {
-			return err
+			return "", err
 		}
 	}
 	if options == nil {
 		options = new(OverrideOptions)
 	}
-	err := s.StartedService.StartOrReloadServiceWithBeforeStart(startContext, configContent, &daemon.OverrideOptions{
+	daemonOptions := &daemon.OverrideOptions{
 		AutoRedirect:   options.AutoRedirect,
 		IncludePackage: iteratorToArray(options.IncludePackage),
 		ExcludePackage: iteratorToArray(options.ExcludePackage),
-	}, beforeStart)
-	if err != nil {
-		return E.Cause(err, "start or reload service")
 	}
-	return nil
+	var receipt string
+	var err error
+	if captureStartup {
+		receipt, err = s.StartedService.StartOrReloadServiceWithTailscaleStartup(startContext, configContent, daemonOptions, beforeStart)
+	} else {
+		err = s.StartedService.StartOrReloadServiceWithBeforeStart(startContext, configContent, daemonOptions, beforeStart)
+	}
+	if err != nil {
+		return "", E.Cause(err, "start or reload service")
+	}
+	return receipt, nil
 }
 
 func (s *CommandServer) CloseService() error {

@@ -249,6 +249,7 @@ func (s *Box) closeRuntimeResourcesContext(ctx context.Context) error {
 		}
 		c.access.Lock()
 		c.stopped = true
+		c.cancelRuntimeExitIPProbeLocked()
 		if c.sourceDriver != nil {
 			c.sourceDriver.cancel()
 		}
@@ -308,6 +309,9 @@ func (s *Box) closeRuntimeResourcesContext(ctx context.Context) error {
 			// Waiting for the stable owner first would create a TUN-flow cycle.
 			c.shutdownDiagnosticPhase.Store(5) // ingress join
 			ingressErr := c.closeIngress()
+			for _, inbound := range runtimeTunParticipants(resources) {
+				ingressErr = errors.Join(ingressErr, inbound.RuntimeShutdownPhysical(context.Background()))
+			}
 			c.shutdownDiagnosticPhase.Store(6) // reference observer join
 			var referenceErr error
 			if c.reference != nil {

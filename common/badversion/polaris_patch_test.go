@@ -13,6 +13,7 @@ func TestPolarisPatchContract(t *testing.T) {
 	}
 	var contract struct {
 		Valid      []string
+		Invalid    []string
 		Newer      [][2]string
 		SameSeries [][2]string
 	}
@@ -30,7 +31,15 @@ func TestPolarisPatchContract(t *testing.T) {
 			if !IsValid(name) {
 				t.Fatalf("canonical version rejected: %q", name)
 			}
+			if !IsCanonicalPolaris(name) {
+				t.Fatalf("canonical Polaris identity rejected: %q", name)
+			}
 		})
+	}
+	for _, name := range contract.Invalid {
+		if IsCanonicalPolaris(name) {
+			t.Fatalf("noncanonical Polaris identity admitted: %q", name)
+		}
 	}
 	for _, pair := range contract.Newer {
 		newer, older := Parse(pair[0]), Parse(pair[1])

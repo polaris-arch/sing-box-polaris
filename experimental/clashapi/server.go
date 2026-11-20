@@ -130,6 +130,7 @@ func NewServer(ctx context.Context, logFactory log.ObservableFactory, options op
 	})
 	if options.ExternalUI != "" {
 		s.externalUI = filemanager.BasePath(ctx, os.ExpandEnv(options.ExternalUI))
+		s.externalUI = adapter.ConfigurationDirectoryPath(ctx, s.externalUI)
 		_, err := filemanager.ReadDir(ctx, s.externalUI)
 		if err != nil && !os.IsNotExist(err) {
 			return nil, E.Cause(err, "read external UI directory")
@@ -167,6 +168,7 @@ func (s *Server) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 		if err != nil {
 			return E.Cause(err, "external controller listen error")
 		}
+		s.httpServer.BaseContext = func(net.Listener) context.Context { return scope.Context() }
 		scope.Add(s.httpServer.Close)
 		s.logger.Info("restful api listening at ", listener.Addr())
 		go func() {

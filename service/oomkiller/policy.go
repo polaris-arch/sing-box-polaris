@@ -12,7 +12,8 @@ import (
 
 const (
 	DefaultAppleNetworkExtensionMemoryLimit = 50 * 1024 * 1024
-	DefaultAppleNetworkExtensionGCPercent   = 50
+	DefaultAppleNetworkExtensionGCPercent   = 25
+	AppleNetworkExtensionGoMemoryLimit      = 32 * 1024 * 1024
 )
 
 type policyMode uint8

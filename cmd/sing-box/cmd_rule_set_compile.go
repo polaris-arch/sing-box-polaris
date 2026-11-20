@@ -1,7 +1,6 @@
 package main
 
 import (
-	"io"
 	"os"
 	"strings"
 
@@ -10,7 +9,6 @@ import (
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing-box/route/rule"
-	"github.com/sagernet/sing/common/json"
 
 	"github.com/spf13/cobra"
 )
@@ -37,23 +35,11 @@ func init() {
 }
 
 func compileRuleSet(sourcePath string) error {
-	var (
-		reader io.Reader
-		err    error
-	)
-	if sourcePath == "stdin" {
-		reader = os.Stdin
-	} else {
-		reader, err = os.Open(sourcePath)
-		if err != nil {
-			return err
-		}
-	}
-	content, err := io.ReadAll(reader)
+	content, err := readRuleSetContent(sourcePath, srs.DefaultInputBytes)
 	if err != nil {
 		return err
 	}
-	plainRuleSet, err := json.UnmarshalExtended[option.PlainRuleSetCompat](content)
+	plainRuleSet, err := decodeRuleSetSource(content)
 	if err != nil {
 		return err
 	}

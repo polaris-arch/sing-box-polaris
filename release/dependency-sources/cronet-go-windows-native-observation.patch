@@ -398,3 +398,133 @@
 +func ObserveSelectedLibraryVerified(path, expected string) (LibraryObservation, bool, error) {
 +	return cronet.ObserveSelectedLibraryVerified(path, expected)
 +}
+--- a/naive_client.go
++++ b/naive_client.go
+@@ -41,0 +42 @@
++	clientStateDormant
+@@ -54,0 +56 @@
++	startError               error
+@@ -184 +186,34 @@
+-func (c *NaiveClient) Start() (startResult error) {
++func (c *NaiveClient) Start() error {
++	return c.start(clientStateCreated)
++}
++
++// StartOnDemand prepares a client to start on its first dial. Custom trust
++// roots still need to pass Cronet's native certificate parser at startup.
++func (c *NaiveClient) StartOnDemand() error {
++	if c.trustedRootCertificates != "" {
++		return c.Start()
++	}
++	c.lifecycle.Lock()
++	defer c.lifecycle.Unlock()
++	if !c.state.CompareAndSwap(uint32(clientStateCreated), uint32(clientStateDormant)) {
++		return startStateError(clientState(c.state.Load()))
++	}
++	return nil
++}
++
++func (c *NaiveClient) IsDormant() bool {
++	return clientState(c.state.Load()) == clientStateDormant
++}
++
++func startStateError(state clientState) error {
++	switch state {
++	case clientStateDormant, clientStateStarting:
++		return errors.New("start already in progress")
++	case clientStateRunning:
++		return errors.New("already started")
++	default:
++		return net.ErrClosed
++	}
++}
++
++func (c *NaiveClient) start(expected clientState) (startResult error) {
+@@ -186 +221 @@
+-	if !c.state.CompareAndSwap(uint32(clientStateCreated), uint32(clientStateStarting)) {
++	if !c.state.CompareAndSwap(uint32(expected), uint32(clientStateStarting)) {
+@@ -189,7 +224,3 @@
+-		switch state {
+-		case clientStateStarting:
+-			return errors.New("start already in progress")
+-		case clientStateRunning:
+-			return errors.New("already started")
+-		default:
+-			return net.ErrClosed
++		if expected == clientStateDormant {
++			// The first dial owns startup. Other dials wait on started.
++			return nil
+@@ -196,0 +228 @@
++		return startStateError(state)
+@@ -206,0 +239 @@
++			c.startError = startError
+@@ -382,0 +416,3 @@
++	if version := c.Version(); version != "" {
++		c.logger.Info("NaiveProxy started, version: ", version)
++	}
+@@ -494,5 +530,13 @@
+-	switch state {
+-	case clientStateRunning:
+-	case clientStateClosed, clientStateClosing:
+-		return nil, net.ErrClosed
+-	default:
++	if state == clientStateDormant {
++		if err := ctx.Err(); err != nil {
++			return nil, err
++		}
++		if err := c.ctx.Err(); err != nil {
++			return nil, err
++		}
++		if err := c.start(clientStateDormant); err != nil {
++			return nil, err
++		}
++		state = clientState(c.state.Load())
++	}
++	if state < clientStateRunning {
+@@ -501,3 +545 @@
+-			if clientState(c.state.Load()) != clientStateRunning {
+-				return nil, net.ErrClosed
+-			}
++			state = clientState(c.state.Load())
+@@ -509,0 +552,7 @@
++	if state != clientStateRunning {
++		// A terminal startup error is published before the closing state.
++		if c.startError != nil {
++			return nil, errors.Join(net.ErrClosed, c.startError)
++		}
++		return nil, net.ErrClosed
++	}
+@@ -576 +625 @@
+-		case clientStateCreated:
++		case clientStateCreated, clientStateDormant:
+@@ -655 +703,0 @@
+-
+--- a/naive_client_lifecycle_test.go
++++ b/naive_client_lifecycle_test.go
+@@ -5,0 +6 @@
++	"net"
+@@ -31,0 +33,24 @@
++func TestNaiveDormantClientControlsAndClose(t *testing.T) {
++	c := lifecycleTestClient(clientStateCreated)
++	if err := c.StartOnDemand(); err != nil {
++		t.Fatal(err)
++	}
++
++	ctx, cancel := context.WithCancel(context.Background())
++	cancel()
++	dest := M.ParseSocksaddrHostPort("127.0.0.1", 443)
++	if _, err := c.DialEarly(ctx, dest); !errors.Is(err, context.Canceled) {
++		t.Fatalf("canceled first dial: %v", err)
++	}
++	c.CloseAllConnections()
++	if state := clientState(c.state.Load()); state != clientStateDormant {
++		t.Fatalf("cold client state = %v, want dormant", state)
++	}
++	if err := c.Close(); err != nil {
++		t.Fatal(err)
++	}
++	if _, err := c.DialEarly(context.Background(), dest); !errors.Is(err, net.ErrClosed) {
++		t.Fatalf("dial after cold close: %v", err)
++	}
++}
++

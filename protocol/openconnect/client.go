@@ -108,9 +108,11 @@ func NewEndpoint(ctx context.Context, router adapter.Router, logger log.ContextL
 	options.UDPBindPort = options.DTLSLocalPort
 	loopContext, cancelLoop := context.WithCancel(ctx)
 	openConnectEndpoint := &Endpoint{
-		Adapter:       endpoint.NewAdapterWithDialerOptions(C.TypeOpenConnect, tag, []string{N.NetworkTCP, N.NetworkUDP, N.NetworkICMP}, options.DialerOptions),
-		router:        router,
-		logger:        logger,
+		endpointBase: endpointBase{
+			Adapter: endpoint.NewAdapterWithDialerOptions(C.TypeOpenConnect, tag, []string{N.NetworkTCP, N.NetworkUDP, N.NetworkICMP}, options.DialerOptions),
+			router:  router,
+			logger:  logger,
+		},
 		loopContext:   loopContext,
 		cancelLoop:    cancelLoop,
 		dnsRouter:     service.FromContext[adapter.DNSRouter](ctx),
@@ -214,23 +216,23 @@ func (e *Endpoint) buildClientOptions(options option.OpenConnectEndpointOptions,
 	if options.TLS.Insecure {
 		tlsConfig = &tls.Config{InsecureSkipVerify: true}
 	}
-	certificateAuthority, err := materialSource("tls.certificate_authority", options.TLS.CertificateAuthority, options.TLS.CertificateAuthorityPath)
+	certificateAuthority, err := materialSource(e.loopContext, "tls.certificate_authority", options.TLS.CertificateAuthority, options.TLS.CertificateAuthorityPath)
 	if err != nil {
 		return openconnect.ClientOptions{}, err
 	}
-	clientCertificate, err := materialSource("tls.client_certificate", options.TLS.ClientCertificate, options.TLS.ClientCertificatePath)
+	clientCertificate, err := materialSource(e.loopContext, "tls.client_certificate", options.TLS.ClientCertificate, options.TLS.ClientCertificatePath)
 	if err != nil {
 		return openconnect.ClientOptions{}, err
 	}
-	clientKey, err := materialSource("tls.client_key", options.TLS.ClientKey, options.TLS.ClientKeyPath)
+	clientKey, err := materialSource(e.loopContext, "tls.client_key", options.TLS.ClientKey, options.TLS.ClientKeyPath)
 	if err != nil {
 		return openconnect.ClientOptions{}, err
 	}
-	mcaCertificate, err := materialSource("tls.mca_certificate", options.TLS.MCACertificate, options.TLS.MCACertificatePath)
+	mcaCertificate, err := materialSource(e.loopContext, "tls.mca_certificate", options.TLS.MCACertificate, options.TLS.MCACertificatePath)
 	if err != nil {
 		return openconnect.ClientOptions{}, err
 	}
-	mcaKey, err := materialSource("tls.mca_key", options.TLS.MCAKey, options.TLS.MCAKeyPath)
+	mcaKey, err := materialSource(e.loopContext, "tls.mca_key", options.TLS.MCAKey, options.TLS.MCAKeyPath)
 	if err != nil {
 		return openconnect.ClientOptions{}, err
 	}
@@ -239,7 +241,7 @@ func (e *Endpoint) buildClientOptions(options option.OpenConnectEndpointOptions,
 		tokenOptions = &openconnect.TokenOptions{
 			Mode:       options.Token.Mode,
 			Secret:     options.Token.Secret,
-			SecretPath: options.Token.SecretPath,
+			SecretPath: materialPath(e.loopContext, options.Token.SecretPath),
 			PIN:        options.Token.PIN,
 			Password:   options.Token.Password,
 			DeviceID:   options.Token.DeviceID,
@@ -253,6 +255,12 @@ func (e *Endpoint) buildClientOptions(options option.OpenConnectEndpointOptions,
 			}
 		}
 	}
+	wrapperPath := func(path string) string {
+		if C.IsWindows && strings.ContainsAny(path, `:\/`) {
+			return materialPath(e.loopContext, path)
+		}
+		return path
+	}
 	var csdOptions *openconnect.CSDOptions
 	var mobileOptions *openconnect.MobileOptions
 	if options.Mobile != nil {
@@ -263,17 +271,17 @@ func (e *Endpoint) buildClientOptions(options option.OpenConnectEndpointOptions,
 		}
 	}
 	if options.CSD != nil {
-		csdOptions = &openconnect.CSDOptions{WrapperPath: options.CSD.WrapperPath}
+		csdOptions = &openconnect.CSDOptions{WrapperPath: wrapperPath(options.CSD.WrapperPath)}
 	}
 	var hipOptions *openconnect.HIPOptions
 	if options.HIP != nil {
-		hipOptions = &openconnect.HIPOptions{WrapperPath: options.HIP.WrapperPath}
+		hipOptions = &openconnect.HIPOptions{WrapperPath: wrapperPath(options.HIP.WrapperPath)}
 	}
 	var tnccOptions *openconnect.TNCCOptions
 	if options.TNCC != nil {
 		tnccCertificates := make([]openconnect.Material, 0, len(options.TNCC.Certificates))
 		for i, certificateOptions := range options.TNCC.Certificates {
-			certificate, certificateErr := materialSource("tncc.certificates["+strconv.Itoa(i)+"].certificate", certificateOptions.Certificate, certificateOptions.CertificatePath)
+			certificate, certificateErr := materialSource(e.loopContext, "tncc.certificates["+strconv.Itoa(i)+"].certificate", certificateOptions.Certificate, certificateOptions.CertificatePath)
 			if certificateErr != nil {
 				return openconnect.ClientOptions{}, certificateErr
 			}

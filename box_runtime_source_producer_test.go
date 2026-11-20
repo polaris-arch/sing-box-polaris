@@ -272,6 +272,39 @@ func TestRuntimeLocalEmptyConditionsReachPerRuleValidation(t *testing.T) {
 			}
 		})
 	}
+	t.Run("cancel during decode", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "sites.json")
+		if err := os.WriteFile(path, runtimeTestSourceBytes("example.org"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		fixture, options := newRuntimeTestConstruction(t, runtimeTestLocalConfig(path), nil)
+		ctx, cancel := context.WithCancel(fixture.ctx)
+		defer cancel()
+		request := &runtimeSourceDecodeCancelContext{Context: ctx, cancel: cancel}
+		frozen, sources, digest, failures := runtimeSnapshotSources(request, fixture.ctx, options.Options, nil)
+		if ctx.Err() != context.Canceled || len(failures) != 1 || failures[0].Code != "CANCELED" {
+			t.Fatalf("source decode lost request cancellation: %+v", failures)
+		}
+		if len(sources) != 0 || digest != "" || frozen.Route.RuleSet[0].Type != C.RuleSetTypeLocal {
+			t.Fatal("canceled decode returned a frozen source")
+		}
+	})
+}
+
+type runtimeSourceDecodeCancelContext struct {
+	context.Context
+	cancel context.CancelFunc
+	checks int
+}
+
+func (c *runtimeSourceDecodeCancelContext) Err() error {
+	c.checks++
+	// After the before/after checks on local acquisition, the scanner reads
+	// the JSON through the request context for its first token.
+	if c.checks == 3 {
+		c.cancel()
+	}
+	return c.Context.Err()
 }
 
 func TestRuntimeEmptySourceDoesNotReuseOwnerForInvalidRules(t *testing.T) {

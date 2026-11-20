@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"io"
 	"os"
 	"os/signal"
@@ -13,6 +14,7 @@ import (
 	"time"
 
 	"github.com/sagernet/sing-box"
+	"github.com/sagernet/sing-box/adapter"
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
@@ -138,6 +140,12 @@ func create(options option.Options, persist func(box.RuntimeIdentity, []byte) er
 		options.Log.DisableColor = true
 	}
 	ctx, cancel := context.WithCancel(service.ExtendContext(globalCtx))
+	if envelope := options.PolarisWindowsDirectory; envelope != nil &&
+		envelope.Version == option.WindowsDirectoryEmptyStandaloneVersion &&
+		workingDir != "" && resourceDirectory != "" &&
+		len(configPaths) == 1 && configPaths[0] == "stdin" && len(configDirectories) == 0 {
+		ctx = adapter.ContextWithTailscaleWindowsStartupRoot(ctx, resourceDirectory)
+	}
 	if disableColor {
 		ctx = box.ContextWithRuntimeLogDisableColor(ctx)
 	}
@@ -177,7 +185,13 @@ func create(options option.Options, persist func(box.RuntimeIdentity, []byte) er
 	finishStart()
 	if err != nil {
 		cancel()
-		return nil, nil, E.Cause(err, "start service")
+		err = E.Cause(err, "start service")
+		// Start already closed the Box. Retrieve its retained cleanup result.
+		if closeErr := instance.CloseWithResult(); closeErr != nil {
+			log.Error(runtimeCleanupDiagnosticMessage(func() any { return instance.RuntimeCleanupSnapshot() }))
+			err = errors.Join(err, E.Cause(closeErr, "sing-box did not close properly"))
+		}
+		return nil, nil, err
 	}
 	return instance, cancel, nil
 }

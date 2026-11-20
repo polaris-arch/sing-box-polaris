@@ -13,9 +13,11 @@ import (
 // The separate observer never turns canceled waiting into completed cleanup.
 type stackShutdown struct {
 	stack tun.Stack
-	once  sync.Once
-	done  chan struct{}
-	err   error
+
+	once     sync.Once
+	done     chan struct{}
+	err      error
+	detached bool
 }
 
 func newStackShutdown(stack tun.Stack) *stackShutdown {
@@ -32,7 +34,9 @@ func (s *stackShutdown) Close() error {
 			s.err = errors.Join(closeErr, errors.New("TUN stack has no detach completion adapter"))
 			return
 		}
-		s.err = errors.Join(closeErr, waiter.WaitDetached(context.Background()))
+		detachErr := waiter.WaitDetached(context.Background())
+		s.detached = detachErr == nil
+		s.err = errors.Join(closeErr, detachErr)
 	})
 	return s.err
 }
@@ -41,6 +45,21 @@ func (s *stackShutdown) WaitDetached(ctx context.Context) error {
 	select {
 	case <-s.done:
 		return s.err
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+// closeNative preserves ordinary stack-close errors without confusing them with
+// failed detach. The done channel publishes both fields; an unfinished or
+// failed detach must never release the underlying native device.
+func (s *stackShutdown) closeNative(ctx context.Context, closeDevice func() error) error {
+	select {
+	case <-s.done:
+		if !s.detached {
+			return s.err
+		}
+		return errors.Join(s.err, closeDevice())
 	case <-ctx.Done():
 		return ctx.Err()
 	}

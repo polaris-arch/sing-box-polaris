@@ -161,7 +161,7 @@ func NewEndpoint(ctx context.Context, router adapter.Router, logger log.ContextL
 	if hostname == "" {
 		hostname = "sing-box"
 	}
-	stateDirectory = filemanager.BasePath(ctx, os.ExpandEnv(stateDirectory))
+	stateDirectory = expandedDirectoryBasePath(ctx, stateDirectory)
 	stateDirectory, _ = filepath.Abs(stateDirectory)
 	if options.SSHServer != nil && options.SSHServer.Enabled {
 		err := adapter.CheckSecurityFeature(ctx, "Tailscale `ssh_server`")
@@ -195,8 +195,12 @@ func NewEndpoint(ctx context.Context, router adapter.Router, logger log.ContextL
 	if taildropDirectory == "" {
 		taildropDirectory = "Taildrop"
 	}
-	taildropDirectory = filemanager.BasePath(ctx, os.ExpandEnv(taildropDirectory))
+	taildropDirectory = expandedDirectoryBasePath(ctx, taildropDirectory)
 	taildropDirectory, _ = filepath.Abs(taildropDirectory)
+	if physical != nil && physical.nativeWriter != nil &&
+		(physical.nativeWriter.State != stateDirectory || physical.nativeWriter.Taildrop != taildropDirectory) {
+		return nil, E.New("Tailscale writer paths changed after original native admission")
+	}
 	// Only the trusted original native owner can supply this whole-config plan.
 	// Filesystem selection is atomic under the directory protocol, before any
 	// SDK store/server/taildrop handle can capture a path.

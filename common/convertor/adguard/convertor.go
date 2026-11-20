@@ -190,6 +190,9 @@ parseLine:
 			isImportant: isImportant,
 		})
 	}
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
 	if len(ruleLines) == 0 {
 		return nil, E.New("AdGuard rule-set is empty or all rules are unsupported")
 	}

@@ -68,6 +68,43 @@ func TestStrictPrimaryReloadThenFinalCloseIsTerminal(t *testing.T) {
 	}
 }
 
+type primaryPlatformDNS struct{ transientTestPlatform }
+
+func (primaryPlatformDNS) LocalDNSTransport() LocalDNSTransport { return &fakeDNSPlatform{} }
+
+func TestStrictPrimaryCloseWithPlatformDNS(t *testing.T) {
+	transientTestSetup(t)
+	server, err := NewStrictCommandServer(nil, primaryPlatformDNS{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(server.Close)
+	const config = `{"dns":{"servers":[{"type":"local","tag":"system"}]}}`
+	if err := server.StartOrReloadService(config, &OverrideOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := server.CloseService(); err != nil {
+			t.Error(err)
+		}
+	})
+	box := server.Instance().Box()
+	snapshot, err := box.AcquireReferenceSnapshot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	transport, _ := snapshot.Lease.View().DNSTransportManager().Transport("system")
+	snapshot.Lease.Release()
+	if _, ok := transport.(*platformTransport); !ok {
+		t.Fatalf("configured platform DNS adapter is %T", transport)
+	}
+	// Validate the census requirement even if the background observer is delayed.
+	if _, ok := transport.(adapter.IdleConnectionKeeper); !ok {
+		t.Fatal("runtime DNS reference adapter requires idle-only connection control")
+	}
+	box.CloseIdleConnections()
+}
+
 func TestStrictPrimaryCommandListenerCannotStartAfterClose(t *testing.T) {
 	transientTestSetup(t)
 	server, err := NewStrictCommandServer(nil, transientTestPlatform{})

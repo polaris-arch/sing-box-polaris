@@ -13,6 +13,7 @@ import (
 
 	"github.com/sagernet/bbolt"
 	"github.com/sagernet/sing-box/adapter"
+	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/dns"
 	"github.com/sagernet/sing-box/dns/transport/fakeip"
 	"github.com/sagernet/sing-box/experimental/cachefile"
@@ -35,6 +36,30 @@ func runtimeFakeIPCleanupConstruction(t *testing.T, path string, hook func(*runt
 		Enabled: true, Path: path, StoreFakeIP: true, StoreDNS: true,
 	}}
 	return f, options
+}
+
+func TestColdStartClosesFakeIPBeforeCache(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "cache.db")
+	_, options := runtimeFakeIPCleanupConstruction(t, path, nil)
+	options.Certificate = &option.CertificateOptions{Store: C.CertificateStoreNone, CertificateDirectoryPath: []string{t.TempDir()}}
+	instance, err := New(options)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = instance.CloseWithResult() })
+	if instance.runtime != nil {
+		t.Fatal("fixture did not start through the non-hot Box path")
+	}
+	if err := instance.Start(); err != nil {
+		t.Fatal(err)
+	}
+	if err := instance.CloseWithResult(); err != nil {
+		t.Fatal(err)
+	}
+	cache := runtimeFakeIPCleanupReopen(t, path)
+	if metadata := cache.FakeIPMetadata(); metadata == nil || metadata.Inet4Range != netip.MustParsePrefix("198.18.0.0/15") {
+		t.Fatal("cold FakeIP store did not persist its final metadata")
+	}
 }
 
 func runtimeFakeIPCleanupBox(t *testing.T, f *runtimeTestFixture, options Options) *cachefile.CacheFile {

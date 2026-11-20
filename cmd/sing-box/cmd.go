@@ -24,6 +24,7 @@ var (
 	configPaths       []string
 	configDirectories []string
 	workingDir        string
+	resourceDirectory string
 	disableColor      bool
 )
 
@@ -36,6 +37,7 @@ func init() {
 	mainCommand.PersistentFlags().StringArrayVarP(&configPaths, "config", "c", nil, "set configuration file path")
 	mainCommand.PersistentFlags().StringArrayVarP(&configDirectories, "config-directory", "C", nil, "set configuration directory path")
 	mainCommand.PersistentFlags().StringVarP(&workingDir, "directory", "D", "", "set working directory")
+	mainCommand.PersistentFlags().StringVar(&resourceDirectory, "resource-directory", "", "set Windows configuration resource directory independently of the working directory")
 	mainCommand.PersistentFlags().BoolVarP(&disableColor, "disable-color", "", false, "disable color output")
 }
 
@@ -78,6 +80,11 @@ func preRun(cmd *cobra.Command, args []string) {
 	}
 	if len(configPaths) == 0 && len(configDirectories) == 0 {
 		configPaths = append(configPaths, "config.json")
+	}
+	var err error
+	globalCtx, err = withResourceDirectory(globalCtx, resourceDirectory)
+	if err != nil {
+		log.Fatal(err)
 	}
 	globalCtx = include.Context(service.ContextWith(globalCtx, deprecated.NewStderrManager(log.StdLogger())))
 	// Retain one original-child census across every create/SIGHUP in this CLI run.

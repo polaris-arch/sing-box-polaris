@@ -72,11 +72,15 @@ func runtimeSnapshotSources(request context.Context, registry context.Context, o
 	if options.Route == nil {
 		return options, nil, runtimeDigest(nil), nil
 	}
-	encodedCandidate, candidateErr := json.MarshalContext(registry, options)
-	if candidateErr != nil {
-		return options, nil, "", []RuntimePlanError{{Code: "INVALID_SOURCE_PROVENANCE", Path: "route.rule_set"}}
+	var candidateDigest string
+	if len(trusted) != 0 {
+		// Only prepared remote snapshots need proof of the full candidate.
+		encodedCandidate, candidateErr := json.MarshalContext(registry, options)
+		if candidateErr != nil {
+			return options, nil, "", []RuntimePlanError{{Code: "INVALID_SOURCE_PROVENANCE", Path: "route.rule_set"}}
+		}
+		candidateDigest = runtimeDigest(encodedCandidate)
 	}
-	candidateDigest := runtimeDigest(encodedCandidate)
 	routeOptions := *options.Route
 	options.Route = &routeOptions
 	var frozen []option.RuleSet
@@ -136,11 +140,18 @@ func runtimeSnapshotSources(request context.Context, registry context.Context, o
 			var compatible option.PlainRuleSetCompat
 			switch source.Format {
 			case C.RuleSetFormatSource, "":
-				compatible, err = json.UnmarshalExtended[option.PlainRuleSetCompat](content)
+				var limits srs.ReadLimits
+				if source.ResourceLimits != nil {
+					limits = *source.ResourceLimits
+				}
+				compatible, err = srs.ReadSourceContextWithLimits(request, content, limits)
 			case C.RuleSetFormatBinary:
 				compatible, err = srs.Read(bytes.NewReader(content), false)
 			default:
 				err = fmt.Errorf("unsupported source format")
+			}
+			if request.Err() != nil {
+				return options, nil, "", []RuntimePlanError{{Code: "CANCELED", Path: "route.rule_set"}}
 			}
 			if err != nil {
 				return options, nil, "", []RuntimePlanError{{Code: "INVALID_SOURCE", Path: fmt.Sprintf("route.rule_set[%d]", i)}}
@@ -290,7 +301,7 @@ func runtimePrepareRemoteSources(request context.Context, options option.Options
 			}
 			// Timeout requests cancellation; synchronous return/body close and the
 			// session join, not the timeout, establish actual worker completion.
-			fetchContext, fetchCancel := context.WithTimeout(ctx, time.Minute)
+			fetchContext, fetchCancel := context.WithTimeout(ctx, C.RuleSetDownloadTimeout)
 			content, err := runtimeDownloadSource(fetchContext, address, transport)
 			fetchCancel()
 			if err != nil {

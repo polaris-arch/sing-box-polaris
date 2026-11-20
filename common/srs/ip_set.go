@@ -24,6 +24,9 @@ func readIPSet(reader varbin.Reader) (*ipset.Set, error) {
 	if err != nil {
 		return nil, err
 	}
+	if err = claimEntries(reader, length); err != nil {
+		return nil, err
+	}
 	var (
 		ranges4 []ipset.Range4
 		ranges6 []ipset.Range6

@@ -1,22 +1,22 @@
 {
-  "version": "1.27.2",
-  "officialCommit": "022c8636110ebac86a9b88724cda168ed713c21f",
+  "version": "1.27.4",
+  "officialCommit": "7b2881024c95a11ddb86663a616340aa3a88b67f",
   "sourceURL": "https://go.dev/dl/?mode=json",
   "archives": {
     "linux-amd64": {
-      "filename": "go1.27.2.linux-amd64.tar.gz",
-      "sha256": "ecbadb99091a3f46e31f5f934b068b1864eafa7995211b39eaddf76996045fe5",
-      "bytes": 70590635
+      "filename": "go1.27.4.linux-amd64.tar.gz",
+      "sha256": "7226736c2339719cda28fbf3a54d71aa63bcefe376e98cef00034268dab24840",
+      "bytes": 70680823
     },
     "darwin-arm64": {
-      "filename": "go1.27.2.darwin-arm64.tar.gz",
-      "sha256": "76812b213b1b2302c978d28fa52fa92d541704b9e7d9d5db8002c50e4018c4c5",
-      "bytes": 68195916
+      "filename": "go1.27.4.darwin-arm64.tar.gz",
+      "sha256": "91a44a2b8a716600ad94a4f143e156116620db8828086a6e3602291be9bd0bb4",
+      "bytes": 68231011
     },
     "darwin-amd64": {
-      "filename": "go1.27.2.darwin-amd64.tar.gz",
-      "sha256": "587b59182488b23aa6e5fc25110405a3e0e5b38ed2f5b2f46ed13c32aee356fe",
-      "bytes": 71695284
+      "filename": "go1.27.4.darwin-amd64.tar.gz",
+      "sha256": "2b799377704ef12db39bd254995d5c348c9cc8d86562ca817724390e56c38f43",
+      "bytes": 71756705
     }
   },
   "iosCPU": {
@@ -41,6 +41,6 @@
       "SHA512",
       "SHA3"
     ],
-    "sourceCommit": "022c8636110ebac86a9b88724cda168ed713c21f"
+    "sourceCommit": "7b2881024c95a11ddb86663a616340aa3a88b67f"
   }
 }

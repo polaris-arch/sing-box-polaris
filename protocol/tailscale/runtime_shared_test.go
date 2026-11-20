@@ -6,13 +6,58 @@ import (
 	"context"
 	"errors"
 	"net"
+	"path/filepath"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/adapter/outbound"
+	runtimeTLS "github.com/sagernet/sing-box/common/tls"
 	"github.com/sagernet/sing-box/log"
+	"github.com/sagernet/sing-box/option"
+	"github.com/sagernet/sing/service"
+	"github.com/sagernet/sing/service/filemanager"
 )
+
+type runtimeDirectoryTestManager struct {
+	filemanager.Manager
+	directory string
+}
+
+func (m runtimeDirectoryTestManager) ConfigurationDirectoryPath(path string) string {
+	if path == "" {
+		path = "."
+	}
+	return m.BasePath(path)
+}
+
+func (m runtimeDirectoryTestManager) BasePath(path string) string {
+	if path == "" || filepath.IsAbs(path) {
+		return path
+	}
+	return filepath.Join(m.directory, path)
+}
+
+func TestRuntimePhysicalDirectoriesExpandedEmptyUsesResourceDirectory(t *testing.T) {
+	directory := t.TempDir()
+	t.Setenv("POLARIS_DIRECTORY_TEST_EMPTY", "")
+	ctx := service.ContextWith[filemanager.Manager](context.Background(), runtimeDirectoryTestManager{directory: directory})
+	options := option.TailscaleEndpointOptions{
+		StateDirectory:    "$POLARIS_DIRECTORY_TEST_EMPTY",
+		TaildropDirectory: "$POLARIS_DIRECTORY_TEST_EMPTY",
+	}
+	state, taildrop, err := RuntimePhysicalDirectories(ctx, options)
+	if err != nil || state != directory || taildrop != directory {
+		t.Fatalf("directories = %q, %q, %v; want %q", state, taildrop, err, directory)
+	}
+	if actual := expandedDirectoryBasePath(ctx, options.StateDirectory); actual != directory {
+		t.Fatalf("constructor directory = %q; want %q", actual, directory)
+	}
+	if actual := expandedDirectoryBasePath(context.Background(), options.StateDirectory); actual != "" {
+		t.Fatalf("unset resource directory changed expanded empty path: %q", actual)
+	}
+}
 
 type runtimeBindingTestSource struct {
 	sequence uint64
@@ -102,6 +147,58 @@ func TestReleasedBindingCannotFallbackToPublishedGeneration(t *testing.T) {
 func newRuntimePhysicalFixture() *runtimeEndpointPhysical {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &runtimeEndpointPhysical{ctx: ctx, cancel: cancel, scope: adapter.NewScope(ctx, nil), callbacks: outbound.NewRuntimeIOFence(nil), carriers: outbound.NewRuntimeIOFenceSet(), attachments: make(map[*runtimeEndpointBinding]struct{}), constructionDone: make(chan struct{}), closeDone: make(chan struct{})}
+}
+
+type nativeCloseWaiterFixture struct {
+	adapter.RuntimeTailscaleChildRegistration
+	wait func() error
+}
+
+func (nativeCloseWaiterFixture) Abort() error { return nil }
+func (f nativeCloseWaiterFixture) WaitOriginalNativeClose() error {
+	return f.wait()
+}
+
+func TestRuntimeTailscalePhysicalCloseJoinsOptInAfterOriginalCompletion(t *testing.T) {
+	p := newRuntimePhysicalFixture()
+	p.nativeWriter = &adapter.RuntimeTailscaleDirectories{}
+	closeDoneObserved, acknowledge := make(chan bool, 1), make(chan struct{})
+	defer close(acknowledge)
+	wantErr := errors.New("fixture original native release unknown")
+	p.registration = nativeCloseWaiterFixture{wait: func() error {
+		select {
+		case <-p.closeDone:
+			closeDoneObserved <- p.closeResult() == nil
+		default:
+			closeDoneObserved <- false
+		}
+		<-acknowledge
+		return wantErr
+	}}
+	result := make(chan error, 1)
+	go func() { result <- p.close() }()
+	select {
+	case complete := <-closeDoneObserved:
+		if !complete {
+			t.Fatal("native host joined before the actual physical Close was observable")
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("original physical Close did not reach native handoff")
+	}
+	select {
+	case <-result:
+		t.Fatal("physical Close returned before the opt-in handoff acknowledged")
+	default:
+	}
+	acknowledge <- struct{}{}
+	select {
+	case err := <-result:
+		if !errors.Is(err, wantErr) || !runtimeTLS.IsRuntimeCleanupIncomplete(err) {
+			t.Fatalf("native handoff uncertainty was erased: %v", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("physical Close did not finish after native handoff")
+	}
 }
 
 func TestCandidateAbortDoesNotCloseSharedPhysical(t *testing.T) {

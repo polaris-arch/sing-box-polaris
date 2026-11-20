@@ -281,6 +281,15 @@ TUN 接口上 DNS 的处理方式。
 
 *Windows 启用 [`strict_route`](#strict_route) 时*：阻止经由非 TUN 接口的 53 端口流量。
 
+#### linux_resolved_external
+
+Polaris 扩展，默认 `false`。
+
+仅在 Linux 上由外部管理者（如桌面 Helper）实际负责该 TUN 接口的
+`systemd-resolved` 设置与恢复时设为 `true`。Core 将跳过系统解析器设置和撤销；
+不会禁用 `dns_mode: "hijack"`、DNS 数据包处理或 TUN 路由。其他平台不受影响。
+客户端须配套支持此字段的 Core；旧版本可能拒绝未知字段。
+
 #### dns_address
 
 !!! question "自 sing-box 1.14.0 起"

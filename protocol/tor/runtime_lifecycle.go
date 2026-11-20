@@ -5,10 +5,15 @@ import (
 	"errors"
 	"net"
 	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/adapter/outbound"
+	C "github.com/sagernet/sing-box/constant"
+	"github.com/sagernet/sing/service/filemanager"
 
 	"github.com/cretz/bine/process"
 )
@@ -31,7 +36,25 @@ func (t *Outbound) initRuntime(ctx context.Context) error {
 		if executable == "" {
 			executable = "tor"
 		}
-		creator = process.NewCreator(executable)
+		directory := adapter.ConfigurationDirectoryPath(ctx, ".")
+		if C.IsWindows && filepath.IsAbs(directory) {
+			// Preserve PATH lookup for a bare program name. Explicit paths and
+			// opaque Tor file arguments retain their old configuration cwd.
+			if strings.ContainsAny(executable, `:\/`) {
+				executable = filemanager.BasePath(ctx, executable)
+			}
+			factory := process.NewCreator(executable).(process.CmdCreatorFunc)
+			creator = process.CmdCreatorFunc(func(ctx context.Context, args ...string) (*exec.Cmd, error) {
+				command, err := factory(ctx, args...)
+				if err != nil {
+					return nil, err
+				}
+				command.Dir = directory
+				return command, nil
+			})
+		} else {
+			creator = process.NewCreator(executable)
+		}
 	}
 	t.processOwner = &runtimeProcessCreator{creator: creator}
 	t.startConf.ProcessCreator = t.processOwner

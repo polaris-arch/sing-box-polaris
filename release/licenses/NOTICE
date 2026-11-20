@@ -11,7 +11,7 @@ The GitHub receipt associates every public payload with those shared materials;
 client records additionally identify exact upstream base commits and applied diff.
 The source tar contains tracked kernel files; client gitlinks are not expanded.
 
-Toolchain: official Go 1.27.2, commit 022c8636110ebac86a9b88724cda168ed713c21f,
+Toolchain: official Go 1.27.4, commit 7b2881024c95a11ddb86663a616340aa3a88b67f,
 with only target-specific patches recorded in .github/go-toolchains.json.
 Cronet engine: 154.0.8037.49. Match each library hash with
 release/polaris-cronet-materials.json and polaris-cronet-graph-kernel-materials.json.

@@ -12,16 +12,11 @@ jobs:
       with:
         ref: ${{ github.sha }}
         persist-credentials: false
-    - uses: actions/setup-python@v5
+    - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
       with:
-        python-version: '3.12'
-    - run: python -m pip install PyYAML==6.0.2 jsonschema==4.23.0
-    - run: python -B -m unittest discover -s scripts/ci -p 'test_patch_test_packages.py'
-    - run: python -m unittest discover -s scripts/ci -p 'test_native_release_index.py'
-    - run: python -m unittest discover -s scripts/ci -p 'test_github_release.py'
-    - run: python -m unittest discover -s scripts/ci -p 'test_release_identity.py'
-    - run: python -B -m unittest discover -s scripts/ci -p 'test_cronet_windows_overlay.py'
-    - run: python -m unittest discover -s scripts/ci -p 'test_polaris_version.py'
+        go-version-file: release/GO_VERSION
+        cache: false
+    - run: go test -mod=readonly ./cmd/internal/ci ./common/badversion
     - name: Restore pinned official formatter archive
       uses: actions/cache@v4
       with:
@@ -44,7 +39,7 @@ jobs:
       run: |
         set -euo pipefail
         test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
-        python3 -B scripts/ci/check_remediation_format.py
+        go run -mod=readonly ./cmd/internal/ci check-format
 'on':
   push:
     branches:
@@ -57,5 +52,6 @@ jobs:
     - .github/go-toolchains.json
     - .github/patches/**
     - scripts/ci/**
+    - cmd/internal/ci/**
     - release/ci/**
   workflow_dispatch: null

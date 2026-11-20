@@ -18,13 +18,19 @@ import (
 	"github.com/sagernet/sing/common/logger"
 	"github.com/sagernet/sing/common/x/list"
 
+	googlenft "github.com/google/nftables"
 	"golang.org/x/sys/unix"
 )
 
 type autoRedirect struct {
-	// These flags only record whether legacy cleanup may be needed. They do
-	// not prove ownership of same-name resources or an uncertain mutation.
+	closeAccess sync.Mutex
+	nftAccess   sync.Mutex
+	nftConn     *nftables.Conn
+	nftClosed   bool
+	// NFT tables are owned by a lasting socket; attempt flags only gate other cleanup.
 	firewallSetupAttempted       atomic.Bool
+	fw4RulesPath                 string
+	fw4RulesRemoved              bool
 	redirectRoutesSetupAttempted atomic.Bool
 	vpnServiceSetupAttempted     atomic.Bool
 	bypassRouteSetupAttempted    atomic.Bool
@@ -47,6 +53,7 @@ type autoRedirect struct {
 	bypassRouteTableIndex        int
 	bypassRouteAccess            sync.Mutex
 	bypassRouteActive            bool
+	bypassOwned                  bypassOwner
 	bypassIncludeAddresses       []netip.Prefix
 	bypassExcludeAddresses       []netip.Prefix
 	redirectServer               *RedirectServer
@@ -57,17 +64,25 @@ type autoRedirect struct {
 	useNFTables                  bool
 	androidVPNService            bool
 	nfqueueHandler               *nfqueueHandler
+	iptablesReceipts             []iptablesReceipt
+	iptablesLocalDirty           bool
+	iptablesClosed               bool
 	iptablesAccess               sync.Mutex
 	iptablesLocalChains          []iptablesLocalChain
 	redirectRouteTableIndex      int
 	tproxyRouteTableIndex        int
 	redirectRouteAccess          sync.Mutex
 	redirectRoutesActive         bool
+	redirectOwnedRoutes          ownedLinuxRoutes
+	redirectOwnedRules           ownedLinuxRules
 	androidVPNServiceRuleAccess  sync.Mutex
 	androidVPNServiceRules       []*netlink.Rule
 	androidVPNServiceRulesActive bool
-	androidIngressDiscardValues  map[netip.Addr][8]byte
-	dockerFirewallMonitor        *nftables.Monitor
+	androidIngressDiscardValues  map[netip.Addr]ingressDiscardReceipt
+	dockerFirewallAccess         sync.Mutex
+	dockerFirewallClosed         bool
+	dockerFirewallState          dockerFirewallState
+	dockerFirewallMonitor        *googlenft.Monitor
 	dockerFirewallDone           chan struct{}
 }
 
@@ -146,8 +161,6 @@ func (r *autoRedirect) startWithNFQueue(startNFQueue func() error) error {
 			r.ownedNetworkMonitor = true
 		}
 		err = runInNetworkNamespace(r.tunOptions.NetNs, func() error {
-			r.firewallSetupAttempted.Store(true)
-			r.cleanupNFTables()
 			setupErr := r.setupNFTables()
 			if setupErr != nil {
 				return E.Cause(setupErr, "setup nftables")
@@ -168,7 +181,6 @@ func (r *autoRedirect) startWithNFQueue(startNFQueue func() error) error {
 		return nil
 	}
 	r.firewallSetupAttempted.Store(true)
-	r.cleanupIPTables()
 	r.redirectRoutesSetupAttempted.Store(true)
 	err = r.setupRedirectRoutes()
 	if err != nil {
@@ -374,6 +386,9 @@ func (r *autoRedirect) startNFQueue() error {
 func (r *autoRedirect) updateIPTablesNetwork() error {
 	r.iptablesAccess.Lock()
 	defer r.iptablesAccess.Unlock()
+	if r.iptablesClosed {
+		return nil
+	}
 	err := r.updateIPTablesLocalAddresses()
 	if err != nil {
 		err = E.Cause(err, "update local address chains")
@@ -397,7 +412,29 @@ func (r *autoRedirect) updateIPTablesNetwork() error {
 	return E.Errors(err, routeErr, vpnServiceErr, bypassErr)
 }
 
-func (r *autoRedirect) Close() error {
+func (r *autoRedirect) Close() (closeErr error) {
+	r.closeAccess.Lock()
+	defer r.closeAccess.Unlock()
+	if r.useNFTables {
+		// Serialize against setup and in-flight callbacks before reading attempt
+		// flags. Unregister only after releasing this lock: a monitor may wait
+		// for an already dispatched callback to finish.
+		r.nftAccess.Lock()
+		r.nftClosed = true
+		r.nftAccess.Unlock()
+		r.unregisterNetworkCallback()
+		r.stopDockerFirewallMonitor()
+		defer func() {
+			// A vanished target namespace must not keep the owning socket alive.
+			// Closing its fd does not require entering that namespace again.
+			r.nftAccess.Lock()
+			defer r.nftAccess.Unlock()
+			if r.nftConn != nil {
+				closeErr = E.Errors(closeErr, r.nftConn.CloseLasting())
+				r.nftConn = nil
+			}
+		}()
+	}
 	// Attempt latches stay set so post-attempt cleanup retains its legacy retry
 	// behavior. Before any firewall/route setup, Close must not sweep another
 	// instance's resources just because they share a table or chain name.
@@ -407,15 +444,16 @@ func (r *autoRedirect) Close() error {
 	bypassAttempted := r.bypassRouteSetupAttempted.Load()
 	if r.useNFTables {
 		if firewallAttempted || routesAttempted {
-			_ = runInNetworkNamespace(r.tunOptions.NetNs, func() error {
+			closeErr = E.Errors(closeErr, runInNetworkNamespace(r.tunOptions.NetNs, func() error {
+				var cleanupErr error
 				if firewallAttempted {
-					r.cleanupNFTables()
+					cleanupErr = r.cleanupNFTables()
 				}
 				if routesAttempted {
-					r.cleanupRedirectRoutes()
+					cleanupErr = E.Errors(cleanupErr, r.cleanupRedirectRoutes())
 				}
-				return nil
-			})
+				return cleanupErr
+			}))
 		}
 		if r.ownedNetworkMonitor {
 			_ = r.networkMonitor.Close()
@@ -424,17 +462,17 @@ func (r *autoRedirect) Close() error {
 	} else {
 		r.unregisterNetworkCallback()
 		if firewallAttempted {
-			r.cleanupIPTables()
+			closeErr = E.Errors(closeErr, r.cleanupIPTables())
 		}
 		if routesAttempted {
-			r.cleanupRedirectRoutes()
+			closeErr = E.Errors(closeErr, r.cleanupRedirectRoutes())
 		}
 		if r.androidVPNService {
 			if bypassAttempted {
-				r.cleanupBypassRoute()
+				closeErr = E.Errors(closeErr, r.cleanupBypassRoute())
 			}
 			if vpnServiceAttempted {
-				r.cleanupAndroidVPNServiceRules()
+				closeErr = E.Errors(closeErr, r.cleanupAndroidVPNServiceRules())
 			}
 		}
 	}
@@ -445,9 +483,9 @@ func (r *autoRedirect) Close() error {
 	if r.redirectServer != nil {
 		err := r.redirectServer.Close()
 		r.redirectServer = nil
-		return err
+		closeErr = E.Errors(closeErr, err)
 	}
-	return nil
+	return closeErr
 }
 
 func (r *autoRedirect) initializeNFTables() error {

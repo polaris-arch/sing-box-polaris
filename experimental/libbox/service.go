@@ -41,12 +41,21 @@ type platformInterfaceWrapper struct {
 	tunFrozen          bool
 	runtimeTunPlatform RuntimeTunPlatform
 	runtimeTunFailure  error
+
+	androidTailscaleHost        bool
+	runtimeTailscaleAccess      sync.Mutex
+	runtimeTailscaleFrozen      bool
+	runtimeTailscalePlatform    RuntimeTailscalePlatform
+	runtimeTailscaleQuarantined bool
 }
 
 func (w *platformInterfaceWrapper) Initialize(networkManager adapter.NetworkManager) error {
 	w.tunAccess.Lock()
 	w.tunFrozen = true
 	w.tunAccess.Unlock()
+	w.runtimeTailscaleAccess.Lock()
+	w.runtimeTailscaleFrozen = true
+	w.runtimeTailscaleAccess.Unlock()
 	monitor, ok := networkManager.InterfaceMonitor().(*platformDefaultInterfaceMonitor)
 	if !ok || monitor == nil || monitor.platform != w {
 		return E.New("platform: network manager has a different interface monitor")

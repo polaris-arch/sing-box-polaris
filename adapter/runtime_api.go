@@ -47,6 +47,13 @@ func NormalizeRuntimeAPIOptions(options option.APIServiceOptions) option.APIServ
 
 func RuntimeAPIConfigDigest(options option.APIServiceOptions) (string, error) {
 	options = NormalizeRuntimeAPIOptions(options)
+	// The published graph fingerprints and leases this transport. Keep the
+	// ingress identity stable when only that graph-owned detour changes.
+	if RuntimeDashboardHTTPDetour(options.Dashboard) != "" {
+		dashboard := *options.Dashboard
+		dashboard.HTTPClient = &option.HTTPClientOptions{}
+		options.Dashboard = &dashboard
+	}
 	raw, err := json.Marshal(options)
 	if err != nil {
 		return "", err

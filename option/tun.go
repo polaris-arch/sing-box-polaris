@@ -16,6 +16,7 @@ type TunInboundOptions struct {
 	NetNs                         string                           `json:"netns,omitempty" reference:"network_namespace"`
 	MTU                           uint32                           `json:"mtu,omitempty"`
 	Address                       badoption.Listable[netip.Prefix] `json:"address,omitempty" examples:"172.19.0.1/30,fdfe:dcba:9876::1/126"`
+	LinuxResolvedExternal         bool                             `json:"linux_resolved_external,omitempty"`
 	DNSMode                       string                           `json:"dns_mode,omitempty" enum:"disabled,native,hijack"`
 	DNSAddress                    badoption.Listable[netip.Addr]   `json:"dns_address,omitempty"`
 	AutoRoute                     bool                             `json:"auto_route,omitempty"`

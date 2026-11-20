@@ -18,7 +18,12 @@ import (
 	N "github.com/sagernet/sing/common/network"
 
 	mDNS "github.com/miekg/dns"
+	"golang.org/x/sync/semaphore"
 )
+
+// Independent URLTest groups and management requests share the native startup
+// budget even when each group limits its own workers.
+var probeClients = semaphore.NewWeighted(10)
 
 // Each immutable outbound owns its native client, callbacks and physical
 // carriers. The composed Cronet Close is the actual operation/callback/proxy/
@@ -62,6 +67,67 @@ func (r *outboundRuntime) install(ctx context.Context) error {
 	return err
 }
 func (r *outboundRuntime) close() error { return r.cleanup() }
+
+// WithURLTestDialer lets a probe borrow an active client or own a client for
+// the duration of the request. Keep the owner's dependency edges until native
+// shutdown and any physical dial callbacks have completed.
+func (h *Outbound) WithURLTestDialer(ctx context.Context, test func(context.Context, N.Dialer) (uint16, error)) (delay uint16, resultErr error) {
+	if !h.client.IsDormant() {
+		return test(ctx, h)
+	}
+	if err := probeClients.Acquire(ctx, 1); err != nil {
+		return 0, err
+	}
+	defer probeClients.Release(1)
+	if !h.client.IsDormant() {
+		return test(ctx, h)
+	}
+	owner := h.runtime
+	if _, err := outbound.ValidateRuntimeOwnedSession(ctx, owner.source); err != nil {
+		return 0, err
+	}
+	ctx, release, err := adapter.AcquireRuntimeOperation(ctx, owner.source)
+	if err != nil {
+		return 0, err
+	}
+	defer release()
+	leave, err := owner.boundary.Acquire()
+	if err != nil {
+		return 0, err
+	}
+	defer leave()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	stop := context.AfterFunc(owner.ctx, cancel)
+	defer stop()
+	if owner.ctx.Err() != nil {
+		cancel()
+	}
+	if err = ctx.Err(); err != nil {
+		return 0, err
+	}
+
+	probe := newOutboundRuntime(h.ctx)
+	probe.begin = owner.begin
+	defer func() {
+		if closeErr := probe.close(); closeErr != nil {
+			owner.boundary.RecordClose(closeErr)
+			resultErr = errors.Join(resultErr, closeErr)
+		}
+	}()
+	options := h.clientOptions
+	options.InsecureConcurrency = 1
+	client, err := cronet.NewNaiveClient(probe.guardClientOptions(options))
+	if err != nil {
+		return 0, err
+	}
+	probe.client = client
+	if err = client.StartOnDemand(); err != nil {
+		return 0, err
+	}
+	return test(ctx, &naiveDialer{client})
+}
+
 func (r *outboundRuntime) enter(ctx context.Context) (context.Context, func(), error) {
 	if r.begin == nil {
 		return nil, nil, errors.New("Naive callback before ownership installation")

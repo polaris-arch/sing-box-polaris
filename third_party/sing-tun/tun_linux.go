@@ -1,6 +1,7 @@
 package tun
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -21,7 +22,6 @@ import (
 	"github.com/sagernet/sing/common/control"
 	E "github.com/sagernet/sing/common/exceptions"
 	"github.com/sagernet/sing/common/rw"
-	"github.com/sagernet/sing/common/shell"
 	"github.com/sagernet/sing/common/x/list"
 
 	"golang.org/x/sys/unix"
@@ -30,12 +30,18 @@ import (
 var _ LinuxTUN = (*NativeTun)(nil)
 
 type NativeTun struct {
+	networkNamespace    *pinnedNetworkNamespace
+	namespaceRequired   bool
+	resolved            resolvedLifecycle
 	tunFd               int
 	tunFile             *os.File
 	iovecsOutputDefault []unix.Iovec
 	interfaceCallback   *list.Element[DefaultInterfaceUpdateCallback]
 	options             Options
-	ruleIndex6          []int
+	routeAccess         sync.Mutex
+	ownedRoutes         ownedLinuxRoutes
+	ruleAccess          sync.Mutex
+	ownedRules          ownedLinuxRules
 	readAccess          sync.Mutex
 	writeAccess         sync.Mutex
 	vnetHdr             bool
@@ -55,25 +61,7 @@ type NativeTun struct {
 func New(options Options) (Tun, error) {
 	if options.FileDescriptor == 0 {
 		return execInNetworkNamespace(options.NetNs, func() (Tun, error) {
-			tunFd, multiQueue, err := open(options.Name, options.GSO, options.MultiQueue)
-			if err != nil {
-				return nil, E.Cause(err, "open tun")
-			}
-			tunLink, err := netlink.LinkByName(options.Name)
-			if err != nil {
-				return nil, E.Errors(err, unix.Close(tunFd))
-			}
-			nativeTun := &NativeTun{
-				tunFd:      tunFd,
-				tunFile:    os.NewFile(uintptr(tunFd), "tun"),
-				options:    options,
-				multiQueue: multiQueue,
-			}
-			err = nativeTun.configure(tunLink)
-			if err != nil {
-				return nil, E.Errors(err, unix.Close(tunFd))
-			}
-			return nativeTun, nil
+			return newNativeTun(options, open, netlink.LinkByName, (*NativeTun).configure)
 		})
 	}
 	nativeTun := &NativeTun{
@@ -88,6 +76,46 @@ func New(options Options) (Tun, error) {
 				options.Logger.Warn(err)
 			}
 		}
+	}
+	return nativeTun, nil
+}
+
+// Keep acquisition and compensation in one production path; dependencies are
+// explicit so constructor failures can be exercised without a real TUN device.
+func newNativeTun(options Options, openDevice func(string, bool, bool) (int, bool, error), lookup func(string) (netlink.Link, error), configure func(*NativeTun, netlink.Link) error) (result Tun, resultErr error) {
+	var namespace *pinnedNetworkNamespace
+	if options.NetNs != "" {
+		var err error
+		namespace, err = pinCurrentNetworkNamespace()
+		if err != nil {
+			return nil, E.Cause(err, "pin native network namespace")
+		}
+		defer func() {
+			if result == nil {
+				resultErr = E.Errors(resultErr, namespace.close())
+			}
+		}()
+	}
+	tunFd, multiQueue, err := openDevice(options.Name, options.GSO, options.MultiQueue)
+	if err != nil {
+		return nil, E.Cause(err, "open tun")
+	}
+	tunLink, err := lookup(options.Name)
+	if err != nil {
+		return nil, E.Errors(err, unix.Close(tunFd))
+	}
+	nativeTun := &NativeTun{
+		networkNamespace:  namespace,
+		namespaceRequired: options.NetNs != "",
+		tunFd:             tunFd,
+		tunFile:           os.NewFile(uintptr(tunFd), "tun"),
+		options:           options,
+		multiQueue:        multiQueue,
+	}
+	err = configure(nativeTun, tunLink)
+	if err != nil {
+		// Close the file owner so its finalizer cannot close a reused descriptor.
+		return nil, errors.Join(err, nativeTun.tunFile.Close())
 	}
 	return nativeTun, nil
 }
@@ -152,18 +180,29 @@ func openTun(name string, flags int) (int, error) {
 }
 
 func (t *NativeTun) openQueue() (int, error) {
-	if !t.multiQueue {
-		return -1, E.New("tun device is not multi-queue")
-	}
-	flags := unix.IFF_TUN | unix.IFF_NO_PI | unix.IFF_MULTI_QUEUE
-	if t.options.GSO {
-		flags |= unix.IFF_VNET_HDR
-	}
-	var fd int
-	err := runInNetworkNamespace(t.options.NetNs, func() error {
-		var openErr error
-		fd, openErr = openTun(t.options.Name, flags)
-		return openErr
+	return t.openQueueWith(openTun)
+}
+
+// Called by Go stack startup, not from a pin-held native configure callback.
+// Use the acquired namespace object for every queue, never the discovery path.
+func (t *NativeTun) openQueueWith(openDevice func(string, int) (int, error)) (int, error) {
+	fd := -1
+	err := t.runInOwnedNamespace(func() error {
+		t.routeAccess.Lock()
+		defer t.routeAccess.Unlock()
+		if t.ownedRoutes.closed {
+			return E.New("native device owner is closed")
+		}
+		if !t.multiQueue {
+			return E.New("tun device is not multi-queue")
+		}
+		flags := unix.IFF_TUN | unix.IFF_NO_PI | unix.IFF_MULTI_QUEUE
+		if t.options.GSO {
+			flags |= unix.IFF_VNET_HDR
+		}
+		var err error
+		fd, err = openDevice(t.options.Name, flags)
+		return err
 	})
 	if err != nil {
 		return -1, err
@@ -330,11 +369,17 @@ func (t *NativeTun) Name() (string, error) {
 }
 
 func (t *NativeTun) Start() error {
+	return t.StartContext(context.Background())
+}
+
+// StartContext allows the TUN owner to cancel resolver setup. Cleanup retains
+// its own deadline so it can revert any systemd-resolved changes after that.
+func (t *NativeTun) StartContext(ctx context.Context) error {
 	if t.options.FileDescriptor == 0 {
 		if !t.options.EXP_ExternalConfiguration && t.options.NetNs == "" {
 			t.options.InterfaceMonitor.RegisterMyInterface(t.options.Name)
 		}
-		err := runInNetworkNamespace(t.options.NetNs, t.start)
+		err := t.runInOwnedNamespace(func() error { return t.start(ctx) })
 		if err != nil {
 			return err
 		}
@@ -354,7 +399,7 @@ func (t *NativeTun) Start() error {
 	return nil
 }
 
-func (t *NativeTun) start() error {
+func (t *NativeTun) start(ctx context.Context) error {
 	tunLink, err := netlink.LinkByName(t.options.Name)
 	if err != nil {
 		return E.Cause(err, "find tun interface")
@@ -393,12 +438,15 @@ func (t *NativeTun) start() error {
 	}
 
 	if t.options.IPRoute2TableIndex == 0 {
-		t.options.IPRoute2TableIndex = chooseRouteTableIndex()
+		tableIndex, selectErr := chooseRouteTableIndex()
+		if selectErr != nil {
+			return E.Cause(selectErr, "select tun route table")
+		}
+		t.options.IPRoute2TableIndex = tableIndex
 	}
 
 	err = t.setRoute(tunLink)
 	if err != nil {
-		_ = t.unsetRoute0(tunLink)
 		return E.Cause(err, "set routes")
 	}
 
@@ -408,12 +456,11 @@ func (t *NativeTun) start() error {
 	}
 	err = t.setRules()
 	if err != nil {
-		_ = t.unsetRules()
-		return E.Cause(err, "set rules")
+		return E.Errors(E.Cause(err, "set rules"), t.unsetRules())
 	}
 
-	if t.options.DNSModeOrDefault() != DNSModeDisabled && t.options.NetNs == "" {
-		err = t.setSearchDomainForSystemdResolved()
+	if t.options.ManageLinuxResolved() {
+		err = t.setSearchDomainForSystemdResolved(ctx)
 		if err != nil {
 			return E.Cause(err, "set search domain")
 		}
@@ -426,19 +473,48 @@ func (t *NativeTun) start() error {
 }
 
 func (t *NativeTun) Close() error {
+	t.resolved.stop()
+	t.routeAccess.Lock()
+	t.ownedRoutes.closed = true
+	t.routeAccess.Unlock()
+	// Unregistering does not drain callbacks already copied by the monitor.
+	// Seal ownership before any teardown; those callbacks may clear but never
+	// reinstall rules after this point.
+	t.ruleAccess.Lock()
+	t.ownedRules.closed = true
+	t.ruleAccess.Unlock()
 	if t.interfaceCallback != nil {
 		t.options.InterfaceMonitor.UnregisterCallback(t.interfaceCallback)
 	}
 	if t.options.EXP_ExternalConfiguration {
+		err := common.Close(common.PtrOrNil(t.tunFile))
+		if t.networkNamespace != nil {
+			err = E.Errors(err, t.networkNamespace.close())
+		}
+		return err
+	}
+	var networkErr error
+	result := closeNativeTunResources(func() error {
+		networkErr = t.runInOwnedNamespace(func() error {
+			// Rules do not disappear with the TUN fd. Remove them before any
+			// potentially slow resolver subprocess can consume the stop grace.
+			rulesErr := t.unsetRules()
+			t.unsetAddresses()
+			return E.Errors(rulesErr, t.unsetRoute())
+		})
+		return networkErr
+	}, func() error {
+		if t.options.ManageLinuxResolved() {
+			return t.unsetSearchDomainForSystemdResolved()
+		}
+		return nil
+	}, func() error {
 		return common.Close(common.PtrOrNil(t.tunFile))
+	})
+	if networkErr == nil && t.networkNamespace != nil {
+		result = E.Errors(result, t.networkNamespace.close())
 	}
-	if t.options.DNSModeOrDefault() != DNSModeDisabled && t.options.NetNs == "" {
-		t.unsetSearchDomainForSystemdResolved()
-	}
-	return E.Errors(runInNetworkNamespace(t.options.NetNs, func() error {
-		t.unsetAddresses()
-		return E.Errors(t.unsetRoute(), t.unsetRules())
-	}), common.Close(common.PtrOrNil(t.tunFile)))
+	return result
 }
 
 func (t *NativeTun) Read(p []byte) (n int, err error) {
@@ -704,36 +780,55 @@ func prefixToIPNet(prefix netip.Prefix) *net.IPNet {
 }
 
 func (t *NativeTun) UpdateRouteOptions(tunOptions Options) error {
-	if t.options.FileDescriptor > 0 {
-		return nil
-	} else if t.options.EXP_ExternalConfiguration {
-		t.options = tunOptions
-		return nil
-	} else if !t.options.AutoRoute {
-		t.options = tunOptions
-		return nil
-	}
-	return runInNetworkNamespace(t.options.NetNs, func() error {
+	return t.runInOwnedNamespace(func() error {
+		t.routeAccess.Lock()
+		defer t.routeAccess.Unlock()
+		if t.ownedRoutes.closed {
+			return E.New("routing route owner is closed")
+		}
+		if tunOptions.Name != t.options.Name || tunOptions.NetNs != t.options.NetNs ||
+			tunOptions.FileDescriptor != t.options.FileDescriptor ||
+			tunOptions.EXP_ExternalConfiguration != t.options.EXP_ExternalConfiguration {
+			return E.New("route update cannot change native device ownership")
+		}
+		if t.options.FileDescriptor > 0 {
+			return nil
+		} else if t.options.EXP_ExternalConfiguration || !t.options.AutoRoute {
+			t.ruleAccess.Lock()
+			t.options = tunOptions
+			t.ruleAccess.Unlock()
+			return nil
+		}
 		tunLink, err := netlink.LinkByName(t.options.Name)
 		if err != nil {
 			return E.Cause(err, "find tun interface")
 		}
-		err = t.unsetRoute0(tunLink)
+		err = t.ownedRoutes.replace(func() ([]netlink.Route, error) {
+			return routesForOptions(tunOptions, tunLink)
+		}, netlink.RouteAdd, netlink.RouteDel)
 		if err != nil {
-			return E.Cause(err, "unset old routes")
+			return err
 		}
+		// Publish only after a complete installation. A failed update leaves
+		// old options and any precise cleanup debt, not a claimed new state.
+		t.ruleAccess.Lock()
 		t.options = tunOptions
-		return t.setRoute(tunLink)
+		t.ruleAccess.Unlock()
+		return nil
 	})
 }
 
 func (t *NativeTun) routes(tunLink netlink.Link) ([]netlink.Route, error) {
-	routeRanges, err := t.options.BuildAutoRouteRanges(false)
+	return routesForOptions(t.options, tunLink)
+}
+
+func routesForOptions(options Options, tunLink netlink.Link) ([]netlink.Route, error) {
+	routeRanges, err := options.BuildAutoRouteRanges(false)
 	if err != nil {
 		return nil, E.Cause(err, "build auto route ranges")
 	}
 	// Do not create gateway on linux by default
-	gateway4, gateway6 := t.options.Inet4GatewayAddr(), t.options.Inet6GatewayAddr()
+	gateway4, gateway6 := options.Inet4GatewayAddr(), options.Inet6GatewayAddr()
 	return common.Map(routeRanges, func(it netip.Prefix) netlink.Route {
 		var gateway net.IP
 		if it.Addr().Is4() && !gateway4.IsUnspecified() {
@@ -745,7 +840,7 @@ func (t *NativeTun) routes(tunLink netlink.Link) ([]netlink.Route, error) {
 			Dst:       prefixToIPNet(it),
 			Gw:        gateway,
 			LinkIndex: tunLink.Attrs().Index,
-			Table:     t.options.IPRoute2TableIndex,
+			Table:     options.IPRoute2TableIndex,
 		}
 	}), nil
 }
@@ -762,7 +857,6 @@ func (t *NativeTun) nextIndex6() int {
 		}
 	}
 	minIndex--
-	t.ruleIndex6 = append(t.ruleIndex6, minIndex)
 	return minIndex
 }
 
@@ -1190,85 +1284,34 @@ func (t *NativeTun) rules() []*netlink.Rule {
 }
 
 func (t *NativeTun) setRoute(tunLink netlink.Link) error {
-	routes, err := t.routes(tunLink)
-	if err != nil {
-		return E.Cause(err, "build routes")
-	}
-	for i, route := range routes {
-		err := netlink.RouteAdd(&route)
-		if err != nil {
-			return E.Cause(err, "add route ", i)
-		}
-	}
-	return nil
+	t.routeAccess.Lock()
+	defer t.routeAccess.Unlock()
+	return t.ownedRoutes.replace(func() ([]netlink.Route, error) {
+		return t.routes(tunLink)
+	}, netlink.RouteAdd, netlink.RouteDel)
 }
 
 func (t *NativeTun) setRules() error {
-	for i, rule := range t.rules() {
-		err := netlink.RuleAdd(rule)
-		if err != nil {
-			return E.Cause(err, "add rule ", i, "/", len(t.rules()))
-		}
+	t.ruleAccess.Lock()
+	defer t.ruleAccess.Unlock()
+	if t.ownedRules.closed {
+		return E.New("routing rule owner is closed")
 	}
-	return nil
+	return t.ownedRules.install(t.rules(), netlink.RuleAdd)
 }
 
 func (t *NativeTun) unsetRoute() error {
-	if t.options.FileDescriptor > 0 {
-		return nil
-	}
-	tunLink, err := netlink.LinkByName(t.options.Name)
-	if err != nil {
-		return E.Cause(err, "find tun interface")
-	}
-	return t.unsetRoute0(tunLink)
-}
-
-func (t *NativeTun) unsetRoute0(tunLink netlink.Link) error {
-	if routes, err := t.routes(tunLink); err == nil {
-		for _, route := range routes {
-			_ = netlink.RouteDel(&route)
-		}
-	}
-	return nil
+	t.routeAccess.Lock()
+	defer t.routeAccess.Unlock()
+	// No link lookup or regenerated options: a disappeared interface must not
+	// prevent retrying the exact receipts left by this owner.
+	return t.ownedRoutes.clear(netlink.RouteDel)
 }
 
 func (t *NativeTun) unsetRules() error {
-	if t.options.FileDescriptor > 0 {
-		return nil
-	}
-	if len(t.ruleIndex6) > 0 {
-		for _, index := range t.ruleIndex6 {
-			ruleToDel := netlink.NewRule()
-			ruleToDel.Family = unix.AF_INET6
-			ruleToDel.Priority = index
-			err := netlink.RuleDel(ruleToDel)
-			if err != nil {
-				return E.Cause(err, "unset rule6 ", index)
-			}
-		}
-		t.ruleIndex6 = nil
-	}
-	if t.options.AutoRoute {
-		ruleList, err := netlink.RuleList(netlink.FAMILY_ALL)
-		if err != nil {
-			return E.Cause(err, "list rules")
-		}
-		for _, rule := range ruleList {
-			ruleStart := t.options.IPRoute2RuleIndex
-			ruleEnd := ruleStart + 10
-			if rule.Priority >= ruleStart && rule.Priority <= ruleEnd || (t.options.AutoRedirectMarkMode && rule.Priority == t.options.IPRoute2AutoRedirectFallbackRuleIndex) {
-				ruleToDel := netlink.NewRule()
-				ruleToDel.Family = rule.Family
-				ruleToDel.Priority = rule.Priority
-				err = netlink.RuleDel(ruleToDel)
-				if err != nil {
-					return E.Cause(err, "unset rule ", rule.Priority, " for ", rule.Family)
-				}
-			}
-		}
-	}
-	return nil
+	t.ruleAccess.Lock()
+	defer t.ruleAccess.Unlock()
+	return t.ownedRules.clear(netlink.RuleDel)
 }
 
 func (t *NativeTun) unsetAddresses() {
@@ -1290,8 +1333,9 @@ func (t *NativeTun) unsetAddresses() {
 }
 
 func (t *NativeTun) resetRules() error {
-	t.unsetRules()
-	return t.setRules()
+	t.ruleAccess.Lock()
+	defer t.ruleAccess.Unlock()
+	return t.ownedRules.reset(t.rules, netlink.RuleAdd, netlink.RuleDel)
 }
 
 func (t *NativeTun) routeUpdate(_ *control.Interface, flags int) {
@@ -1306,7 +1350,10 @@ func (t *NativeTun) routeUpdate(_ *control.Interface, flags int) {
 	}
 }
 
-func (t *NativeTun) setSearchDomainForSystemdResolved() error {
+func (t *NativeTun) setSearchDomainForSystemdResolved(ctx context.Context) error {
+	if !t.options.ManageLinuxResolved() {
+		return nil
+	}
 	ctlPath, err := exec.LookPath("resolvectl")
 	if err != nil {
 		return nil
@@ -1315,18 +1362,16 @@ func (t *NativeTun) setSearchDomainForSystemdResolved() error {
 	if err != nil {
 		return err
 	}
-	go func() {
-		_ = shell.Exec(ctlPath, "domain", t.options.Name, "~.").Run()
-		_ = shell.Exec(ctlPath, "default-route", t.options.Name, "true").Run()
-		_ = shell.Exec(ctlPath, append([]string{"dns", t.options.Name}, common.Map(dnsAddress, netip.Addr.String)...)...).Run()
-	}()
-	return nil
+	return t.resolved.configure(ctx, resolvedCommand(ctlPath), t.options.Name, common.Map(dnsAddress, netip.Addr.String))
 }
 
-func (t *NativeTun) unsetSearchDomainForSystemdResolved() {
+func (t *NativeTun) unsetSearchDomainForSystemdResolved() error {
+	if !t.options.ManageLinuxResolved() {
+		return nil
+	}
 	ctlPath, err := exec.LookPath("resolvectl")
 	if err != nil {
-		return
+		return nil
 	}
-	_ = shell.Exec(ctlPath, "revert", t.options.Name).Run()
+	return t.resolved.close(resolvedCommand(ctlPath), t.options.Name)
 }

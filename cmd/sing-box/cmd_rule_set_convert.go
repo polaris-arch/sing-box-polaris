@@ -1,7 +1,6 @@
 package main
 
 import (
-	"io"
 	"os"
 	"strings"
 
@@ -39,22 +38,17 @@ func init() {
 }
 
 func convertRuleSet(sourcePath string) error {
-	var (
-		reader io.Reader
-		err    error
-	)
-	if sourcePath == "stdin" {
-		reader = os.Stdin
-	} else {
-		reader, err = os.Open(sourcePath)
-		if err != nil {
-			return err
-		}
+	reader, err := openRuleSetInput(sourcePath)
+	if err != nil {
+		return err
+	}
+	if sourcePath != "stdin" {
+		defer reader.Close()
 	}
 	var rules []option.HeadlessRule
 	switch flagRuleSetConvertType {
 	case "adguard":
-		rules, err = adguard.ToOptions(reader, log.StdLogger())
+		rules, err = adguard.ToOptions(srs.LimitInput(reader), log.StdLogger())
 	case "":
 		return E.New("source type is required")
 	default:

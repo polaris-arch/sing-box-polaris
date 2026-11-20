@@ -1,0 +1,536 @@
+{
+  "module": "github.com/google/nftables",
+  "version": "v0.3.1-0.20261116164147-4ffa86fab994",
+  "repository": "https://github.com/google/nftables",
+  "commit": "4ffa86fab994c00d3c8e0ff0326ed332c54ecf04",
+  "moduleH1": "h1:3ht5NePQfDagn2Vcrwi9+WBhHslAurw3LoQUrEPOuDs=",
+  "goModH1": "h1:6xUEtIb0yi5ImsPtkN5Lsn6w5MyOACEfzoWA2nVIdTI=",
+  "scope": "Complete official module archive, including original LICENSE, module metadata, tests and tooling. No copied cache or git directory. One production expression changes; no nftables protocol or generation/echo behavior is modified.",
+  "localChanges": [
+    "conn.go allocateTransactionID: explicitly type math.MaxUint32 as uint32 in panic formatting, avoiding default-int overflow when compiling on 32-bit targets.",
+    "conn_32bit_test.go: boundary counter panic value, no counter mutation on rejected allocation, and nonzero wraparound regression."
+  ],
+  "removalCondition": "Remove both root and sing-tun local replace directives and this single source copy when an official upstream version contains the typed panic argument (or equivalent 32-bit-safe fix), preserves the required GetGen/FlushWithGenID/echo APIs, and passes ARM/386/arm64/amd64 builds plus the generation/echo/Docker compatibility tests.",
+  "upstreamFiles": [
+    {
+      "path": ".github/workflows/push.yml",
+      "bytes": 889,
+      "sha256": "51e97ee4872e11a004ab394342a331dd6a1213089a34cbd2064d9fea9efd424d"
+    },
+    {
+      "path": "CONTRIBUTING.md",
+      "bytes": 969,
+      "sha256": "0096fb56dc6bac4ec7201f79ffabe86245c4a6176ea57e2f02ff6d411df9cfe7"
+    },
+    {
+      "path": "LICENSE",
+      "bytes": 11358,
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "path": "README.md",
+      "bytes": 981,
+      "sha256": "65ca42dfaf6f6c6c5997b4dce5b59df1a99649edaf4cde3011fe9069be8f7e43"
+    },
+    {
+      "path": "alignedbuff/alignedbuff.go",
+      "bytes": 9352,
+      "sha256": "21fadb065ec40a923dd15179888b7d81a12b5270790d34bb3e4e161b281cf8b9"
+    },
+    {
+      "path": "alignedbuff/alignedbuff_test.go",
+      "bytes": 6332,
+      "sha256": "f233601c54dd91bc84cbee8fdff5801e4a74bc8287904b4de2859512b8ebe8ff"
+    },
+    {
+      "path": "binaryutil/binaryutil.go",
+      "bytes": 3107,
+      "sha256": "0b23e02e18763d7ca244eeb6cebe5c7d9ec5466c585b0eee96bdc4f8175a47f6"
+    },
+    {
+      "path": "binaryutil/binaryutil_test.go",
+      "bytes": 4317,
+      "sha256": "fa5c945f737ed8b386871f66391751ce76840efb757d10dedd0a71033b684a47"
+    },
+    {
+      "path": "chain.go",
+      "bytes": 10555,
+      "sha256": "0dfec8dd06aa09111e1cd1ea9c772d72f4a94172c15d1f2c4b1350f7c4132a93"
+    },
+    {
+      "path": "compat_policy.go",
+      "bytes": 1848,
+      "sha256": "ddad43b1365d8426a6c415195009401a971414c1a746cf83957df47e7d7cc801"
+    },
+    {
+      "path": "compat_policy_test.go",
+      "bytes": 1665,
+      "sha256": "1b5591fd97c608eba51e0727fcca1600f4297159ec80e6764b7adc915f74aaa9"
+    },
+    {
+      "path": "conn.go",
+      "bytes": 19784,
+      "sha256": "dcee529db0ca1580ae9d562ca5c37e4a6ff6fa7cb680d75a9d1bce8706f9d79e"
+    },
+    {
+      "path": "counter.go",
+      "bytes": 1449,
+      "sha256": "fb8fcb0e964a6aff904ffa21cfc1b1246bec73b7ee609f78f97e922714d43453"
+    },
+    {
+      "path": "doc.go",
+      "bytes": 700,
+      "sha256": "3530e18cf7fc297c181af173adade79cc249ddc740b0c6bea423515099f1a451"
+    },
+    {
+      "path": "expr/bitwise.go",
+      "bytes": 3019,
+      "sha256": "a11af18ebed304d252dc2f994b8ccfeafb25b8d03ba095210b80d2b9f0915164"
+    },
+    {
+      "path": "expr/bitwise_test.go",
+      "bytes": 1282,
+      "sha256": "b360881b63065cf2776cc6311155ecb925f1a301cc78609f4b5ec2c6c3458f3e"
+    },
+    {
+      "path": "expr/byteorder.go",
+      "bytes": 2001,
+      "sha256": "18f76bc8f99382209a5f8eaa4e5b7681f842cf7446e53727920af13afee3e595"
+    },
+    {
+      "path": "expr/connlimit.go",
+      "bytes": 2161,
+      "sha256": "8f8bbbdaf995cbf795d752cf88e5e4c62f3f54b7cb86d48381b5f01023eda9ce"
+    },
+    {
+      "path": "expr/counter.go",
+      "bytes": 1762,
+      "sha256": "b21deca0475e219e2d96c396820b372b3bbb46c1131caa5f653646cc73276dfb"
+    },
+    {
+      "path": "expr/ct.go",
+      "bytes": 11886,
+      "sha256": "6de18887eff8b1c3c05fa42e607b1ff0c28c3cb461f9fd9d9664c886c3b9b37e"
+    },
+    {
+      "path": "expr/ct_test.go",
+      "bytes": 2384,
+      "sha256": "00479c8147222d13b56eb407ec190d2eac53160ab9f1cdda3d9db631ae4d7d7d"
+    },
+    {
+      "path": "expr/dup.go",
+      "bytes": 1844,
+      "sha256": "d667b793f4c7e8888b4d6b0055556af0b067294b67429434c3c4f3d30bfba6e1"
+    },
+    {
+      "path": "expr/dynset.go",
+      "bytes": 4872,
+      "sha256": "2d3c6a540304cf09c6aa7c88868cb3d73e48c9e7691ead7974627bd3951b5bf9"
+    },
+    {
+      "path": "expr/expr.go",
+      "bytes": 13749,
+      "sha256": "67fa4f1ff58222e462906adde0504e3e37008161cb5d0e16b753e83fbe292461"
+    },
+    {
+      "path": "expr/exthdr.go",
+      "bytes": 3148,
+      "sha256": "53e173359ce79239bfae4d02e339d91f595ec1c80842499a0464655c19fff316"
+    },
+    {
+      "path": "expr/exthdr_test.go",
+      "bytes": 1440,
+      "sha256": "92cbe100d74ad260ffd1adada5c6105c8b003e33689afce623c6ec2cea42a6d6"
+    },
+    {
+      "path": "expr/fib.go",
+      "bytes": 3579,
+      "sha256": "296ecf433c4351aae669bc4a1b19c7b417fc5b610932bec62df8a39171b3691d"
+    },
+    {
+      "path": "expr/flow_offload.go",
+      "bytes": 1596,
+      "sha256": "85da8dd409eba1f06b31004e58a7d4938f3c79bd24967be67e48d173fc47f26a"
+    },
+    {
+      "path": "expr/hash.go",
+      "bytes": 2967,
+      "sha256": "4307b914b17ca72efc16852a8aef5177f26b02d70baab2fef49baedcca66475b"
+    },
+    {
+      "path": "expr/immediate.go",
+      "bytes": 2278,
+      "sha256": "f93d59a0df9cf11747616c78d8e2575b7f9a77c792e4efaee90f72665edf3ae4"
+    },
+    {
+      "path": "expr/limit.go",
+      "bytes": 3599,
+      "sha256": "c4ecc40aa758e75640d373856e75a0af0bda9c476c58d58873b7c33e175b75ce"
+    },
+    {
+      "path": "expr/log.go",
+      "bytes": 4454,
+      "sha256": "a42b4c1fb615d67f6ee68287958512b9e3bccbba1a7e37e441856e4aff855823"
+    },
+    {
+      "path": "expr/lookup.go",
+      "bytes": 2787,
+      "sha256": "249a6edac615bf98c1ca637ba35fd8887e58e1d7b676627c201e6f55ad876127"
+    },
+    {
+      "path": "expr/match.go",
+      "bytes": 2315,
+      "sha256": "5258b68ecbe3999e7252559f5fd43c2f56e4edfb7bd47e25fa01890eb5ed025b"
+    },
+    {
+      "path": "expr/match_test.go",
+      "bytes": 1193,
+      "sha256": "c57f2eca3323fc44481b80d116bf01ce462a7d7856ff242b3e9b5cf5d7fb54e4"
+    },
+    {
+      "path": "expr/meta_test.go",
+      "bytes": 1241,
+      "sha256": "a5bc789f96aa097461e7a364104cf5f8e18ded9d9266d2f7d5c50852630f2f6a"
+    },
+    {
+      "path": "expr/nat.go",
+      "bytes": 4380,
+      "sha256": "8e29f749dea862d207bba636550323a61691154b24a571c3cb26f990957b0af4"
+    },
+    {
+      "path": "expr/nat_test.go",
+      "bytes": 1337,
+      "sha256": "88a1817feae6a1746a1cde0fbf0ce07748d39f68121527a175a2daf3d6b65370"
+    },
+    {
+      "path": "expr/notrack.go",
+      "bytes": 1146,
+      "sha256": "203799d2803a200e16f64de148b547ac347f33cd5039c2ed0a26fa9127594560"
+    },
+    {
+      "path": "expr/numgen.go",
+      "bytes": 2325,
+      "sha256": "9fa6ff1926205be415a2de3bfe93c95c95e533d2977e7840cef6f79c584c7d33"
+    },
+    {
+      "path": "expr/objref.go",
+      "bytes": 1772,
+      "sha256": "19b190ca2261ec9a3b2f6460c2ab5e105fb44f390290311321c8b14f33f6a6d1"
+    },
+    {
+      "path": "expr/payload.go",
+      "bytes": 3954,
+      "sha256": "53785de9eb25530ea911dcaba2f6d91d6460b62f4a0bbb2562a0e1aba9979e6b"
+    },
+    {
+      "path": "expr/queue.go",
+      "bytes": 2378,
+      "sha256": "5345ba825529422e75379aea33a50c831202ab7513ff3915e806a7413fa0c66b"
+    },
+    {
+      "path": "expr/quota.go",
+      "bytes": 2115,
+      "sha256": "8885aa40eb728b5d3319b90d9210bedd55e07db3cb7cf26001157fe41d25be04"
+    },
+    {
+      "path": "expr/range.go",
+      "bytes": 3437,
+      "sha256": "ef015c583cae4a1e74f17d77a837a2a029352d6d3c99636366965adecaa0bb8d"
+    },
+    {
+      "path": "expr/redirect.go",
+      "bytes": 2206,
+      "sha256": "f6628532cc363df8a7a2666b314c96d1e095414db06c19c9434f03b256a928f3"
+    },
+    {
+      "path": "expr/reject.go",
+      "bytes": 1714,
+      "sha256": "76be1e94aecf4f5a385f0fa139f06eb3c011db12ba629a81820c35432de6fc38"
+    },
+    {
+      "path": "expr/rt.go",
+      "bytes": 1658,
+      "sha256": "19bba3652f49c17c50a9895973318370eb2f1e20d946f275a51b29d2d879c479"
+    },
+    {
+      "path": "expr/secmark.go",
+      "bytes": 1697,
+      "sha256": "a4f0f5d3f1652a7b9d37e9bec7b866088e0fc32b9e6ece94224973d117004ab8"
+    },
+    {
+      "path": "expr/socket.go",
+      "bytes": 2682,
+      "sha256": "a9311492906989373f1d9cc06d12f177409805a682478cb8c7c343a34f2df90e"
+    },
+    {
+      "path": "expr/socket_test.go",
+      "bytes": 2293,
+      "sha256": "e56d66a6f0f81b89a7aa384c12187fc38a653ba24396b82e2e04e464ce0af765"
+    },
+    {
+      "path": "expr/synproxy.go",
+      "bytes": 3571,
+      "sha256": "dd7a544398017a86d29b9a4fa4fad5f0abb434d1cdf763090f2e64d31ff56ca7"
+    },
+    {
+      "path": "expr/target.go",
+      "bytes": 2482,
+      "sha256": "60d56713a13687b84592c20a15455b9e65831b20fc97c2b5f8dc4bb99a256de2"
+    },
+    {
+      "path": "expr/target_test.go",
+      "bytes": 1194,
+      "sha256": "93c9005929258305281c926f354b548ed292386b53789c51fef82c5270e2b056"
+    },
+    {
+      "path": "expr/tproxy.go",
+      "bytes": 2424,
+      "sha256": "cdf31b5dc3c27e934c5c37fa7c245ee3677603d1af9e6b6444a4d460b6bde7bf"
+    },
+    {
+      "path": "expr/verdict.go",
+      "bytes": 3611,
+      "sha256": "217d6d28b001d92dd8ca2d53367d7f59275837bf06b055cc665e5d6a9764eb37"
+    },
+    {
+      "path": "flowtable.go",
+      "bytes": 7807,
+      "sha256": "aaa6c82cd83b856ede8d613b339222da865e864ffabf5c85b4ffb58a45479934"
+    },
+    {
+      "path": "gen.go",
+      "bytes": 2101,
+      "sha256": "de0a07bcef9461e12705df70a18c3e6b26439faa7f0fc42a3c22dc7af33ddc15"
+    },
+    {
+      "path": "go.mod",
+      "bytes": 367,
+      "sha256": "83e3cb3cbb8c12dd6808eb46a137e02f4450e8632e8270218cace930d7760be5"
+    },
+    {
+      "path": "go.sum",
+      "bytes": 1487,
+      "sha256": "2614397e7c669eec3179c2950a1789c0de54a99c9083518f979f0e26619a444d"
+    },
+    {
+      "path": "integration/nft_test.go",
+      "bytes": 7265,
+      "sha256": "48a572eb55a128ac959802fdc10d0d32c11258bf802e15f2006984909e8a475e"
+    },
+    {
+      "path": "integration/testdata/add_chain.nft",
+      "bytes": 132,
+      "sha256": "e129e889f758fb133fb226a1d16411c6878588026665bfe7a2a3ab87558c29d7"
+    },
+    {
+      "path": "integration/testdata/add_flowtables.nft",
+      "bytes": 562,
+      "sha256": "df2f598a955681ac972c146c55fee71cb02013f761444efb2ba978b13b8d50f1"
+    },
+    {
+      "path": "integration/testdata/add_table.nft",
+      "bytes": 26,
+      "sha256": "0da3f4c5007cd5d01ee834fe59088bd8ea71ae1fca5be145776bc4c0e180fb5e"
+    },
+    {
+      "path": "internal/nftest/nftest.go",
+      "bytes": 4323,
+      "sha256": "5ef8c2b50593e1633a349b1f223cd9b84d721f0d7b0c715020409108bc286348"
+    },
+    {
+      "path": "internal/nftest/system_conn.go",
+      "bytes": 1090,
+      "sha256": "f28800df6a520ea0ae4b95205abc94fb8330300739382fa9b12199e68e9c7704"
+    },
+    {
+      "path": "internal/nftest/util.go",
+      "bytes": 976,
+      "sha256": "3f8b0993872ea232d9f4c1ea7ba5a230a247493d930f13ebedf95ce7c476ee52"
+    },
+    {
+      "path": "internal/parseexprfunc/parseexprfunc.go",
+      "bytes": 359,
+      "sha256": "3cd9f0178ad8cf396973303ab4fa0e25cc26cccb84def115451f4f10485b2bd5"
+    },
+    {
+      "path": "monitor.go",
+      "bytes": 10597,
+      "sha256": "201756e05fec202e090ba0a347ccfeb38870550b8c1a31566fdf11e23da37cbf"
+    },
+    {
+      "path": "monitor_test.go",
+      "bytes": 3788,
+      "sha256": "0079c7d908757608da5231d3e7af085220334276d69db430f9f7bbc75e8dbbc6"
+    },
+    {
+      "path": "nftables_test.go",
+      "bytes": 262503,
+      "sha256": "88c3df529b0ae715da0c279d79295f0f18b113e06d86e700c91bbf2eb908fcc0"
+    },
+    {
+      "path": "obj.go",
+      "bytes": 11312,
+      "sha256": "d73022fa61ed4d71f99c9f0863edae1870e02d0dff7409f062e3edc508e1e303"
+    },
+    {
+      "path": "quota.go",
+      "bytes": 1534,
+      "sha256": "6335c593f76d15af2d022eba6cbd0a0989906f01017505b243011dd92d41c582"
+    },
+    {
+      "path": "rule.go",
+      "bytes": 12481,
+      "sha256": "9960bfaf5b10f4f788f6b04affac8f91723c4318ed2c796065a15cc22273184d"
+    },
+    {
+      "path": "set.go",
+      "bytes": 37672,
+      "sha256": "a023fd0e7d0610f2b4f2493ffe672f0728ebfdaf7d52f62bb015e8f299273333"
+    },
+    {
+      "path": "set_test.go",
+      "bytes": 7672,
+      "sha256": "d5a91018a61b6a2e44ee8742a3f2b174fd35b6dda713a66ffb128d6e5fa2c826"
+    },
+    {
+      "path": "socket.go",
+      "bytes": 1072,
+      "sha256": "91b8db38fba638ad4fd4b9482f5a1e8a320a93fd19c7e350c78b223f8ed80bc7"
+    },
+    {
+      "path": "table.go",
+      "bytes": 8314,
+      "sha256": "380d69ad9353b2a5a2bb724de9d8ef0ace03c4efe9710adda7ab173f945e633d"
+    },
+    {
+      "path": "types.go",
+      "bytes": 3362,
+      "sha256": "cdb4d2df9467af6babe3791633802ef8c2b060f5308652252ba13f0e0a56f14e"
+    },
+    {
+      "path": "types_test.go",
+      "bytes": 2726,
+      "sha256": "2b449b0b514a006235b58a677324e96e3247f65ed6628b4ff492efa2cb94567c"
+    },
+    {
+      "path": "userdata/userdata.go",
+      "bytes": 2847,
+      "sha256": "c4d4720ad55c817af37ff2e1c6fdf8070d1a28050ce5a47d45083207e69415c2"
+    },
+    {
+      "path": "userdata/userdata_cli_interop_test.go",
+      "bytes": 5390,
+      "sha256": "bdb2e5348895800b32ba2d6c20e237ae6f4f5414ca2e526586d2f0d7fec54eb7"
+    },
+    {
+      "path": "userdata/userdata_test.go",
+      "bytes": 4103,
+      "sha256": "043a62c765cfa11267d01dbafcef167937d593f25622b783f482c1ade109f18b"
+    },
+    {
+      "path": "util.go",
+      "bytes": 4320,
+      "sha256": "38c379230dc2e8a2484459e52b52b6a9c52a54a6554c70050fe45e06006359a4"
+    },
+    {
+      "path": "util_test.go",
+      "bytes": 5211,
+      "sha256": "4ae4ee7d7fcb0af1d58f44bf73bf88bd3c896da3e2f26969db52efd3b65800ac"
+    },
+    {
+      "path": "xt/comment.go",
+      "bytes": 1021,
+      "sha256": "bf353779e87cc0792b3281665c6391d11d780437f7d005755bdbfb18d1abe9d5"
+    },
+    {
+      "path": "xt/comment_test.go",
+      "bytes": 1439,
+      "sha256": "6d19a322bd896a35c5864ed76a2bcb4b59272b7a724d9e369f98eeacaa2cc7fb"
+    },
+    {
+      "path": "xt/info.go",
+      "bytes": 2194,
+      "sha256": "5cf9d65cc6567ad720fffbef46f155c85aa04aee53b4fb631d6defd45ab70316"
+    },
+    {
+      "path": "xt/match_addrtype.go",
+      "bytes": 1952,
+      "sha256": "a74e9e6d8374141d0344519539e44d23adc593b6513813f04684dc570251f973"
+    },
+    {
+      "path": "xt/match_addrtype_test.go",
+      "bytes": 1380,
+      "sha256": "d15d24e00230327879d6df6065cdbb2997088d5c3981a1e5f9b4e99497818dc2"
+    },
+    {
+      "path": "xt/match_conntrack.go",
+      "bytes": 6306,
+      "sha256": "137b8753b94403e582e75d98403e4e8a84b2940140a2ed8e6d8328861b3b37c2"
+    },
+    {
+      "path": "xt/match_conntrack_test.go",
+      "bytes": 7900,
+      "sha256": "1dacb5f26226a7591a1a6fbb72c3d6993eef36602492c6d6e1289dd42b2913cd"
+    },
+    {
+      "path": "xt/match_tcp.go",
+      "bytes": 1874,
+      "sha256": "71bea942f520a97c7b13220c11ac9905754392b57c9f50b68c8d3b3609fd7b5a"
+    },
+    {
+      "path": "xt/match_tcp_test.go",
+      "bytes": 857,
+      "sha256": "168ab234da57c7dc1341b6dd2c51ae192d521a5e3ab92682e6d96fc4fa36e784"
+    },
+    {
+      "path": "xt/match_udp.go",
+      "bytes": 1443,
+      "sha256": "199ab512098c8a46c52ff536f3d650ead119341876359756d47b8accc0498350"
+    },
+    {
+      "path": "xt/match_udp_test.go",
+      "bytes": 791,
+      "sha256": "7ce55be3bd1ce0d2bfb31c02ad5f6fcce3245e59c11efbe6d9fb9fa070bd43b9"
+    },
+    {
+      "path": "xt/target_dnat.go",
+      "bytes": 2606,
+      "sha256": "b79669e20a3b6e5d639bacdda6f804a1d6857144eda2e3f397b256e0e6a85622"
+    },
+    {
+      "path": "xt/target_dnat_test.go",
+      "bytes": 2076,
+      "sha256": "1b1b1e1a2621611b384587632505e151d81b561457a99d606dc08b09b3869495"
+    },
+    {
+      "path": "xt/target_masquerade_ip.go",
+      "bytes": 2074,
+      "sha256": "dc4c05c1fc9224581b1c47433b229b610f696e349af944115ae3faa72462e796"
+    },
+    {
+      "path": "xt/target_masquerade_ip_test.go",
+      "bytes": 1122,
+      "sha256": "2797d9eec72087eaca7bc767303a2956a534a143e62ce88c31129fd86f9f5da2"
+    },
+    {
+      "path": "xt/unknown.go",
+      "bytes": 524,
+      "sha256": "0c5930ad7896c68269113361426a9b248aba981bd0658c058815f6ac2f14da67"
+    },
+    {
+      "path": "xt/unknown_test.go",
+      "bytes": 752,
+      "sha256": "667c16a99941e4b68b7b2b736b63997987adc29738ecb6c96db200441fd0326b"
+    },
+    {
+      "path": "xt/util.go",
+      "bytes": 1335,
+      "sha256": "ed204bcf0b501f7f6bc326f65d2451a7fabcce66ee9601cd5f4c721716adb1a9"
+    },
+    {
+      "path": "xt/xt.go",
+      "bytes": 2931,
+      "sha256": "f37b2816ff505cf12e55e910022a3e62ba647795c3941ce0ae8ab467962801f5"
+    }
+  ]
+}
