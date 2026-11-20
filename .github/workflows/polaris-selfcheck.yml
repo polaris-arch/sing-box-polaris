@@ -503,7 +503,12 @@ jobs:
           off_tags="$(tr ',' '\n' < release/DEFAULT_BUILD_TAGS | grep -v -E '^with_(tailscale|acme)$' | paste -sd, -),with_purego"
           case ",$off_tags," in *,with_tailscale,*|*,with_acme,*) exit 1;; esac
           printf 'feature-off-tags=%s\n' "$off_tags"
-          for package in . ./adapter/certificate ./common/httpclient ./common/runtimeclock ./option ./service/origin_ca; do
+          packages=(. ./adapter/certificate ./common/httpclient ./common/runtimeclock ./option ./service/origin_ca)
+          # Historical source checkouts keep their Box runtime tests in the root package.
+          if [[ -d internal/boxruntime ]]; then
+            packages+=(./internal/boxruntime)
+          fi
+          for package in "${packages[@]}"; do
             printf 'compile-test-source=%s\n' "$package"
             go test -c -o /dev/null -tags "$off_tags" -ldflags "$(cat release/LDFLAGS)" "$package"
           done

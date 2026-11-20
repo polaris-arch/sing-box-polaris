@@ -12,7 +12,7 @@ Source inventory plus per-file upstream differences supports the periodic semant
 
 ## Go source and test ownership
 
-Preserve upstream source paths, including `box.go`. Keep newly added diagnostics with the component that reports them, and test-only helpers with the tests they support. Use the root `box` package for Box assembly and lifecycle tests. Put reusable graph algorithms and their tests in `internal/runtimegraph`, and keep platform or protocol behavior with its existing owner. The separate `test` module covers end-to-end scenarios through the public API and runs through its own test entry point.
+Preserve upstream source paths, including `box.go`. Keep newly added diagnostics with the component that reports them, and test-only helpers with the tests they support. Keep Box assembly, lifecycle, and runtime coordinator tests in `internal/boxruntime`. Put reusable graph algorithms and their tests in `internal/runtimegraph`, and keep platform or protocol behavior with its existing owner. The separate `test` module covers end-to-end scenarios through the public API and runs through its own test entry point.
 
 Extend an existing test or fixture when it covers the same contract. Add a file or case when it covers a distinct behavior or requires a different build constraint. Use Go for fork-owned checks and keep CI tooling and its tests in `cmd/internal/ci`. Preserve upstream and vendored fixture ownership. Verify the affected packages and their regular CI entry points when moving code or tests.
 
