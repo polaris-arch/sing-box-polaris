@@ -39,6 +39,7 @@ type clientState uint32
 
 const (
 	clientStateCreated clientState = iota
+	clientStateDormant
 	clientStateStarting
 	clientStateRunning
 	clientStateClosing
@@ -52,6 +53,7 @@ type NaiveClient struct {
 	callbacks                sync.WaitGroup
 	closed                   chan struct{}
 	closeError               error
+	startError               error
 	connections              map[*BidirectionalConn]struct{}
 	ctx                      context.Context
 	dialer                   N.Dialer
@@ -181,19 +183,45 @@ func NewNaiveClient(config NaiveClientOptions) (*NaiveClient, error) {
 	}, nil
 }
 
-func (c *NaiveClient) Start() (startResult error) {
+func (c *NaiveClient) Start() error {
+	return c.start(clientStateCreated)
+}
+
+// StartOnDemand prepares a client to start on its first dial. Custom trust
+// roots still need to pass Cronet's native certificate parser at startup.
+func (c *NaiveClient) StartOnDemand() error {
+	if c.trustedRootCertificates != "" {
+		return c.Start()
+	}
 	c.lifecycle.Lock()
-	if !c.state.CompareAndSwap(uint32(clientStateCreated), uint32(clientStateStarting)) {
+	defer c.lifecycle.Unlock()
+	if !c.state.CompareAndSwap(uint32(clientStateCreated), uint32(clientStateDormant)) {
+		return startStateError(clientState(c.state.Load()))
+	}
+	return nil
+}
+
+func startStateError(state clientState) error {
+	switch state {
+	case clientStateDormant, clientStateStarting:
+		return errors.New("start already in progress")
+	case clientStateRunning:
+		return errors.New("already started")
+	default:
+		return net.ErrClosed
+	}
+}
+
+func (c *NaiveClient) start(expected clientState) (startResult error) {
+	c.lifecycle.Lock()
+	if !c.state.CompareAndSwap(uint32(expected), uint32(clientStateStarting)) {
 		state := clientState(c.state.Load())
 		c.lifecycle.Unlock()
-		switch state {
-		case clientStateStarting:
-			return errors.New("start already in progress")
-		case clientStateRunning:
-			return errors.New("already started")
-		default:
-			return net.ErrClosed
+		if expected == clientStateDormant {
+			// The first dial owns startup. Other dials wait on started.
+			return nil
 		}
+		return startStateError(state)
 	}
 
 	c.lifecycle.Unlock()
@@ -204,6 +232,7 @@ func (c *NaiveClient) Start() (startResult error) {
 	defer func() {
 		if startError != nil {
 			c.lifecycle.Lock()
+			c.startError = startError
 			c.state.Store(uint32(clientStateClosing))
 			c.engines = engines
 			close(c.started)
@@ -380,6 +409,9 @@ func (c *NaiveClient) Start() (startResult error) {
 	c.state.Store(uint32(clientStateRunning))
 	close(c.started)
 	c.lifecycle.Unlock()
+	if version := c.Version(); version != "" {
+		c.logger.Info("NaiveProxy started, version: ", version)
+	}
 	return nil
 }
 
@@ -491,21 +523,34 @@ func (c *NaiveClient) dialEarly(ctx context.Context, destination M.Socksaddr,
 	startConn func(*BidirectionalConn, string, string, map[string]string, int, bool) error,
 ) (NaiveConn, error) {
 	state := clientState(c.state.Load())
-	switch state {
-	case clientStateRunning:
-	case clientStateClosed, clientStateClosing:
-		return nil, net.ErrClosed
-	default:
+	if state == clientStateDormant {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		if err := c.ctx.Err(); err != nil {
+			return nil, err
+		}
+		if err := c.start(clientStateDormant); err != nil {
+			return nil, err
+		}
+		state = clientState(c.state.Load())
+	}
+	if state < clientStateRunning {
 		select {
 		case <-c.started:
-			if clientState(c.state.Load()) != clientStateRunning {
-				return nil, net.ErrClosed
-			}
+			state = clientState(c.state.Load())
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		case <-c.ctx.Done():
 			return nil, c.ctx.Err()
 		}
+	}
+	if state != clientStateRunning {
+		// A terminal startup error is published before the closing state.
+		if c.startError != nil {
+			return nil, errors.Join(net.ErrClosed, c.startError)
+		}
+		return nil, net.ErrClosed
 	}
 	if !c.beginOperation() {
 		return nil, net.ErrClosed
@@ -573,7 +618,7 @@ func (c *NaiveClient) Close() error {
 	for {
 		c.lifecycle.Lock()
 		switch clientState(c.state.Load()) {
-		case clientStateCreated:
+		case clientStateCreated, clientStateDormant:
 			c.state.Store(uint32(clientStateClosed))
 			close(c.started)
 			close(c.closed)
@@ -652,4 +697,3 @@ func (c *trackedNaiveConn) ReaderReplaceable() bool {
 func (c *trackedNaiveConn) WriterReplaceable() bool {
 	return true
 }
-
