@@ -1,27 +1,43 @@
 package tun
 
 import (
-	"errors"
 	"context"
+	"errors"
 	"net/netip"
+	"runtime"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/sagernet/sing-tun/gtcpip/header"
 )
 
 func TestCopiedReturnCallbackSealedAndRunningCallbackJoined(t *testing.T) {
 	for _,headroom:=range []bool{false,true} {
-		f:=newOwnershipFixture(); entered,release:=make(chan struct{}),make(chan struct{}); unblock:=sync.OnceFunc(func(){close(release)});t.Cleanup(unblock)
+		f:=newOwnershipFixture(); entered,release:=make(chan struct{}),make(chan struct{}); unblock:=sync.OnceFunc(func(){close(release)});defer unblock()
 		port:=&ownershipPort{fixture:f,address:netip.MustParseAddr("192.0.2.1")};f.port=port
 		w:=&ownershipWriteback{headroom:func()int{close(entered);<-release;return 0}}
 		d,_:=ownershipDispatcher(&ownershipHandler{},w);t.Cleanup(d.Close)
 		root:=f.flow();use:=d.natFor(port,root);if use==nil{t.Fatal("attach")};r:=use.returnPath;copied:=port.copiedReturn()
 		finished:=make(chan struct{});go func(){defer close(finished);if headroom{copied.ReturnHeadroom()}else{copied.ReturnPackets(nil)}}()
 		waitOwnership(t,entered);f.retire();root.Release();use.release();assertStillOwned(t,f)
-		// Seal is synchronous when the last structural use disappears. A copy
-		// retained by the Port cannot start a second callback after this point.
-		if copied.ReturnHeadroom()!=0 {t.Fatal("late callback entered sealed target")}
+		// Wait for the detach worker's writer to queue behind the admitted read.
+		deadline := time.Now().Add(5 * time.Second)
+		for r.gate.access.TryRLock() {
+			r.gate.access.RUnlock()
+			if time.Now().After(deadline) {
+				t.Fatal("detach worker did not join admitted callback")
+			}
+			runtime.Gosched()
+		}
+		late := make(chan struct{})
+		go func() {
+			defer close(late)
+			if copied.ReturnHeadroom() != 0 {
+				t.Error("late callback entered sealed target")
+			}
+		}()
+		waitOwnership(t, late)
 		unblock();waitOwnership(t,finished);waitOwnership(t,r.detached);waitOwnership(t,f.closed)
 	}
 }

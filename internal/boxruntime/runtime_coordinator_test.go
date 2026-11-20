@@ -5,6 +5,7 @@ import (
 	"context"
 	stdjson "encoding/json"
 	"errors"
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -80,6 +81,13 @@ func TestRuntimeBoxInitialPublicationWaitsForActualStartedStage(t *testing.T) {
 		t.Fatal("initial publication did not create revision one")
 	}
 	lease.Release()
+	c := f.box.runtime
+	c.access.Lock()
+	startupRetained := c.initialPrepared != nil || c.pendingPrepared != nil || c.initialSources != nil
+	c.access.Unlock()
+	if startupRetained {
+		t.Fatal("successful startup retained preparation ownership")
+	}
 	for _, tag := range []string{"a", "b"} {
 		stages, closes := f.object(t, tag, 0).snapshot()
 		if !reflect.DeepEqual(stages, adapter.ListStartStages) || closes != 0 {
@@ -475,6 +483,84 @@ func TestRuntimeManualSelectionDuringFinalStageRejectsStaleCandidate(t *testing.
 	newLease.Release()
 }
 
+func TestRuntimePostPublicationPanicReleasesConstructionWithoutAborting(t *testing.T) {
+	f := newRuntimeTestFixture(t, runtimeTestConfig(1080, "example.org"), nil)
+	f.start(t)
+	before := f.identity()
+	_, request := f.plan(t, runtimeTestConfig(1081, "example.org"))
+	c := f.box.runtime
+	var candidate *preparedRuntimeGraph
+	var heldConstruction bool
+	c.access.Lock()
+	c.exitIPProbeCancel = func() {
+		c.exitIPProbeCancel = nil
+		candidate = c.pendingPrepared
+		heldConstruction = candidate != nil && candidate.rootSnapshot != nil && len(candidate.construction) > 0
+		panic("injected post-publication callback failure")
+	}
+	c.access.Unlock()
+	operation, err := f.box.applyRuntimeConfig(context.Background(), "actor-a", request)
+	if !heldConstruction {
+		t.Fatal("fixture did not panic while the committed candidate still held construction leases")
+	}
+	if err != nil || operation.State != "COMMITTED_DURABILITY_PENDING" || operation.Active.Revision != before.Revision+1 ||
+		operation.RetirementState != "UNKNOWN" || len(operation.Errors) != 1 || operation.Errors[0].Code != "POST_COMMIT_FAILURE" {
+		t.Fatalf("panic lost committed identity or retirement uncertainty: %+v %v", operation, err)
+	}
+	if candidate.rootSnapshot != nil || len(candidate.construction) != 0 {
+		t.Fatal("post-publication panic retained construction leases")
+	}
+	if candidate.componentPreparation == nil || candidate.componentPreparation.Load() != nil {
+		t.Fatal("post-publication panic retained the candidate in component contexts")
+	}
+	for _, resource := range candidate.created {
+		select {
+		case <-resource.owner.Retiring():
+			t.Fatalf("panic retired committed resource %v", resource.id)
+		default:
+		}
+	}
+	c.access.Lock()
+	pending := c.pendingPrepared
+	c.access.Unlock()
+	if pending != nil {
+		t.Fatal("completed operation retained preparation ownership")
+	}
+	lease, view := f.acquire(t)
+	defer lease.Release()
+	if view.Identity() != operation.Active.graphRevision() || f.identity() != operation.Active {
+		t.Fatal("published view and operation disagree after panic")
+	}
+}
+
+func TestRuntimeApplyReusesResourcesBeyondHalfCatalogCapacity(t *testing.T) {
+	const bulkCount = 600
+	var bulk strings.Builder
+	for index := range bulkCount {
+		fmt.Fprintf(&bulk, `{"type":"socks","tag":"bulk-%d","server":"192.0.2.3","server_port":1080},`, index)
+	}
+	initial := bytes.Replace(runtimeTestConfig(1080, "example.org"), []byte(`"outbounds":[`), []byte(`"outbounds":[`+bulk.String()), 1)
+	candidate := bytes.Replace(initial, []byte(`"tag":"b","server":"192.0.2.2","server_port":1080`), []byte(`"tag":"b","server":"192.0.2.2","server_port":1081`), 1)
+	f := newRuntimeTestFixture(t, initial, nil)
+	f.start(t)
+	_, before := f.acquire(t)
+	_, request := f.plan(t, candidate)
+	operation, err := f.box.applyRuntimeConfig(context.Background(), "actor-a", request)
+	if err != nil || operation.State != "COMMITTED_DURABILITY_PENDING" {
+		t.Fatalf("one replacement in a large graph did not commit: %+v, %v", operation, err)
+	}
+	_, after := f.acquire(t)
+	if before.componentIDs["outbound:b"] == after.componentIDs["outbound:b"] {
+		t.Fatal("changed outbound reused its old resource")
+	}
+	for index := range bulkCount {
+		name := fmt.Sprintf("outbound:bulk-%d", index)
+		if old, ok := before.componentIDs[name]; !ok || old != after.componentIDs[name] {
+			t.Fatalf("unchanged outbound %s was not reused", name)
+		}
+	}
+}
+
 func TestRuntimePersistenceFailureCannotRollbackOrCancelPublishedGraph(t *testing.T) {
 	f := newRuntimeTestFixture(t, runtimeTestConfig(1080, "example.org"), nil)
 	barrier := newRuntimeTestBarrier()
@@ -618,6 +704,13 @@ func TestRuntimeInitialStartFailureNeverPublishesAndCleansRealConstructors(t *te
 	})
 	if err := f.box.Start(); err == nil {
 		t.Fatal("failed initial lifecycle reported success")
+	}
+	c := f.box.runtime
+	c.access.Lock()
+	startupRetained := c.initialPrepared != nil || c.pendingPrepared != nil || c.initialSources != nil
+	c.access.Unlock()
+	if startupRetained {
+		t.Fatal("failed startup retained preparation ownership after shutdown")
 	}
 	if f.identity().Revision != 0 {
 		t.Fatal("failed startup published an admission revision")

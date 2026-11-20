@@ -1,6 +1,6 @@
 //go:build !windows || !with_tailscale
 
-package box
+package boxruntime
 
 import (
 	"context"

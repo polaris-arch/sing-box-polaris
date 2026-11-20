@@ -16,6 +16,8 @@ Preserve upstream source paths, including `box.go`. Keep newly added diagnostics
 
 Extend an existing test or fixture when it covers the same contract. Add a file or case when it covers a distinct behavior or requires a different build constraint. Use Go for fork-owned checks and keep CI tooling and its tests in `cmd/internal/ci`. Preserve upstream and vendored fixture ownership. Verify the affected packages and their regular CI entry points when moving code or tests.
 
+Reserve root Go files for the public module entry and upstream-owned paths. Keep fork-owned implementation, regressions, and fixtures with their existing package owners, and keep acceptance scripts with the existing tooling. Update CI package selections, acceptance commands, and their artifact receipts when moving a test owner.
+
 ## Authorized baseline migration
 
 1. Record current released baseline, actual upstream tag object/peeled commit/tree, live testing heads, active consumer tags/releases and fixed source receipt identities. Check the complete source/module/preset/CLI/API/tests/documentation impact; neither a mutable testing tip nor a GitHub compare merge-base summary is sufficient.

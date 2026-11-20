@@ -12,6 +12,7 @@ import (
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing/common/json"
 	"github.com/sagernet/sing/common/varbin"
+	"github.com/sagernet/sing/service/filemanager"
 )
 
 // ReadLimits are per-decoding admission limits, not a process RSS limit. Zero
@@ -154,6 +155,27 @@ func checkSourceRuleObject(ctx context.Context, decoder *json.Decoder, remaining
 	}
 	_, err := decoder.Token()
 	return err
+}
+
+// ReadFile bounds acquisition from a regular rule-set file.
+func ReadFile(ctx context.Context, path string, limit int64) ([]byte, error) {
+	file, err := filemanager.OpenFile(ctx, path, readFileFlags, 0)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	info, err := file.Stat()
+	if err != nil {
+		return nil, err
+	}
+	if !info.Mode().IsRegular() {
+		return nil, errors.New("rule-set source is not a regular file")
+	}
+	if info.Size() > limit {
+		return nil, limitError("input bytes")
+	}
+	// Check actual bytes as well in case the file grows after Stat.
+	return ReadContent(file, limit)
 }
 
 // ReadContent bounds acquisition before io.ReadAll can grow without limit. It

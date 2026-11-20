@@ -210,6 +210,11 @@ func (s *Box) startRuntime() error {
 	}
 	c.access.Lock()
 	c.platformRequirements = c.initialRouter.RuntimeProvisionedRequirements(c.platformRequirements)
+	c.initialPrepared = nil
+	c.initialSources = nil
+	if c.pendingPrepared == prepared {
+		c.pendingPrepared = nil
+	}
 	c.initialPhase = 2
 	c.access.Unlock()
 	return nil
@@ -277,6 +282,9 @@ func (s *Box) closeRuntimeResourcesContext(ctx context.Context) error {
 			}
 			initial := c.initialPrepared
 			pending := c.pendingPrepared
+			c.initialPrepared = nil
+			c.initialSources = nil
+			c.pendingPrepared = nil
 			reservation := c.stableReservation
 			c.stableReservation = nil
 			c.access.Unlock()

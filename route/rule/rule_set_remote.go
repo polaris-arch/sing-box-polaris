@@ -369,26 +369,12 @@ func (s *RemoteRuleSet) mergeableRule() *DefaultHeadlessRule {
 	return mergeableRuleIn(s.loadSnapshot().rules)
 }
 
-// Bound file acquisition too: validating len(content) after ReadFile is too late.
 func readRuleSetFile(ctx context.Context, path string, configured *option.RuleSetResourceLimits) ([]byte, error) {
 	limits, err := ruleSetLimits(configured)
 	if err != nil {
 		return nil, err
 	}
-	file, err := filemanager.Open(ctx, path)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-	stat, err := file.Stat()
-	if err != nil {
-		return nil, err
-	}
-	if stat.Size() > limits.InputBytes {
-		return nil, fmt.Errorf("%w: input bytes", srs.ErrResourceLimit)
-	}
-	// Still bound actual reads in case the file grows after Stat.
-	return srs.ReadContent(file, limits.InputBytes)
+	return srs.ReadFile(ctx, path, limits.InputBytes)
 }
 
 func ruleSetLimits(configured *option.RuleSetResourceLimits) (srs.ReadLimits, error) {

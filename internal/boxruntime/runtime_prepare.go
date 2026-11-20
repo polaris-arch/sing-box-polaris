@@ -9,6 +9,7 @@ import (
 	"math"
 	"os"
 	"reflect"
+	"sync/atomic"
 
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/adapter/certificate"
@@ -88,6 +89,11 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 		return nil, marshalErr
 	}
 	prepared = &preparedRuntimeGraph{platformRequest: request, options: options, initial: identity.Revision == 1, clientImpactPolicy: runtimeClientImpactPolicyFromContext(request)}
+	// Give panic recovery and constructor rollback custody before any preparation callback.
+	c.access.Lock()
+	c.pendingPrepared = prepared
+	c.pruneRuntimeCatalogLocked()
+	c.access.Unlock()
 	logLevel := ""
 	if options.Log != nil {
 		logLevel = options.Log.Level
@@ -111,9 +117,6 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 		prepared.effectRegistrationClosed = true
 		prepared.effectAccess.Unlock()
 	}()
-	c.access.Lock()
-	c.pendingPrepared = prepared
-	c.access.Unlock()
 	if err := s.prepareRuntimeFakeIP(request, prepared); err != nil {
 		return prepared, err
 	}
@@ -153,13 +156,8 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 		return prepared, err
 	}
 	c.access.Lock()
-	c.pruneRuntimeCatalogLocked()
 	old := append([]*runtimeResource(nil), c.resources...)
 	provisioned := c.platformRequirements
-	if len(c.catalog)+len(cohorts) > runtimeResourceLimit {
-		c.access.Unlock()
-		return prepared, errors.New("runtime resource capacity exhausted")
-	}
 	c.access.Unlock()
 	if !prepared.initial {
 		after := route.RuntimeRequirementsFor(common.PtrValueOrDefault(options.Route), common.PtrValueOrDefault(options.DNS))
@@ -207,12 +205,19 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 		resource := byFingerprint[fingerprint]
 		if resource == nil {
 			c.access.Lock()
-			if c.stopped || c.resourceSequence == math.MaxUint64 {
+			var admissionErr error
+			switch {
+			case c.stopped || c.resourceSequence == math.MaxUint64:
+				admissionErr = errors.New("runtime resource admission stopped")
+			case len(c.catalog) >= runtimeResourceLimit:
+				admissionErr = errors.New("runtime resource capacity exhausted")
+			}
+			if admissionErr != nil {
 				c.access.Unlock()
 				for _, held := range dependencies {
 					held.Release()
 				}
-				return prepared, errors.New("runtime resource admission stopped")
+				return prepared, admissionErr
 			}
 			c.resourceSequence++
 			id := adapter.RuntimeResourceID{Incarnation: identity.Incarnation, Sequence: c.resourceSequence}
@@ -287,6 +292,10 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 	}
 	contexts := make(map[string]context.Context)
 	var tailscalePlanDigest string
+	// Borrowed components keep their contexts after the staging owner is gone.
+	componentPreparation := new(atomic.Pointer[preparedRuntimeGraph])
+	componentPreparation.Store(prepared)
+	prepared.componentPreparation = componentPreparation
 	componentContext := func(name string) (context.Context, error) {
 		resource := bindings[name]
 		networkOwner := adapter.NetworkManager(s.network)
@@ -306,7 +315,13 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 		resource.scope.Add(func() error { snapshot.Release(); return nil })
 		service.MustRegister[adapter.CertificateStore](ctx, snapshot)
 		ctx = adapter.ContextWithRuntimePreparation(ctx)
-		ctx = certificate.ContextWithRuntimeStorageBinding(ctx, func(info os.FileInfo) error { return prepared.bindCertificateStorage(name, info) })
+		ctx = certificate.ContextWithRuntimeStorageBinding(ctx, func(info os.FileInfo) error {
+			prepared := componentPreparation.Load()
+			if prepared == nil {
+				return errors.New("runtime certificate storage binding closed")
+			}
+			return prepared.bindCertificateStorage(name, info)
+		})
 		// Only Tailscale physical-child registration consumes the whole graph.
 		// Other components must not each retain a private full-config copy.
 		if config.endpoint != nil && config.endpoint.Type == C.TypeTailscale {
@@ -329,6 +344,10 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 		ctx = adapter.ContextWithRuntimeEffectRegistration(ctx, func(effect adapter.RuntimeStagedEffect) error {
 			if effect == nil {
 				return errors.New("nil runtime effect")
+			}
+			prepared := componentPreparation.Load()
+			if prepared == nil {
+				return errors.New("runtime effect registration closed")
 			}
 			prepared.effectAccess.Lock()
 			defer prepared.effectAccess.Unlock()
@@ -354,6 +373,10 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 					return errors.New("invalid post-bind conflict identity")
 				}
 				seen[key] = true
+			}
+			prepared := componentPreparation.Load()
+			if prepared == nil {
+				return errors.New("runtime effect registration closed")
 			}
 			prepared.effectAccess.Lock()
 			defer prepared.effectAccess.Unlock()
