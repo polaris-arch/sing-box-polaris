@@ -139,15 +139,15 @@ func runtimeSnapshotSources(request context.Context, registry context.Context, o
 				return options, nil, "", []RuntimePlanError{{Code: "SOURCE_BUDGET_EXHAUSTED", Path: "route.rule_set"}}
 			}
 			var compatible option.PlainRuleSetCompat
+			var limits srs.ReadLimits
+			if source.ResourceLimits != nil {
+				limits = *source.ResourceLimits
+			}
 			switch source.Format {
 			case C.RuleSetFormatSource, "":
-				var limits srs.ReadLimits
-				if source.ResourceLimits != nil {
-					limits = *source.ResourceLimits
-				}
 				compatible, err = srs.ReadSourceContextWithLimits(request, content, limits)
 			case C.RuleSetFormatBinary:
-				compatible, err = srs.Read(bytes.NewReader(content), false)
+				compatible, err = srs.ReadContextWithLimits(request, bytes.NewReader(content), false, limits)
 			default:
 				err = fmt.Errorf("unsupported source format")
 			}

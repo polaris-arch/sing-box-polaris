@@ -233,6 +233,37 @@ func TestRuntimeEmptyLocalSourcesConstructConnectedGraph(t *testing.T) {
 			if frozen.Type != C.RuleSetTypeInline || len(frozen.InlineOptions.Rules) != 0 || len(sources) != 1 || sources[0].digest != runtimeDigest(content) || !bytes.Equal(sources[0].content, content) {
 				t.Fatal("empty local source was not frozen with exact accepted bytes")
 			}
+			t.Run("configured limit", func(t *testing.T) {
+				bounded := []byte(strings.Replace(config, `"format":`, fmt.Sprintf(`"resource_limits":{"input_bytes":%d},"format":`, len(content)-1), 1))
+				_, options := newRuntimeTestConstruction(t, bounded, nil)
+				instance, err, report := NewWithConstructionReport(options)
+				if instance != nil {
+					if closeErr := instance.CloseWithResult(); closeErr != nil {
+						t.Error(closeErr)
+					}
+					t.Error("cold construction admitted a source above its configured limit")
+				} else if err == nil || err.Error() != "initial runtime source preparation failed" || !report.Attempted || report.CleanupError != nil {
+					t.Fatalf("wrong cold construction result: %v, %+v", err, report)
+				}
+				before := f.identity()
+				plan, err := f.box.PlanRuntimeConfig(context.Background(), "actor-a", before, bounded)
+				if err != nil || plan.Applicable || len(plan.Errors) != 1 || plan.Errors[0].Code != "INVALID_SOURCE" || f.identity() != before {
+					t.Fatalf("hot Plan did not reject the bounded source before publication: %+v / %v", plan, err)
+				}
+			})
+			t.Run("cancel during decode", func(t *testing.T) {
+				_, options := newRuntimeTestConstruction(t, []byte(config), nil)
+				ctx, cancel := context.WithCancel(f.ctx)
+				defer cancel()
+				request := &runtimeSourceDecodeCancelContext{Context: ctx, cancel: cancel}
+				frozen, sources, digest, failures := runtimeSnapshotSources(request, f.ctx, options.Options, nil)
+				if ctx.Err() != context.Canceled || len(failures) != 1 || failures[0].Code != "CANCELED" {
+					t.Fatalf("source decode lost request cancellation: %+v", failures)
+				}
+				if len(sources) != 0 || digest != "" || frozen.Route.RuleSet[0].Type != C.RuleSetTypeLocal {
+					t.Fatal("canceled decode returned a frozen source")
+				}
+			})
 		})
 	}
 }
@@ -272,23 +303,6 @@ func TestRuntimeLocalEmptyConditionsReachPerRuleValidation(t *testing.T) {
 			}
 		})
 	}
-	t.Run("cancel during decode", func(t *testing.T) {
-		path := filepath.Join(t.TempDir(), "sites.json")
-		if err := os.WriteFile(path, runtimeTestSourceBytes("example.org"), 0o600); err != nil {
-			t.Fatal(err)
-		}
-		fixture, options := newRuntimeTestConstruction(t, runtimeTestLocalConfig(path), nil)
-		ctx, cancel := context.WithCancel(fixture.ctx)
-		defer cancel()
-		request := &runtimeSourceDecodeCancelContext{Context: ctx, cancel: cancel}
-		frozen, sources, digest, failures := runtimeSnapshotSources(request, fixture.ctx, options.Options, nil)
-		if ctx.Err() != context.Canceled || len(failures) != 1 || failures[0].Code != "CANCELED" {
-			t.Fatalf("source decode lost request cancellation: %+v", failures)
-		}
-		if len(sources) != 0 || digest != "" || frozen.Route.RuleSet[0].Type != C.RuleSetTypeLocal {
-			t.Fatal("canceled decode returned a frozen source")
-		}
-	})
 }
 
 type runtimeSourceDecodeCancelContext struct {
@@ -299,9 +313,9 @@ type runtimeSourceDecodeCancelContext struct {
 
 func (c *runtimeSourceDecodeCancelContext) Err() error {
 	c.checks++
-	// After the before/after checks on local acquisition, the scanner reads
-	// the JSON through the request context for its first token.
-	if c.checks == 3 {
+	// Two checks surround acquisition and one follows decoding. The fourth
+	// invocation requires at least one cancellation check inside the decoder.
+	if c.checks == 4 {
 		c.cancel()
 	}
 	return c.Context.Err()
