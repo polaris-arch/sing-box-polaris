@@ -75,6 +75,35 @@ func naiveOutboundWait(t *testing.T, ch <-chan struct{}) {
 	}
 }
 
+func TestNaiveOutboundDeferredNativeStart(t *testing.T) {
+	startError := errors.New("test native start")
+	starts := 0
+	dialer := &naiveDialer{
+		startOnDial: true,
+		start: sync.OnceValue(func() error {
+			starts++
+			return startError
+		}),
+	}
+	h := &Outbound{runtime: &outboundRuntime{registered: true}, dialer: dialer}
+	if err := h.Start(adapter.StartStateStart, nil); err != nil || starts != 0 {
+		t.Fatalf("deferred engine started while loading the outbound: starts=%d err=%v", starts, err)
+	}
+	canceled, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, err := dialer.DialContext(canceled, N.NetworkTCP, M.Socksaddr{}); !errors.Is(err, context.Canceled) || starts != 0 {
+		t.Fatalf("canceled dial started the engine: starts=%d err=%v", starts, err)
+	}
+	for range 2 {
+		if _, err := dialer.DialContext(context.Background(), N.NetworkTCP, M.Socksaddr{}); !errors.Is(err, startError) {
+			t.Fatalf("dial lost the native startup error: %v", err)
+		}
+	}
+	if starts != 1 {
+		t.Fatalf("native engine startup ran %d times", starts)
+	}
+}
+
 func TestNaiveOutboundSealedReceiverAndClientAccessor(t *testing.T) {
 	owner, err := runtimegraph.NewResourceOwner(context.Background(), adapter.RuntimeResourceID{Incarnation: "naive", Sequence: 1}, nil, func() error { return nil })
 	if err != nil {

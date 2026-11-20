@@ -8,6 +8,7 @@ import (
 	"errors"
 	"net"
 	"strings"
+	"sync"
 
 	"github.com/sagernet/cronet-go"
 	_ "github.com/sagernet/cronet-go/all"
@@ -37,6 +38,7 @@ type Outbound struct {
 	ctx       context.Context
 	logger    logger.ContextLogger
 	client    *cronet.NaiveClient
+	dialer    *naiveDialer
 	uotClient *uot.Client
 }
 
@@ -202,11 +204,29 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 	if err = runtime.install(ctx); err != nil {
 		return nil, err
 	}
+	nativeDialer := &naiveDialer{
+		NaiveClient: client,
+		start: sync.OnceValue(func() error {
+			leave, err := runtime.fence.Acquire()
+			if err != nil {
+				return err
+			}
+			defer leave()
+			if err = client.Start(); err != nil {
+				return err
+			}
+			logger.Info("NaiveProxy started, version: ", client.Version())
+			return nil
+		}),
+		// Each Cronet engine allocates native threads. Start only the engines
+		// that a managed iOS tunnel actually dials, even for large subscriptions.
+		startOnDial: C.IsIos && runtime.source != nil,
+	}
 	var uotClient *uot.Client
 	uotOptions := common.PtrValueOrDefault(options.UDPOverTCP)
 	if uotOptions.Enabled {
 		uotClient = &uot.Client{
-			Dialer:  &naiveDialer{client},
+			Dialer:  nativeDialer,
 			Version: uotOptions.Version,
 		}
 	}
@@ -223,6 +243,7 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 		ctx:       ctx,
 		logger:    logger,
 		client:    client,
+		dialer:    nativeDialer,
 		uotClient: uotClient,
 	}, nil
 }
@@ -231,20 +252,10 @@ func (h *Outbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 	if stage != adapter.StartStateStart {
 		return nil
 	}
-	leave, err := h.runtime.fence.Acquire()
-	if err != nil {
-		return err
-	}
-	err = func() error {
-		defer leave()
-		startErr := h.client.Start()
-		if startErr == nil {
-			h.logger.Info("NaiveProxy started, version: ", h.client.Version())
+	if !h.dialer.startOnDial {
+		if err := h.dialer.start(); err != nil {
+			return errors.Join(err, h.runtime.close())
 		}
-		return startErr
-	}()
-	if err != nil {
-		return errors.Join(err, h.runtime.close())
 	}
 	if !h.runtime.registered {
 		scope.Add(h.runtime.close)
@@ -260,7 +271,7 @@ func (h *Outbound) dialContextOwned(ctx context.Context, network string, destina
 	switch N.NetworkName(network) {
 	case N.NetworkTCP:
 		h.logger.InfoContext(ctx, "outbound connection to ", destination)
-		return h.client.DialEarly(ctx, destination)
+		return h.dialer.DialContext(ctx, network, destination)
 	case N.NetworkUDP:
 		if h.uotClient == nil {
 			return nil, E.New("UDP is not supported unless UDP over TCP is enabled")
@@ -303,8 +314,18 @@ func (h *Outbound) Client() *cronet.NaiveClient {
 
 type naiveDialer struct {
 	*cronet.NaiveClient
+	start       func() error
+	startOnDial bool
 }
 
 func (d *naiveDialer) DialContext(ctx context.Context, network string, destination M.Socksaddr) (net.Conn, error) {
+	if d.startOnDial {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		if err := d.start(); err != nil {
+			return nil, err
+		}
+	}
 	return d.NaiveClient.DialEarly(ctx, destination)
 }
