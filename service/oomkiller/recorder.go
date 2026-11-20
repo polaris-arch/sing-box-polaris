@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	C "github.com/sagernet/sing-box/constant"
 	E "github.com/sagernet/sing/common/exceptions"
 	"github.com/sagernet/sing/common/logger"
 	"github.com/sagernet/sing/common/memory"
@@ -388,6 +389,12 @@ func (r *Recorder) recordReset(reason string, before memorySample, after memoryS
 }
 
 func (r *Recorder) snapshot(reason string, sample memorySample, heapDump bool, force bool) error {
+	// iOS Packet Tunnel extensions have a small process memory budget.
+	// An automatic profile allocates just as the process is trying to recover.
+	// The pressure and reset records already preserve the sampled counters.
+	if C.IsIos && !force {
+		return nil
+	}
 	r.snapshotAccess.Lock()
 	defer r.snapshotAccess.Unlock()
 	now := time.Now()
