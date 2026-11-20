@@ -174,9 +174,18 @@ func TestRuntimeSourceProducerDefersRemoteScheduleDuringAPIHandoff(t *testing.T)
 	p := &runtimeSourceProducer{
 		ctx: ctx, remoteIntervals: map[string]time.Duration{"remote": time.Minute}, remoteNext: make(map[string]time.Time),
 	}
-	p.box = &Box{service: services, runtime: &runtimeCoordinator{resources: []*runtimeResource{{sourceProducer: p}}}}
+	p.box = &Box{service: services, runtime: &runtimeCoordinator{
+		resources:      []*runtimeResource{{sourceProducer: p}},
+		canonical:      []byte("{}"),
+		currentSources: []runtimeSourceSnapshot{{identity: "inline"}},
+	}}
 	if wait, retry := p.refresh(); wait != nil || !retry || len(p.remoteNext) != 0 {
 		t.Fatalf("pending handoff did not defer source work: retry=%t, scheduled=%d", retry, len(p.remoteNext))
+	}
+	lookupAllocs := testing.AllocsPerRun(40, func() { p.box.runtimeAPIHandoffPending() })
+	pendingAllocs := testing.AllocsPerRun(40, func() { p.refresh() })
+	if pendingAllocs > lookupAllocs {
+		t.Fatalf("pending handoff allocated source snapshots: refresh=%v lookup=%v", pendingAllocs, lookupAllocs)
 	}
 	api.pending = false
 	if wait, retry := p.refresh(); wait != nil || retry || p.remoteNext["remote"].IsZero() {

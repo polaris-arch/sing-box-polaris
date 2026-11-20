@@ -201,8 +201,10 @@ func (p *runtimeSourceProducer) refresh() (<-chan struct{}, bool) {
 		return done, true
 	}
 	expected := c.active
-	content := append([]byte(nil), c.canonical...)
-	previous := append([]runtimeSourceSnapshot(nil), c.currentSources...)
+	// Publication replaces both slices. Refresh and Plan only read these
+	// snapshots, so an API handoff retry does not need to copy them.
+	content := c.canonical
+	previous := c.currentSources
 	rootDigest := c.rootDigest
 	active := false
 	for _, r := range c.resources {
