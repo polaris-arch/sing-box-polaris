@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/fs"
 	"net/http"
 	"net/url"
 	"path/filepath"
@@ -40,28 +39,9 @@ func runtimeReadSource(ctx context.Context, path string) ([]byte, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	file, err := filemanager.Open(ctx, path)
+	content, err := srs.ReadFile(ctx, path, runtimeSourceByteLimit)
 	if err != nil {
 		return nil, err
-	}
-	defer file.Close()
-	statFile, ok := any(file).(interface{ Stat() (fs.FileInfo, error) })
-	if !ok {
-		return nil, fmt.Errorf("source lacks regular-file identity")
-	}
-	info, err := statFile.Stat()
-	if err != nil || !info.Mode().IsRegular() {
-		return nil, fmt.Errorf("source is not a regular file")
-	}
-	if info.Size() > runtimeSourceByteLimit {
-		return nil, fmt.Errorf("source exceeds bounded size")
-	}
-	content, err := io.ReadAll(io.LimitReader(file, runtimeSourceByteLimit+1))
-	if err != nil {
-		return nil, err
-	}
-	if len(content) > runtimeSourceByteLimit {
-		return nil, fmt.Errorf("source exceeds %d bytes", runtimeSourceByteLimit)
 	}
 	if err := ctx.Err(); err != nil {
 		return nil, err
