@@ -164,9 +164,8 @@ func (p *runtimeSourceProducer) run() {
 				break
 			}
 			if wait == nil {
-				// An original persistence owner may still owe its ACK. There is
-				// no ownership-transfer notification to borrow; retry this same
-				// producer without spinning or requiring another file event.
+				// A persistence or API handoff owner may still be pending.
+				// Retry this producer without requiring another file event.
 				timer := time.NewTimer(250 * time.Millisecond)
 				select {
 				case <-p.ctx.Done():
@@ -215,6 +214,9 @@ func (p *runtimeSourceProducer) refresh() (<-chan struct{}, bool) {
 	c.access.Unlock()
 	if !active || p.ctx.Err() != nil {
 		return nil, false
+	}
+	if p.box.runtimeAPIHandoffPending() {
+		return nil, true
 	}
 	// Avoid spending plan/receipt capacity on watcher noise or startup's
 	// reconciliation signal when the captured bytes are still current.

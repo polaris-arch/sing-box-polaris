@@ -173,6 +173,15 @@ func (s *Box) planRuntimeConfigWithClientImpactPolicy(ctx context.Context, actor
 	return s.planRuntimeConfigInternal(ctx, actor, expected, content, version, nil, selectorIntents...)
 }
 
+func (s *Box) runtimeAPIHandoffPending() bool {
+	for _, member := range s.service.Services() {
+		if owner, ok := member.(interface{ RuntimeAPIHandoffPending() bool }); ok && owner.RuntimeAPIHandoffPending() {
+			return true
+		}
+	}
+	return false
+}
+
 // sourceProducer is an unexported capability, never a context value, RPC flag
 // or actor-name shortcut. Public callers retain their original policy path.
 func (s *Box) planRuntimeConfigInternal(ctx context.Context, actor string, expected RuntimeIdentity, content []byte, version RuntimeClientImpactPolicyVersion, sourceProducer *runtimeSourceProducer, selectorIntents ...RuntimeSelectorIntent) (RuntimeConfigPlan, error) {
@@ -190,10 +199,8 @@ func (s *Box) planRuntimeConfigInternal(ctx context.Context, actor string, expec
 	if coordinator == nil {
 		return plan, errors.New("runtime configuration adapter is unavailable")
 	}
-	for _, member := range s.service.Services() {
-		if owner, ok := member.(interface{ RuntimeAPIHandoffPending() bool }); ok && owner.RuntimeAPIHandoffPending() {
-			return plan, errors.New("API handoff or cleanup remains pending; reconcile the original transaction")
-		}
+	if s.runtimeAPIHandoffPending() {
+		return plan, errors.New("API handoff or cleanup remains pending; reconcile the original transaction")
 	}
 	coordinator.access.Lock()
 	if coordinator.initialPhase != 2 || coordinator.stopped || coordinator.active != expected {

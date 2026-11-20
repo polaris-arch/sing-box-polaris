@@ -10,10 +10,13 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/sagernet/sing-box/adapter"
+	boxService "github.com/sagernet/sing-box/adapter/service"
 	"github.com/sagernet/sing-box/common/srs"
 	C "github.com/sagernet/sing-box/constant"
+	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
 	R "github.com/sagernet/sing-box/route/rule"
 	"github.com/sagernet/sing/common/json"
@@ -146,6 +149,38 @@ func TestRuntimeSourceSignalCoalescesAndStopsAdmission(t *testing.T) {
 	p.signal()
 	if len(p.changed) != 0 {
 		t.Fatal("stopped producer admitted work")
+	}
+}
+
+type runtimeSourcePendingAPI struct {
+	boxService.Adapter
+	pending bool
+}
+
+func (*runtimeSourcePendingAPI) Start(adapter.StartStage, *adapter.Scope) error { return nil }
+func (s *runtimeSourcePendingAPI) RuntimeAPIHandoffPending() bool               { return s.pending }
+
+func TestRuntimeSourceProducerDefersRemoteScheduleDuringAPIHandoff(t *testing.T) {
+	ctx := context.Background()
+	api := &runtimeSourcePendingAPI{Adapter: boxService.NewAdapter(C.TypeAPI, "api"), pending: true}
+	registry := boxService.NewRegistry()
+	boxService.Register[option.APIServiceOptions](registry, C.TypeAPI, func(context.Context, log.ContextLogger, string, option.APIServiceOptions) (adapter.Service, error) {
+		return api, nil
+	})
+	services := boxService.NewManager(registry)
+	if err := services.Create(ctx, logger.NOP(), api.Tag(), api.Type(), nil); err != nil {
+		t.Fatal(err)
+	}
+	p := &runtimeSourceProducer{
+		ctx: ctx, remoteIntervals: map[string]time.Duration{"remote": time.Minute}, remoteNext: make(map[string]time.Time),
+	}
+	p.box = &Box{service: services, runtime: &runtimeCoordinator{resources: []*runtimeResource{{sourceProducer: p}}}}
+	if wait, retry := p.refresh(); wait != nil || !retry || len(p.remoteNext) != 0 {
+		t.Fatalf("pending handoff did not defer source work: retry=%t, scheduled=%d", retry, len(p.remoteNext))
+	}
+	api.pending = false
+	if wait, retry := p.refresh(); wait != nil || retry || p.remoteNext["remote"].IsZero() {
+		t.Fatalf("source work was not reconsidered after handoff: retry=%t, scheduled=%d", retry, len(p.remoteNext))
 	}
 }
 
