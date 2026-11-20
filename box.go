@@ -76,8 +76,7 @@ var (
 )
 
 var instanceHost = &boxruntime.Host{
-	PrepareDirectory: prepareWindowsDirectoryDomain,
-	CheckDebug:       checkDebugOptions,
+	CheckDebug: checkDebugOptions,
 	StartDebug: func(options option.DebugOptions) (*http.Server, error) {
 		applyDebugOptions(options)
 		return startDebugHTTPServer(options)

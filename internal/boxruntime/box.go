@@ -175,13 +175,11 @@ func newBox(options Options, constructionScope **adapter.Scope) (*Box, error) {
 		ctx = context.Background()
 	}
 	ctx = service.ContextWithDefaultRegistry(ctx)
-	if options.Host != nil {
-		preparedContext, err := options.Host.PrepareDirectory(ctx, options.Options)
-		if err != nil {
-			return nil, err
-		}
-		ctx = preparedContext
+	preparedContext, err := prepareWindowsDirectoryDomain(ctx, options.Options)
+	if err != nil {
+		return nil, err
 	}
+	ctx = preparedContext
 
 	endpointRegistry := service.FromContext[adapter.EndpointRegistry](ctx)
 	inboundRegistry := service.FromContext[adapter.InboundRegistry](ctx)
