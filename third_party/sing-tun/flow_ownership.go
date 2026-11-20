@@ -68,6 +68,10 @@ type sealedReturn struct {
 }
 
 func (g *sealedReturn) enter() (PortOwnership, bool) {
+	// Reject sealed callbacks before contending with the detach worker.
+	if g.sealed.Load() {
+		return nil, false
+	}
 	g.access.RLock()
 	if g.sealed.Load() {
 		g.access.RUnlock()
