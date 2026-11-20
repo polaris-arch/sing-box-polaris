@@ -11,6 +11,7 @@ import (
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/common/ipset"
 	C "github.com/sagernet/sing-box/constant"
+	"github.com/sagernet/sing-box/internal/runtimeconfig"
 	"github.com/sagernet/sing-box/internal/runtimegraph"
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing-box/route"
@@ -64,7 +65,7 @@ func runtimeConfigNodes(ctx context.Context, options option.Options) ([]runtimeg
 		return runtimegraph.DependencyNode{Name: name, Fingerprint: runtimeDigest(encoded), Dependencies: dependencies}, nil
 	}
 	var sets, transports, outbounds, inbounds []string
-	endpointDNSConsumers := make(map[string][]string)
+	var endpointDNS runtimeconfig.EndpointDNS
 	// Inline provider HTTP clients are owned by the receiving HTTP manager.
 	// Its fingerprint must include them, rather than merely retaining a provider
 	// edge to an unchanged manager with stale captured detours/defaults.
@@ -137,50 +138,9 @@ func runtimeConfigNodes(ctx context.Context, options option.Options) ([]runtimeg
 			server.Tag = fmt.Sprint(i)
 		}
 		name := "dns-transport:" + server.Tag
-		var deps []string
-		var callbackEndpoint string
-		switch value := server.Options.(type) {
-		case *option.OpenConnectDNSServerOptions:
-			callbackEndpoint = value.Endpoint
-		case *option.OpenVPNDNSServerOptions:
-			callbackEndpoint = value.Endpoint
-		}
-		if server.Type == C.DNSTypeOpenConnect || server.Type == C.DNSTypeOpenVPN {
-			if callbackEndpoint == "" {
-				return nil, nil, fmt.Errorf("endpoint DNS requires an explicit endpoint tag")
-			}
-			deps = append(deps, "endpoint:"+callbackEndpoint)
-			endpointDNSConsumers[callbackEndpoint] = append(endpointDNSConsumers[callbackEndpoint], name)
-		}
-		if resolved, ok := server.Options.(*option.ResolvedDNSServerOptions); ok {
-			deps = append(deps, "service:"+resolved.Service)
-		}
-		if tailscale, ok := server.Options.(*option.TailscaleDNSServerOptions); ok {
-			if tailscale.Endpoint == "" {
-				return nil, nil, fmt.Errorf("runtime Tailscale DNS requires an explicit endpoint tag")
-			}
-			// The transport captures both the endpoint subscription and DNS router
-			// used by the original child's immutable resolver snapshots.
-			deps = append(deps, "endpoint:"+tailscale.Endpoint, "dns-router")
-		}
-		if wrapper, ok := server.Options.(option.DialerOptionsWrapper); ok {
-			dialOptions := wrapper.TakeDialerOptions()
-			if detour := dialOptions.Detour; detour != "" {
-				deps = append(deps, "outbound:"+detour)
-			}
-			if resolver := dialOptions.DomainResolver; resolver != nil && resolver.Server != "" {
-				deps = append(deps, "dns-transport:"+resolver.Server)
-			}
-		}
-		if remote, ok := server.Options.(option.ServerOptionsWrapper); ok && remote.TakeServerOptions().ServerIsDomain() {
-			// TLS/HTTPS/QUIC embed remote options too. Concrete-type matching only
-			// the plain UDP/TCP option would omit their captured resolver router.
-			if wrapper, ok := server.Options.(option.DialerOptionsWrapper); ok {
-				dialOptions := wrapper.TakeDialerOptions()
-				if dialOptions.Detour == "" || dialOptions.DomainResolver != nil {
-					deps = append(deps, "dns-router")
-				}
-			}
+		deps, err := endpointDNS.DNSDependencies(server, name)
+		if err != nil {
+			return nil, nil, err
 		}
 		node, err := makeNode(name, &server, deps, true)
 		if err != nil {
@@ -279,22 +239,7 @@ func runtimeConfigNodes(ctx context.Context, options option.Options) ([]runtimeg
 			endpoint.Tag = fmt.Sprint(i)
 		}
 		name := "endpoint:" + endpoint.Tag
-		// Endpoint DNS transports register callbacks into the original endpoint.
-		// Both ends must be recreated together, never overwrite a borrowed owner.
-		deps := append([]string(nil), endpointDNSConsumers[endpoint.Tag]...)
-		if wrapper, ok := endpoint.Options.(option.DialerOptionsWrapper); ok {
-			dial := wrapper.TakeDialerOptions()
-			if dial.Detour != "" {
-				deps = append(deps, "outbound:"+dial.Detour)
-			}
-			// Peer/control hosts and endpoint-owned DNS operations use their captured
-			// graph, including background sessions independent of an inbound request.
-			deps = append(deps, "dns-router")
-			if dial.DomainResolver != nil && dial.DomainResolver.Server != "" {
-				deps = append(deps, "dns-transport:"+dial.DomainResolver.Server)
-			}
-		}
-		node, err := makeNode(name, &endpoint, deps, true)
+		node, err := makeNode(name, &endpoint, endpointDNS.EndpointDependencies(endpoint), true)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -612,24 +557,13 @@ func runtimeConfigNodes(ctx context.Context, options option.Options) ([]runtimeg
 			configs[name] = config
 		}
 	}
-	// Outbound references may name an endpoint. Normalize only after the
-	// complete inventory exists, and reject ambiguous namespaces before creation.
-	endpointNames := make(map[string]string)
-	for name, config := range configs {
-		if config.endpoint != nil {
-			if _, duplicate := configs["outbound:"+config.endpoint.Tag]; duplicate {
-				return nil, nil, fmt.Errorf("duplicate outbound/endpoint tag: %s", config.endpoint.Tag)
-			}
-			endpointNames["outbound:"+config.endpoint.Tag] = name
-		}
+	nodes := make([]runtimegraph.DependencyNode, 0, len(configs))
+	for _, config := range configs {
+		nodes = append(nodes, config.node)
 	}
-	for name, config := range configs {
-		for i, dependency := range config.node.Dependencies {
-			if endpointName, ok := endpointNames[dependency]; ok {
-				config.node.Dependencies[i] = endpointName
-			}
-		}
-		configs[name] = config
+	// The nodes and constructor inputs share their dependency slices.
+	if err := runtimeconfig.ResolveEndpointReferences(nodes); err != nil {
+		return nil, nil, err
 	}
 	for _, name := range realmNodes {
 		// Ordinary ownership SCCs (e.g. DNS/direct) remain valid. A Realm
@@ -661,10 +595,6 @@ func runtimeConfigNodes(ctx context.Context, options option.Options) ([]runtimeg
 				return nil, nil, err
 			}
 		}
-	}
-	var nodes []runtimegraph.DependencyNode
-	for _, config := range configs {
-		nodes = append(nodes, config.node)
 	}
 	sort.Slice(nodes, func(i, j int) bool { return nodes[i].Name < nodes[j].Name })
 	return nodes, configs, nil

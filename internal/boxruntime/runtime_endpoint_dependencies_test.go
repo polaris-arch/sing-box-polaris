@@ -2,6 +2,7 @@ package boxruntime
 
 import (
 	"context"
+	"slices"
 	"testing"
 
 	C "github.com/sagernet/sing-box/constant"
@@ -18,8 +19,12 @@ func TestRuntimeEndpointReferencesUseActualEndpointCohort(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if configs["endpoint:vpn"].endpoint == nil {
-		t.Fatal("endpoint inventory absent")
+	endpoint := configs["endpoint:vpn"].endpoint
+	if endpoint == nil || endpoint.Tag != "vpn" || endpoint.Type != C.TypeWireGuard {
+		t.Fatal("resolved endpoint lost its constructor input")
+	}
+	if dependencies := configs["outbound:select"].node.Dependencies; !slices.Equal(dependencies, []string{"endpoint:vpn"}) {
+		t.Fatal("selector constructor inventory lost the resolved endpoint reference:", dependencies)
 	}
 	found := false
 	for _, node := range nodes {
