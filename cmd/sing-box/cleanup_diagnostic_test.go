@@ -1,17 +1,14 @@
 package main
 
 import (
-	"errors"
 	"strings"
 	"testing"
 )
 
-func TestCleanupDiagnosticPanicDoesNotMaskCloseError(t *testing.T) {
-	original := errors.New("original close failure")
-	result := original
+func TestCleanupDiagnosticPanicUsesFixedFallback(t *testing.T) {
 	message := runtimeCleanupDiagnosticMessage(func() any { panic("private token and address") })
-	if result != original || message != "runtime cleanup snapshot encoding unavailable" {
-		t.Fatal("diagnostic changed original failure")
+	if message != "runtime cleanup snapshot encoding unavailable" {
+		t.Fatal("diagnostic did not use the fixed fallback")
 	}
 	if strings.Contains(message, "private") {
 		t.Fatal("diagnostic disclosed panic")
