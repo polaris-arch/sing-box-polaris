@@ -45,12 +45,8 @@ func RegistryTransport(registry *dns.TransportRegistry) {
 }
 
 type DNSTransport struct {
-	idleAccess             sync.Mutex
-	disableIdleConnections bool
-	idleResolvers          map[adapter.IdleConnectionKeeper]struct{}
-	idleCleanupErr         error
-	idleWork               lifecycle.Work
-	runtime                *runtimeDNSState
+	idleWork lifecycle.IdleResolvers
+	runtime  *runtimeDNSState
 	dns.TransportAdapter
 	ctx                    context.Context
 	logger                 logger.ContextLogger
@@ -134,10 +130,7 @@ func (t *DNSTransport) closeLegacyDNS() error {
 	if resolverScope != nil {
 		scopeErr = resolverScope.Close()
 	}
-	t.idleAccess.Lock()
-	childErr := t.idleCleanupErr
-	t.idleAccess.Unlock()
-	return errors.Join(scopeErr, childErr)
+	return errors.Join(scopeErr, t.idleWork.CleanupError())
 }
 
 func (t *DNSTransport) Reset() {

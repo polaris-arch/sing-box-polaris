@@ -1,30 +1,33 @@
-package openconnect
+package lifecycle
 
 import (
 	"context"
 	"errors"
 	"strings"
-	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/sagernet/sing-box/adapter"
-
-	mDNS "github.com/miekg/dns"
+	"github.com/sagernet/sing-box/log"
 )
+
+func fixtureEndpointDNS(t *testing.T) *EndpointResolvers {
+	t.Helper()
+	dns := new(EndpointResolvers)
+	if err := dns.Init(context.Background(), log.NewNOPFactory().Logger(), nil, nil); err != nil {
+		t.Fatal(err)
+	}
+	return dns
+}
 
 type endpointDNSIdleResolver struct {
 	adapter.DNSTransport
 	keep         atomic.Bool
 	idleCalls    atomic.Int32
-	resetCalls   atomic.Int32
 	closed       atomic.Int32
-	active       atomic.Int32
 	cleanupErr   error
 	startErr     error
-	access       sync.Mutex
-	callback     func(*mDNS.Msg, error)
 	startEntered chan struct{}
 	startRelease chan struct{}
 	idleEntered  chan struct{}
@@ -40,7 +43,6 @@ func (r *endpointDNSIdleResolver) Start(_ adapter.StartStage, scope *adapter.Sco
 	return r.startErr
 }
 
-func (r *endpointDNSIdleResolver) Reset()                           { r.resetCalls.Add(1) }
 func (r *endpointDNSIdleResolver) SetKeepIdleConnections(keep bool) { r.keep.Store(keep) }
 func (r *endpointDNSIdleResolver) CloseIdleConnections() {
 	r.idleCalls.Add(1)
@@ -48,30 +50,6 @@ func (r *endpointDNSIdleResolver) CloseIdleConnections() {
 		close(r.idleEntered)
 		<-r.idleRelease
 	}
-}
-
-func (r *endpointDNSIdleResolver) ExchangeAsync(_ context.Context, _ *mDNS.Msg, callback func(*mDNS.Msg, error)) {
-	r.access.Lock()
-	r.callback = callback
-	r.active.Add(1)
-	r.access.Unlock()
-}
-
-func (r *endpointDNSIdleResolver) finish() {
-	r.access.Lock()
-	callback := r.callback
-	r.callback = nil
-	r.active.Add(-1)
-	r.access.Unlock()
-	response := new(mDNS.Msg)
-	response.Response = true
-	callback(response, nil)
-}
-
-func newEndpointDNSIdleFixture() *DNSTransport {
-	ctx, cancel := context.WithCancel(context.Background())
-	producer, stop := context.WithCancel(ctx)
-	return &DNSTransport{acceptDefaultResolvers: true, operationCtx: ctx, operationCancel: cancel, producerCtx: producer, producerCancel: stop}
 }
 
 func waitEndpointDNSIdle(t *testing.T, condition func() bool) {
@@ -89,56 +67,18 @@ func waitEndpointDNSIdle(t *testing.T, condition func() bool) {
 	}
 }
 
-func TestEndpointDNSIdleControlsPreserveActiveQuery(t *testing.T) {
-	dns := newEndpointDNSIdleFixture()
-	scope := adapter.NewScope(context.Background(), nil)
-	defer scope.Close()
-	resolver := new(endpointDNSIdleResolver)
-	if err := dns.startDNSResolver(resolver, scope); err != nil {
-		t.Fatal(err)
-	}
-	if !resolver.keep.Load() {
-		t.Fatal("default idle policy must preserve reuse")
-	}
-	dns.defaultResolvers = []adapter.DNSTransport{resolver}
-	var completed atomic.Bool
-	message := &mDNS.Msg{Question: []mDNS.Question{{Name: "example.", Qtype: mDNS.TypeA, Qclass: mDNS.ClassINET}}}
-	dns.ExchangeAsync(context.Background(), message, func(_ *mDNS.Msg, err error) {
-		if err != nil {
-			t.Errorf("active query failed: %v", err)
-		}
-		completed.Store(true)
-	})
-	dns.CloseIdleConnections()
-	dns.SetKeepIdleConnections(false)
-	if completed.Load() || resolver.active.Load() != 1 || resolver.closed.Load() != 0 || resolver.resetCalls.Load() != 0 {
-		t.Fatal("idle control interrupted or reset an active query")
-	}
-	if resolver.idleCalls.Load() != 1 || resolver.keep.Load() {
-		t.Fatal("idle control was not forwarded")
-	}
-	resolver.finish()
-	if !completed.Load() {
-		t.Fatal("original query callback was lost")
-	}
-	dns.SetKeepIdleConnections(true)
-	if !resolver.keep.Load() {
-		t.Fatal("idle reuse could not be restored")
-	}
-}
-
 func TestEndpointDNSIdlePolicyReachesFutureAndUnroutedChildren(t *testing.T) {
-	dns := newEndpointDNSIdleFixture()
+	dns := fixtureEndpointDNS(t)
 	dns.SetKeepIdleConnections(false)
 	firstScope := adapter.NewScope(context.Background(), nil)
 	secondScope := adapter.NewScope(context.Background(), nil)
 	defer firstScope.Close()
 	defer secondScope.Close()
 	first, second := new(endpointDNSIdleResolver), new(endpointDNSIdleResolver)
-	if err := dns.startDNSResolver(first, firstScope); err != nil {
+	if err := dns.StartResolver(first, firstScope); err != nil {
 		t.Fatal(err)
 	}
-	if err := dns.startDNSResolver(second, secondScope); err != nil {
+	if err := dns.StartResolver(second, secondScope); err != nil {
 		t.Fatal(err)
 	}
 	// Neither resolver is in a route/default list: bootstrap and candidate
@@ -164,12 +104,12 @@ func TestEndpointDNSIdlePolicyReachesFutureAndUnroutedChildren(t *testing.T) {
 }
 
 func TestEndpointDNSIdlePolicyChangesDuringChildStart(t *testing.T) {
-	dns := newEndpointDNSIdleFixture()
+	dns := fixtureEndpointDNS(t)
 	scope := adapter.NewScope(context.Background(), nil)
 	defer scope.Close()
 	resolver := &endpointDNSIdleResolver{startEntered: make(chan struct{}), startRelease: make(chan struct{})}
 	started := make(chan error, 1)
-	go func() { started <- dns.startDNSResolver(resolver, scope) }()
+	go func() { started <- dns.StartResolver(resolver, scope) }()
 	<-resolver.startEntered
 	dns.SetKeepIdleConnections(false)
 	close(resolver.startRelease)
@@ -182,10 +122,10 @@ func TestEndpointDNSIdlePolicyChangesDuringChildStart(t *testing.T) {
 }
 
 func TestEndpointDNSIdleCallPrecedesChildCleanup(t *testing.T) {
-	dns := newEndpointDNSIdleFixture()
+	dns := fixtureEndpointDNS(t)
 	scope := adapter.NewScope(context.Background(), nil)
 	resolver := &endpointDNSIdleResolver{idleEntered: make(chan struct{}), idleRelease: make(chan struct{})}
-	if err := dns.startDNSResolver(resolver, scope); err != nil {
+	if err := dns.StartResolver(resolver, scope); err != nil {
 		t.Fatal(err)
 	}
 	idleDone := make(chan struct{})
@@ -217,19 +157,19 @@ func TestEndpointDNSIdleCallPrecedesChildCleanup(t *testing.T) {
 }
 
 func TestEndpointDNSShutdownJoinsIdleCall(t *testing.T) {
-	dns := newEndpointDNSIdleFixture()
+	dns := fixtureEndpointDNS(t)
 
 	scope := adapter.NewScope(context.Background(), nil)
 	defer scope.Close()
 	resolver := &endpointDNSIdleResolver{idleEntered: make(chan struct{}), idleRelease: make(chan struct{})}
-	if err := dns.startDNSResolver(resolver, scope); err != nil {
+	if err := dns.StartResolver(resolver, scope); err != nil {
 		t.Fatal(err)
 	}
 	idleDone := make(chan struct{})
 	go func() { defer close(idleDone); dns.CloseIdleConnections() }()
 	<-resolver.idleEntered
 	closed := make(chan error, 1)
-	go func() { closed <- dns.close() }()
+	go func() { closed <- dns.Close() }()
 	waitEndpointDNSIdle(t, dns.work.Sealed)
 	select {
 	case <-closed:
@@ -255,20 +195,20 @@ func (*endpointDNSNonIdleResolver) Start(adapter.StartStage, *adapter.Scope) err
 }
 
 func TestEndpointDNSRejectsChildWithoutIdleContract(t *testing.T) {
-	dns := newEndpointDNSIdleFixture()
+	dns := fixtureEndpointDNS(t)
 	scope := adapter.NewScope(context.Background(), nil)
 	defer scope.Close()
-	if err := dns.startDNSResolver(new(endpointDNSNonIdleResolver), scope); err == nil || err.Error() != "endpoint DNS resolver requires idle-only connection control" {
+	if err := dns.StartResolver(new(endpointDNSNonIdleResolver), scope); err == nil || err.Error() != "endpoint DNS resolver requires idle-only connection control" {
 		t.Fatalf("child without an idle-only contract was accepted: %v", err)
 	}
 }
 
 func TestEndpointDNSChildStartOutlivesRetiringScope(t *testing.T) {
-	dns := newEndpointDNSIdleFixture()
+	dns := fixtureEndpointDNS(t)
 	scope := adapter.NewScope(context.Background(), nil)
 	resolver := &endpointDNSIdleResolver{startEntered: make(chan struct{}), startRelease: make(chan struct{})}
 	started := make(chan error, 1)
-	go func() { started <- dns.startDNSResolver(resolver, scope) }()
+	go func() { started <- dns.StartResolver(resolver, scope) }()
 	<-resolver.startEntered
 	if err := scope.Close(); err != nil {
 		t.Fatal(err)
@@ -290,7 +230,7 @@ func TestEndpointDNSChildStartOutlivesRetiringScope(t *testing.T) {
 }
 
 func TestEndpointDNSLateChildCleanupFailureStaysOwned(t *testing.T) {
-	dns := newEndpointDNSIdleFixture()
+	dns := fixtureEndpointDNS(t)
 
 	scope := adapter.NewScope(context.Background(), nil)
 	resolver := &endpointDNSIdleResolver{
@@ -298,7 +238,7 @@ func TestEndpointDNSLateChildCleanupFailureStaysOwned(t *testing.T) {
 		cleanupErr: errors.New("late child cleanup failed"),
 	}
 	started := make(chan error, 1)
-	go func() { started <- dns.startDNSResolver(resolver, scope) }()
+	go func() { started <- dns.StartResolver(resolver, scope) }()
 	<-resolver.startEntered
 	if err := scope.Close(); err != nil {
 		t.Fatal(err)
@@ -307,18 +247,18 @@ func TestEndpointDNSLateChildCleanupFailureStaysOwned(t *testing.T) {
 	if err := <-started; err == nil || !strings.Contains(err.Error(), "late child cleanup failed") {
 		t.Fatalf("late cleanup failure lost: %v", err)
 	}
-	first := dns.close()
-	if first == nil || !strings.Contains(first.Error(), "late child cleanup failed") || dns.close() != first {
+	first := dns.Close()
+	if first == nil || !strings.Contains(first.Error(), "late child cleanup failed") || dns.Close() != first {
 		t.Fatalf("wrapper forgot the uncertain late child cleanup: %v", first)
 	}
 }
 
 func TestEndpointDNSFailedChildStartRemainsScopeOwned(t *testing.T) {
-	dns := newEndpointDNSIdleFixture()
+	dns := fixtureEndpointDNS(t)
 	scope := adapter.NewScope(context.Background(), nil)
 	failure := errors.New("child start failed")
 	resolver := &endpointDNSIdleResolver{startErr: failure}
-	if err := dns.startDNSResolver(resolver, scope); !errors.Is(err, failure) {
+	if err := dns.StartResolver(resolver, scope); !errors.Is(err, failure) {
 		t.Fatalf("start error lost: %v", err)
 	}
 	dns.CloseIdleConnections()
@@ -330,5 +270,54 @@ func TestEndpointDNSFailedChildStartRemainsScopeOwned(t *testing.T) {
 	}
 	if resolver.closed.Load() != 1 {
 		t.Fatal("failed child initialization escaped its owner")
+	}
+}
+
+func TestEndpointDNSCloseWaitsForCallback(t *testing.T) {
+	dns := fixtureEndpointDNS(t)
+	release, ok := dns.work.Reserve()
+	if !ok {
+		t.Fatal("reserve")
+	}
+	done := make(chan struct{})
+	go func() { defer close(done); _ = dns.Close() }()
+	<-dns.operationCtx.Done()
+	select {
+	case <-done:
+		t.Fatal("close skipped callback")
+	default:
+	}
+	release()
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("callback not joined")
+	}
+}
+
+func TestEndpointDNSRetirementFailureRemainsSticky(t *testing.T) {
+	dns := fixtureEndpointDNS(t)
+	scope, err := dns.NewScope()
+	if err != nil {
+		t.Fatal(err)
+	}
+	scope.Add(func() error { return errors.New("socket close failed") })
+	dns.Retire(scope)
+	first := dns.Close()
+	if first == nil || dns.Close() != first {
+		t.Fatal("cohort failure forgotten")
+	}
+}
+
+func TestEndpointDNSProducerCancellationLinksExactOwner(t *testing.T) {
+	dns := fixtureEndpointDNS(t)
+	defer dns.Close()
+	ctx, cancel := context.WithCancel(context.Background())
+	dns.LinkProducer(ctx)
+	cancel()
+	select {
+	case <-dns.producerCtx.Done():
+	case <-time.After(5 * time.Second):
+		t.Fatal("retiring endpoint failed to interrupt configuration producer")
 	}
 }

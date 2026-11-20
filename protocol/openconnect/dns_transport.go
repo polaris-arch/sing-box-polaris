@@ -31,27 +31,10 @@ func RegisterDNSTransport(registry *dns.TransportRegistry) {
 }
 
 type DNSTransport struct {
-	idleAccess             sync.Mutex
-	disableIdleConnections bool
-	idleResolvers          map[adapter.IdleConnectionKeeper]struct{}
-	idleCleanupErr         error
-	work                   lifecycle.Work
-	producers              lifecycle.Work
-	scopes                 lifecycle.Scopes
-	resource               adapter.RuntimeResourceSource
-	operationCtx           context.Context
-	operationCancel        context.CancelFunc
-	producerCtx            context.Context
-	producerCancel         context.CancelFunc
-	closeOnce              sync.Once
-	closeErr               error
-	constructionOwned      bool
-	endpointUnlink         func()
-	startOnce              sync.Once
-	startErr               error
+	dnsLifecycle lifecycle.EndpointResolvers
+	resource     adapter.RuntimeResourceSource
 
 	dns.TransportAdapter
-	ctx                    context.Context
 	logger                 logger.ContextLogger
 	endpointTag            string
 	acceptDefaultResolvers bool
@@ -79,7 +62,6 @@ func NewDNSTransport(ctx context.Context, logger log.ContextLogger, tag string, 
 	}
 	t := &DNSTransport{
 		TransportAdapter:       dns.NewTransportAdapter(C.DNSTypeOpenConnect, tag, nil),
-		ctx:                    ctx,
 		logger:                 logger,
 		endpointTag:            options.Endpoint,
 		acceptDefaultResolvers: options.AcceptDefaultResolvers,
@@ -87,28 +69,16 @@ func NewDNSTransport(ctx context.Context, logger log.ContextLogger, tag string, 
 		endpointManager:        service.FromContext[adapter.EndpointManager](ctx),
 	}
 	t.resource, _ = adapter.RuntimeResourceSourceFromContext(ctx)
-	t.operationCtx, t.operationCancel = context.WithCancel(ctx)
-	t.producerCtx, t.producerCancel = context.WithCancel(t.operationCtx)
-	var err error
-	t.constructionOwned, err = lifecycle.ConstructionCleanup(ctx, t.close)
-	if err != nil {
+	if err := t.dnsLifecycle.Init(ctx, logger, t.snapshotResolvers, t.clearResolverSnapshot); err != nil {
 		return nil, err
 	}
 	return t, nil
 }
 
 func (t *DNSTransport) Start(stage adapter.StartStage, scope *adapter.Scope) error {
-	t.startOnce.Do(func() {
-		if !t.constructionOwned {
-			_, t.startErr = lifecycle.ConstructionCleanup(adapter.ContextWithConstructionScope(context.Background(), scope), t.close)
-		}
-	})
-	if t.startErr != nil {
-		return t.startErr
-	}
-	done, ok := t.work.Reserve()
-	if !ok {
-		return lifecycle.ErrStopped
+	done, err := t.dnsLifecycle.ReserveStart(scope)
+	if err != nil {
+		return err
 	}
 	defer done()
 
@@ -127,7 +97,7 @@ func (t *DNSTransport) Start(stage adapter.StartStage, scope *adapter.Scope) err
 		return E.New("endpoint DNS callback requires the same runtime resource cohort")
 	}
 	if openConnectEndpoint.runtime != nil {
-		t.producerCtx, t.endpointUnlink = lifecycle.LinkCancellation(t.producerCtx, openConnectEndpoint.runtime.ctx)
+		t.dnsLifecycle.LinkProducer(openConnectEndpoint.runtime.ctx)
 	}
 
 	openConnectEndpoint.dnsTransportAccess.Lock()
@@ -154,14 +124,14 @@ func (t *DNSTransport) Start(stage adapter.StartStage, scope *adapter.Scope) err
 }
 
 func (t *DNSTransport) updateConfiguration(configuration openconnecttransport.Configuration) {
-	done, ok := t.producers.Reserve()
+	done, ok := t.dnsLifecycle.ReserveProducer()
 	if !ok {
 		return
 	}
 	defer done()
 	t.updateAccess.Lock()
 	defer t.updateAccess.Unlock()
-	if err := t.scopes.WaitReady(t.producerCtx); err != nil {
+	if err := t.dnsLifecycle.WaitReady(); err != nil {
 		return
 	}
 
@@ -251,14 +221,14 @@ func (t *DNSTransport) updateConfiguration(configuration openconnecttransport.Co
 		defaultResolvers = nil
 	}
 
-	resolverScope, scopeErr := t.scopes.New(t.operationCtx, t.logger)
+	resolverScope, scopeErr := t.dnsLifecycle.NewScope()
 	if scopeErr != nil {
 		return
 	}
 	for _, resolver := range resolverByAddress {
-		err := t.startDNSResolver(resolver, resolverScope)
+		err := t.dnsLifecycle.StartResolver(resolver, resolverScope)
 		if err != nil {
-			t.scopes.Retire(resolverScope)
+			t.dnsLifecycle.Retire(resolverScope)
 			t.logger.Error(E.Cause(err, "start DNS resolver"))
 			return
 		}
@@ -266,7 +236,7 @@ func (t *DNSTransport) updateConfiguration(configuration openconnecttransport.Co
 	t.access.Lock()
 	if t.closed {
 		t.access.Unlock()
-		t.scopes.Retire(resolverScope)
+		t.dnsLifecycle.Retire(resolverScope)
 		return
 	}
 	oldResolverScope := t.resolverScope
@@ -277,7 +247,7 @@ func (t *DNSTransport) updateConfiguration(configuration openconnecttransport.Co
 	t.resolverScope = resolverScope
 	t.access.Unlock()
 	if oldResolverScope != nil {
-		t.scopes.Retire(oldResolverScope)
+		t.dnsLifecycle.Retire(oldResolverScope)
 	}
 	if len(resolverByAddress) > 0 {
 		t.logger.Info("updated ", len(routes), " DNS routes and ", len(resolverByAddress), " resolvers")
@@ -287,7 +257,7 @@ func (t *DNSTransport) updateConfiguration(configuration openconnecttransport.Co
 }
 
 func (t *DNSTransport) Reset() {
-	_, done, err := t.work.Operation(context.Background(), t.resource)
+	_, done, err := t.dnsLifecycle.Operation(context.Background(), t.resource)
 	if err != nil {
 		return
 	}
@@ -301,7 +271,7 @@ func (t *DNSTransport) Reset() {
 }
 
 func (t *DNSTransport) ServerAddresses() []netip.Addr {
-	_, done, err := t.work.Operation(context.Background(), t.resource)
+	_, done, err := t.dnsLifecycle.Operation(context.Background(), t.resource)
 	if err != nil {
 		return nil
 	}
@@ -312,7 +282,7 @@ func (t *DNSTransport) ServerAddresses() []netip.Addr {
 }
 
 func (t *DNSTransport) SearchDomains() []string {
-	_, done, err := t.work.Operation(context.Background(), t.resource)
+	_, done, err := t.dnsLifecycle.Operation(context.Background(), t.resource)
 	if err != nil {
 		return nil
 	}
@@ -323,7 +293,7 @@ func (t *DNSTransport) SearchDomains() []string {
 }
 
 func (t *DNSTransport) PreferredDomain(domain string) bool {
-	_, done, err := t.work.Operation(context.Background(), t.resource)
+	_, done, err := t.dnsLifecycle.Operation(context.Background(), t.resource)
 	if err != nil {
 		return false
 	}
@@ -354,18 +324,18 @@ func (t *DNSTransport) Exchange(ctx context.Context, message *mDNS.Msg) (*mDNS.M
 }
 
 func (t *DNSTransport) ExchangeAsync(ctx context.Context, message *mDNS.Msg, callback func(response *mDNS.Msg, err error)) {
-	ctx, releaseCall, err := t.work.Operation(ctx, t.resource)
+	ctx, releaseCall, err := t.dnsLifecycle.Operation(ctx, t.resource)
 	if err != nil {
 		callback(nil, err)
 		return
 	}
 	defer releaseCall()
-	ctx, releaseCallback, err := t.work.Operation(ctx, t.resource)
+	ctx, releaseCallback, err := t.dnsLifecycle.Operation(ctx, t.resource)
 	if err != nil {
 		callback(nil, err)
 		return
 	}
-	ctx, unlink := lifecycle.LinkCancellation(ctx, t.operationCtx)
+	ctx, unlink := lifecycle.LinkCancellation(ctx, t.dnsLifecycle.OperationContext())
 	original := callback
 	var called atomic.Bool
 	callback = func(response *mDNS.Msg, err error) {
@@ -462,6 +432,39 @@ func openConnectDNSExchangers(resolvers []adapter.DNSTransport, message *mDNS.Ms
 			resolver.ExchangeAsync(ctx, message, callback)
 		}
 	})
+}
+
+func (t *DNSTransport) StopRuntimeProducers() {
+	t.dnsLifecycle.StopRuntimeProducers()
+}
+
+func (t *DNSTransport) StopRuntimeOperations() {
+	t.dnsLifecycle.StopRuntimeOperations()
+}
+
+func (t *DNSTransport) SetKeepIdleConnections(keep bool) {
+	t.dnsLifecycle.SetKeepIdleConnections(keep)
+}
+
+func (t *DNSTransport) CloseIdleConnections() {
+	t.dnsLifecycle.CloseIdleConnections()
+}
+
+func (t *DNSTransport) snapshotResolvers() []adapter.DNSTransport {
+	t.access.RLock()
+	defer t.access.RUnlock()
+	return t.collectResolversLocked()
+}
+
+func (t *DNSTransport) clearResolverSnapshot() {
+	t.access.Lock()
+	t.closed = true
+	t.routes = nil
+	t.searchDomains = nil
+	t.serverAddresses = nil
+	t.defaultResolvers = nil
+	t.resolverScope = nil
+	t.access.Unlock()
 }
 
 func (t *DNSTransport) collectResolversLocked() []adapter.DNSTransport {
