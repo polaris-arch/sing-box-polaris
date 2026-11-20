@@ -201,6 +201,10 @@ func (c *NaiveClient) StartOnDemand() error {
 	return nil
 }
 
+func (c *NaiveClient) IsDormant() bool {
+	return clientState(c.state.Load()) == clientStateDormant
+}
+
 func startStateError(state clientState) error {
 	switch state {
 	case clientStateDormant, clientStateStarting:
