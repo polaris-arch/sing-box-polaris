@@ -414,7 +414,7 @@ func runtimeConfigNodes(ctx context.Context, options option.Options) ([]runtimeg
 	}
 	for i := range options.Services {
 		item := options.Services[i]
-		if runtimeStableAPIService(item) {
+		if adapter.RuntimeStableAPIService(item) {
 			continue // Owned once by stable API ingress.
 		}
 		if item.Tag == "" {

@@ -79,7 +79,7 @@ func runtimeConfigCompatibilityWithClientImpactPolicy(ctx context.Context, previ
 				pending("services.api.secret")
 			}
 		}
-		if !runtimeStableAPIService(item) {
+		if !adapter.RuntimeStableAPIService(item) {
 			pending("services")
 			break
 		}

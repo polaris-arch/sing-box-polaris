@@ -10,22 +10,8 @@ import (
 	"sync"
 
 	"github.com/sagernet/sing-box/adapter"
-	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/option"
 )
-
-// The local API is a stable control-plane ingress. It captures no graph leaf:
-// daemon operations and supported dashboard downloads explicitly borrow current
-// graph snapshots. Other dashboard clients and TLS retain the legacy path.
-func runtimeStableAPIService(item option.Service) bool {
-	options, ok := item.Options.(*option.APIServiceOptions)
-	if item.Type != C.TypeAPI || !ok || options.Listen == nil || (!netip.Addr(*options.Listen).Unmap().IsLoopback() || netip.Addr(*options.Listen).Zone() != "") {
-		return false
-	}
-	return options.TLS == nil && runtimeStableDashboard(options.Dashboard) &&
-		options.Detour == "" && options.NetNs == "" && options.BindInterface == "" &&
-		options.RoutingMark == 0 && !options.ReuseAddr && !options.TCPFastOpen && !options.TCPMultiPath
-}
 
 // AcquireRuntimeAPI transfers a current graph reservation plus its publication
 // change signal in the same admission epoch. Callers must join all work using
@@ -52,12 +38,6 @@ func (s *Box) LookupPublicDNS(ctx context.Context, domain string) ([]netip.Addr,
 	return s.dnsRouter.Lookup(ctx, domain, options)
 }
 
-// Only the App's explicit inline detour-only client has a stable adapter. Check
-// the complete structure, including fields deliberately omitted from JSON.
-func runtimeStableDashboard(options *option.APIDashboardOptions) bool {
-	return options == nil || !options.Enabled || adapter.RuntimeDashboardHTTPDetour(options) != ""
-}
-
 // This key lives outside the public named/default HTTP client namespace.
 type runtimeDashboardHTTPKey struct {
 	ServiceTag string
@@ -72,7 +52,7 @@ func runtimeDashboardHTTPConfigs(options option.Options) ([]runtimeDashboardHTTP
 	var clients []runtimeDashboardHTTPConfig
 	seen := make(map[string]bool)
 	for index, item := range options.Services {
-		if !runtimeStableAPIService(item) {
+		if !adapter.RuntimeStableAPIService(item) {
 			continue
 		}
 		tag := item.Tag
@@ -153,7 +133,7 @@ func runtimeAPIHandoffChanges(before, after stdjson.RawMessage) bool {
 func runtimeAPIIdentities(options option.Options, identity RuntimeIdentity) (map[string]adapter.RuntimeAPIIdentity, error) {
 	result := make(map[string]adapter.RuntimeAPIIdentity)
 	for i, item := range options.Services {
-		if !runtimeStableAPIService(item) {
+		if !adapter.RuntimeStableAPIService(item) {
 			continue
 		}
 		tag := item.Tag
@@ -195,7 +175,7 @@ func (s *Box) prepareRuntimeAPI(ctx context.Context, graph *preparedRuntimeGraph
 	previous := s.runtime.options
 	s.runtime.access.Unlock()
 	for i, item := range graph.options.Services {
-		if !runtimeStableAPIService(item) || i >= len(previous.Services) {
+		if !adapter.RuntimeStableAPIService(item) || i >= len(previous.Services) {
 			return errors.New("unsupported API service handoff")
 		}
 		tag := item.Tag

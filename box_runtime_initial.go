@@ -240,7 +240,7 @@ func newRuntimeBox(options Options, scope *adapter.Scope, factory log.Factory, c
 		}
 	}
 	for index, item := range options.Services {
-		if !runtimeStableAPIService(item) {
+		if !adapter.RuntimeStableAPIService(item) {
 			return nil, errors.New("unsupported stable runtime service")
 		}
 		tag := item.Tag
