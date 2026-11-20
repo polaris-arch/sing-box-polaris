@@ -163,3 +163,36 @@ Update interval of rule-set.
     `download_detour` is deprecated in sing-box 1.14.0 and will be removed in sing-box 1.16.0, use `http_client` instead.
 
 Tag of the outbound to download rule-set.
+
+### resource_limits
+
+Optional per-load admission limits for local and remote files. Omitting this object,
+or using zero for an individual field, selects the finite defaults below:
+
+```json
+{
+  "resource_limits": {
+    "input_bytes": 67108864,
+    "decoded_bytes": 268435456,
+    "rules": 100000,
+    "entries": 4000000,
+    "string_bytes": 1048576
+  }
+}
+```
+
+`input_bytes` bounds the entire downloaded/file input, including any container trailer,
+for source and binary formats. The other fields apply to binary SRS decoding: decoded
+zlib bytes, cumulative rules (including logical children), cumulative field/list/IP-range
+entries, and individual string bytes. Domain matcher storage is bounded by decoded bytes;
+these are not a process RSS or execution-time limit. Binary recovery/decompilation also
+checks matcher and IP-range expansion before producing strings or prefix lists.
+IP recovery counts range-to-prefix expansion conservatively (128 budget units per
+prefix, including transient structures); adjacent ranges may merge and use less. Internal memory-mapped caches have a
+separate storage contract and are not governed by these SRS stream limits.
+
+The wire format is unchanged. Files exceeding a limit are rejected rather than truncated;
+a failed reload retains the previously published rules. Large trusted datasets can raise
+individual limits explicitly. Raising limits increases resource exposure; do not use
+unbounded values for untrusted downloads. The Go decoding API also provides
+`ReadContextWithLimits` for trusted tooling needing non-default limits.

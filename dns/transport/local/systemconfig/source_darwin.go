@@ -12,7 +12,9 @@ import (
 	"github.com/sagernet/sing-tun"
 	"github.com/sagernet/sing-tun/dnsinfo"
 	"github.com/sagernet/sing/common"
+	"github.com/sagernet/sing/common/control"
 	M "github.com/sagernet/sing/common/metadata"
+	"github.com/sagernet/sing/common/x/list"
 	"github.com/sagernet/sing/service"
 
 	mDNS "github.com/miekg/dns"
@@ -22,6 +24,7 @@ type Source struct {
 	work             lifecycle.Work
 	closeOnce        sync.Once
 	interfaceMonitor tun.DefaultInterfaceMonitor
+	updateCallback   *list.Element[tun.DefaultInterfaceUpdateCallback]
 	access           sync.Mutex
 	stale            bool
 	interfaceIndex   int
@@ -29,9 +32,15 @@ type Source struct {
 }
 
 func NewSource(ctx context.Context) *Source {
-	return &Source{
+	source := &Source{
 		interfaceMonitor: service.FromContext[adapter.NetworkManager](ctx).InterfaceMonitor(),
 	}
+	// A DNS-only update no longer resets the network, so follow the monitor
+	// directly, as on Windows.
+	if source.interfaceMonitor != nil {
+		source.updateCallback = source.interfaceMonitor.RegisterCallback(func(_ *control.Interface, _ int) { source.Reset() })
+	}
+	return source
 }
 
 func (s *Source) Configuration() *Config {
@@ -76,7 +85,13 @@ func (s *Source) Reset() {
 }
 
 func (s *Source) Close() error {
-	s.closeOnce.Do(func() { s.work.Seal(); s.work.Wait() })
+	s.closeOnce.Do(func() {
+		s.work.Seal()
+		if s.updateCallback != nil {
+			s.interfaceMonitor.UnregisterCallback(s.updateCallback)
+		}
+		s.work.Wait()
+	})
 	return nil
 }
 

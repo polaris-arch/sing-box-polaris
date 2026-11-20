@@ -3,7 +3,11 @@ package outbound
 import (
 	"context"
 	"errors"
+	"net"
+	"os"
+	"sync/atomic"
 	"testing"
+	"time"
 )
 
 func TestRuntimeFinalNestedExternalCloseJoinsPending(t *testing.T) {
@@ -132,5 +136,81 @@ func TestRuntimeFinalPrivateWaiterPanicIsUnknown(t *testing.T) {
 	err := wait()
 	if err == nil || err.Error() != "runtime private connection close wait panicked; completion unknown" {
 		t.Fatalf("panic not fixed unknown: %v", err)
+	}
+}
+
+func TestRuntimeFinalUnsupportedCloseWriteJoinsClose(t *testing.T) {
+	for _, mode := range []string{"external", "owned", "preserved"} {
+		t.Run(mode, func(t *testing.T) {
+			raw := &lifecycleConn{closeEntered: make(chan struct{}), closeContinue: make(chan struct{})}
+			defer func() {
+				select {
+				case <-raw.closeContinue:
+				default:
+					close(raw.closeContinue)
+				}
+			}()
+			var released atomic.Int32
+			var conn net.Conn = &struct{ net.Conn }{raw}
+			switch mode {
+			case "external":
+				conn = WrapRuntimeConn(context.Background(), func() { released.Add(1) }, conn)
+			case "owned":
+				conn, _ = WrapRuntimeOwnedConn(conn)
+			case "preserved":
+				parent, _ := WrapRuntimeOwnedConn(conn)
+				conn = PreserveRuntimeConnClose(&struct{ net.Conn }{parent}, parent)
+			}
+			done := make(chan error, 1)
+			go func() { done <- conn.(interface{ CloseWrite() error }).CloseWrite() }()
+			select {
+			case <-raw.closeEntered:
+			case err := <-done:
+				t.Fatalf("unsupported half-close returned before closing carrier: %v", err)
+			case <-time.After(time.Second):
+				t.Fatal("unsupported half-close did not request carrier close")
+			}
+			select {
+			case err := <-done:
+				t.Fatalf("half-close completed before actual cleanup: %v", err)
+			default:
+			}
+			close(raw.closeContinue)
+			select {
+			case err := <-done:
+				if err != nil {
+					t.Fatal(err)
+				}
+			case <-time.After(time.Second):
+				t.Fatal("half-close joined its own admitted method")
+			}
+			wait, _ := RuntimeConnectionCloseWaiter(conn)
+			if err := wait(); err != nil {
+				t.Fatal(err)
+			}
+			if raw.closes.Load() != 1 || (mode == "external" && released.Load() != 1) {
+				t.Fatal("fallback close or release was not exactly once")
+			}
+		})
+	}
+}
+
+func TestRuntimeFinalUnsupportedCloseWritePreservesCloseFailure(t *testing.T) {
+	for _, owned := range []bool{false, true} {
+		raw := &lifecycleConn{closeErr: os.ErrInvalid}
+		var released atomic.Int32
+		var conn net.Conn
+		if owned {
+			conn, _ = WrapRuntimeOwnedConn(raw)
+		} else {
+			conn = WrapRuntimeConn(context.Background(), func() { released.Add(1) }, raw)
+		}
+		if err := conn.(interface{ CloseWrite() error }).CloseWrite(); !errors.Is(err, os.ErrInvalid) {
+			t.Fatalf("actual close error was hidden: %v", err)
+		}
+		wait, _ := RuntimeConnectionCloseWaiter(conn)
+		if err := wait(); !errors.Is(err, os.ErrInvalid) || raw.closes.Load() != 1 || released.Load() != 0 {
+			t.Fatalf("failed cleanup lost its sticky result or released ownership: %v", err)
+		}
 	}
 }

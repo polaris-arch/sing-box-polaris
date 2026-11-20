@@ -87,6 +87,48 @@ func retirementPureHost(t *testing.T) (*StartedService, *[]*retirementTestEndpoi
 	return host, created
 }
 
+func TestTailscaleStartupCohortRetainsObservedEmptyParentsAcrossStrictReloads(t *testing.T) {
+	host, _ := retirementPureHost(t)
+	var parents []string
+	for _, config := range []string{`{"log":{"disabled":true}}`, `{ "log": {"disabled":true} }`, `{"log": {"disabled":true}}`} {
+		cohort := startWithTailscaleCohort(t, host, config)
+		if len(cohort.Parent.Nodes) != 0 || len(cohort.InitialChildren) != 0 {
+			t.Fatalf("unexpected empty startup cohort: %+v", cohort)
+		}
+		parents = append(parents, cohort.Parent.RunNonce)
+	}
+	if err := host.CloseService(); err != nil {
+		t.Fatal(err)
+	}
+	if got := retirementExportNonces(t, host.ExportTailscaleStoreRetirement()); !reflect.DeepEqual(parents, got) {
+		t.Fatalf("observed empty parent nonce history changed: got %v, want %v", got, parents)
+	}
+	for _, run := range host.snapshotTailscaleRetirementRuns() {
+		if row := run.snapshot(); !row.CensusComplete || row.Terminal != "NoStoreConstruction" || len(row.Nodes) != 0 {
+			t.Fatalf("original empty parent never reached actual terminal: %+v", row)
+		}
+	}
+}
+
+func startWithTailscaleCohort(t *testing.T, host *StartedService, config string) tailscaleStartupCohort {
+	t.Helper()
+	payload, err := host.StartOrReloadServiceWithTailscaleStartup(context.Background(), config, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var cohort tailscaleStartupCohort
+	if err := json.Unmarshal([]byte(payload), &cohort); err != nil {
+		t.Fatal(err)
+	}
+	digest := sha256.Sum256([]byte(config))
+	if !cohort.CensusComplete || cohort.ContractVersion != tailscaleStartupCohortVersion ||
+		cohort.Parent.ConfigDigest != hex.EncodeToString(digest[:]) || len(cohort.Parent.RunNonce) != 64 ||
+		cohort.Parent.CensusComplete || cohort.Parent.Terminal != "Unknown" {
+		t.Fatalf("invalid active startup receipt: %s", payload)
+	}
+	return cohort
+}
+
 func TestTailscaleStoreActualInstanceUnstartedExportAndRetainedRuns(t *testing.T) {
 	host, created := retirementPureHost(t)
 	// Exercise the original physical store census through the real legacy

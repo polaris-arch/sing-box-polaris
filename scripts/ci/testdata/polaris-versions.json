@@ -4,11 +4,6 @@
     "1.15.0-polaris-alpha.12",
     "1.15.0-polaris-alpha.12.0",
     "1.15.0-polaris-alpha.12.1",
-    "1.15.0-polaris-alpha.12.2",
-    "1.15.0-polaris-alpha.12.3",
-    "1.15.0-polaris-alpha.12.4",
-    "1.15.0-polaris-alpha.12.5",
-    "1.15.0-polaris-alpha.12.6",
     "1.15.0-polaris-alpha.12.10",
     "1.15.0-polaris-alpha.12.123",
     "1.15.0-polaris-alpha.13",
@@ -34,10 +29,15 @@
     "1.15.0-polaris-alpha.-12.1",
     "1.15.0-polaris-alpha.12.1.2",
     "1.15.0-polaris-alpha.12.1+meta",
+    "1.15.0+meta-polaris-alpha.12.1",
+    "1.15.0-other-polaris-alpha.12.1",
     "1.15.0-polaris-alpha.12.1-deadbee",
     "1.15.0-polaris-alpha.12.\u0661",
     "1.15.0-polaris-preview.12.1",
     "1.15.0-polaris-alpha.12.1\n",
+    "1.15.0-polaris-alpha.12.1\r",
+    "1.15.0-polaris-alpha.12.1\u2028",
+    "1.15.0-polaris-alpha.12.1\u2029",
     " 1.15.0-polaris-alpha.12.1",
     "1.15.0-polaris-alpha.12.1;echo bad",
     "1.15.0-polaris-alpha.12.$(id)",
@@ -48,14 +48,6 @@
     [
       "1.15.0-polaris-alpha.13",
       "1.15.0-polaris-alpha.12.1"
-    ],
-    [
-      "1.15.0-polaris-alpha.13",
-      "1.15.0-polaris-alpha.12.2"
-    ],
-    [
-      "1.15.0-polaris-alpha.13",
-      "1.15.0-polaris-alpha.12.3"
     ],
     [
       "1.15.0-polaris-alpha.12.1",
@@ -94,22 +86,6 @@
       "1.15.0-rc.1"
     ],
     [
-      "1.15.0-polaris-alpha.13",
-      "1.15.0-polaris-alpha.12.4"
-    ],
-    [
-      "1.15.0-polaris-alpha.13",
-      "1.15.0-polaris-alpha.12.5"
-    ],
-    [
-      "1.15.0-polaris-alpha.13",
-      "1.15.0-polaris-alpha.12.6"
-    ],
-    [
-      "1.15.0-polaris-alpha.12.6",
-      "1.15.0-polaris-alpha.12.5"
-    ],
-    [
       "1.15.0-polaris-alpha.12.10",
       "1.15.0-polaris-alpha.12.9"
     ]
@@ -126,22 +102,6 @@
     [
       "1.15.0-polaris-alpha.12.0",
       "1.15.0-polaris-alpha.12.123"
-    ],
-    [
-      "1.15.0-polaris-alpha.12.2",
-      "1.15.0-polaris-alpha.12.3"
-    ],
-    [
-      "1.15.0-polaris-alpha.12.4",
-      "1.15.0-polaris-alpha.12.3"
-    ],
-    [
-      "1.15.0-polaris-alpha.12.5",
-      "1.15.0-polaris-alpha.12.4"
-    ],
-    [
-      "1.15.0-polaris-alpha.12.6",
-      "1.15.0-polaris-alpha.12.5"
     ],
     [
       "1.15.0-polaris-alpha.12.10",

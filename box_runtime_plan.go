@@ -61,6 +61,8 @@ type runtimeCoordinator struct {
 	ctx                     context.Context
 	store                   *runtimegraph.Store
 	active                  RuntimeIdentity
+	exitIPProbeCancel       context.CancelFunc // guarded by access
+	exitIPProbeUncertain    bool               // guarded by access
 	options                 option.Options
 	canonical               []byte
 	durableDigest           string

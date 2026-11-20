@@ -11,7 +11,7 @@
   "resolvedItems": [
     {
       "id": "go-current-notices",
-      "evidence": "release/licenses/go-1.27.2/provenance.json",
+      "evidence": "release/licenses/go-1.27.4/provenance.json",
       "scope": "Official fixed-commit LICENSE and PATENTS texts; target patches remain .github/go-toolchains.json."
     },
     {

@@ -115,17 +115,16 @@ func TestAutoRedirectCloseBeforeFirewallSetupPreservesRunningInstance(t *testing
 	}
 }
 
-func TestAutoRedirectAttemptedFirewallRetainsLegacyCleanup(t *testing.T) {
+func TestAutoRedirectAttemptWithoutReceiptPreservesExistingFirewall(t *testing.T) {
 	r, _, trace, _ := redirectCleanupFixture(t)
-	// Model partial setup: an attempt must retain legacy cleanup eligibility even
-	// when setup has not returned success. This flag is not an ownership receipt.
+	// An attempt alone is not a receipt for any successfully installed rule.
 	r.firewallSetupAttempted.Store(true)
 	if err := r.Close(); err != nil {
 		t.Fatal(err)
 	}
 	first := redirectCleanupRead(t, trace)
-	if !strings.Contains(first, " -D ") || !strings.Contains(first, " -F ") || !strings.Contains(first, " -X ") {
-		t.Fatalf("attempted firewall did not retain legacy cleanup: %q", first)
+	if first != "" {
+		t.Fatalf("attempt without receipts mutated external firewall: %q", first)
 	}
 
 }

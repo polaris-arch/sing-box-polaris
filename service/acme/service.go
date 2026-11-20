@@ -84,9 +84,17 @@ func NewCertificateProvider(ctx context.Context, logger log.ContextLogger, tag s
 	)
 	if options.DataDirectory != "" {
 		dataDirectory = filemanager.BasePath(ctx, os.ExpandEnv(options.DataDirectory))
+		dataDirectory = adapter.ConfigurationDirectoryPath(ctx, dataDirectory)
 		storage = &certmagic.FileStorage{Path: dataDirectory}
 	} else {
 		storage = certmagic.Default.Storage
+		if fileStorage, ok := storage.(*certmagic.FileStorage); ok {
+			if path := adapter.ConfigurationDirectoryPath(ctx, fileStorage.Path); path != fileStorage.Path {
+				local := *fileStorage
+				local.Path = path
+				storage = &local
+			}
+		}
 	}
 
 	zapLogger := zap.New(zapcore.NewCore(

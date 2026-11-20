@@ -95,6 +95,14 @@ func Prepare(ctx context.Context, options option.Options, poisonRoot func(string
 }
 
 func prepareUnprepared(ctx context.Context, options option.Options, poisonRoot func(string) error) (context.Context, error) {
+	var info *debug.BuildInfo
+	if options.PolarisWindowsDirectory != nil {
+		info, _ = debug.ReadBuildInfo()
+	}
+	return prepareUnpreparedWithSource(ctx, options, poisonRoot, C.SourceRevision, info)
+}
+
+func prepareUnpreparedWithSource(ctx context.Context, options option.Options, poisonRoot func(string) error, source string, info *debug.BuildInfo) (context.Context, error) {
 	raw := []byte(options.RawMessage)
 	if len(raw) == 0 {
 		var err error
@@ -110,15 +118,15 @@ func prepareUnprepared(ctx context.Context, options option.Options, poisonRoot f
 	if envelope == nil {
 		return ctx, nil
 	}
-	if envelope.Version != 1 || !windowsEnvelopePath(envelope.Root) || !windowsEnvelopeHex(envelope.RunNonce, 32) {
+	emptyStartup := envelope.Version == option.WindowsDirectoryEmptyStandaloneVersion
+	if (envelope.Version != 1 && !emptyStartup) || !windowsEnvelopePath(envelope.Root) || !windowsEnvelopeHex(envelope.RunNonce, 32) {
 		return nil, fmt.Errorf("invalid Windows directory activation envelope")
 	}
 	if len(options.RawMessage) == 0 {
 		//nolint:staticcheck // ST1005: Windows is a proper noun; preserve the stable error contract.
 		return nil, fmt.Errorf("Windows directory activation requires original parsed config bytes")
 	}
-	info, _ := debug.ReadBuildInfo()
-	if err := ValidateSource(envelope.ExpectedSource, C.SourceRevision, info); err != nil {
+	if err := ValidateSource(envelope.ExpectedSource, source, info); err != nil {
 		return nil, err
 	}
 	if adapter.TailscaleDirectoryDomainFromContext(ctx) != nil || adapter.TailscaleDirectoryMappingFromContext(ctx) != nil {
@@ -126,6 +134,11 @@ func prepareUnprepared(ctx context.Context, options option.Options, poisonRoot f
 		return nil, fmt.Errorf("Windows directory domain already supplied")
 	}
 	binding := service.PtrFromContext[adapter.TailscaleStoreRunBinding](ctx)
+	if emptyStartup {
+		if err := validateEmptyStandaloneStartup(ctx, options, binding); err != nil {
+			return nil, err
+		}
+	}
 	if binding != nil {
 		if !(windowsEnvelopeHex(binding.RunNonce, 32) || windowsEnvelopeHex(binding.RunNonce, 64)) || !windowsEnvelopeHex(binding.ConfigDigest, 64) {
 			return nil, fmt.Errorf("invalid original daemon directory binding")
@@ -161,7 +174,7 @@ func prepareUnprepared(ctx context.Context, options option.Options, poisonRoot f
 		seen[state] = true
 		inputs = append(inputs, adapter.TailscaleDirectoryMappingInput{StateDirectory: state, TaildropDirectory: taildrop})
 	}
-	if len(inputs) == 0 {
+	if len(inputs) == 0 && !emptyStartup {
 		//nolint:staticcheck // ST1005: Windows is a proper noun; preserve the stable error contract.
 		return nil, fmt.Errorf("Windows directory envelope has no Tailscale endpoints")
 	}
@@ -189,4 +202,30 @@ func prepareUnprepared(ctx context.Context, options option.Options, poisonRoot f
 		ctx = service.ContextWithPtr(ctx, &adapter.TailscaleStoreRunBinding{RunNonce: envelope.RunNonce, ConfigDigest: hex.EncodeToString(sum[:])})
 	}
 	return ctx, nil
+}
+
+func validateEmptyStandaloneStartup(ctx context.Context, options option.Options, binding *adapter.TailscaleStoreRunBinding) error {
+	envelope := options.PolarisWindowsDirectory
+	if adapter.TailscaleWindowsStartupRootFromContext(ctx) != envelope.Root || binding != nil {
+		return fmt.Errorf("empty Windows directory activation requires the original standalone startup root")
+	}
+	original, err := rawWindowsDirectoryOptions(options.RawMessage)
+	if err != nil {
+		return err
+	}
+	if original.PolarisWindowsDirectory == nil || *original.PolarisWindowsDirectory != *envelope {
+		return fmt.Errorf("empty Windows directory envelope differs from original config")
+	}
+	for _, endpoints := range [][]option.Endpoint{original.Endpoints, options.Endpoints} {
+		for _, endpoint := range endpoints {
+			if endpoint.Type == C.TypeTailscale {
+				return fmt.Errorf("empty Windows directory activation cannot admit Tailscale endpoints")
+			}
+		}
+	}
+	effective, err := sjson.MarshalContext(ctx, options)
+	if err != nil {
+		return err
+	}
+	return RejectReservedPaths(effective)
 }

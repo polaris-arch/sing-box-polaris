@@ -171,7 +171,7 @@ func (s *Box) applyRuntimeConfig(ctx context.Context, actor string, request Runt
 	}()
 	// Only preparation work observes request cancellation. Committed component
 	// contexts are constructed under coordinator.ctx by prepareRuntimeGraphWithSelections.
-	prepared, prepareErr := s.prepareRuntimeGraphWithSelections(runtimeContextWithClientImpactPolicy(ctx, record.plan.ClientImpactPolicyVersion), next, record.options, record.selectorIntents, record.sources...)
+	prepared, prepareErr := s.prepareRuntimeGraphWithSelections(runtimeContextWithClientImpactPolicy(ctx, record.plan.ClientImpactPolicyVersion), next, record.options, record.selectorIntents, record.canonical, record.sources...)
 	if prepareErr == nil && prepared.rootDigest != record.rootDigest {
 		prepareErr = errors.New("root content changed after planning")
 	}
@@ -287,6 +287,7 @@ func (s *Box) applyRuntimeConfig(ctx context.Context, actor string, request Runt
 				coordinator.options = record.options
 				coordinator.currentSources = append([]runtimeSourceSnapshot(nil), record.sources...)
 				coordinator.canonical = append([]byte(nil), record.canonical...)
+				coordinator.cancelRuntimeExitIPProbeLocked()
 				coordinator.active = next
 				coordinator.pendingPersistence = nil
 				if !runtimeSourceOnlyRecord(record) {
@@ -318,6 +319,12 @@ func (s *Box) applyRuntimeConfig(ctx context.Context, actor string, request Runt
 		if prepareErr != nil {
 			record.operation.State = "ABORTING_UNAPPLIED"
 			record.operation.Errors = []RuntimePlanError{{Code: "PREPARATION_FAILED", Message: "candidate was not published"}}
+			switch {
+			case errors.Is(prepareErr, context.DeadlineExceeded):
+				record.operation.Errors = append(record.operation.Errors, RuntimePlanError{Code: "PREPARATION_DEADLINE_EXCEEDED", Message: "candidate preparation deadline exceeded before publication"})
+			case errors.Is(prepareErr, context.Canceled):
+				record.operation.Errors = append(record.operation.Errors, RuntimePlanError{Code: "PREPARATION_CANCELED", Message: "candidate preparation canceled before publication"})
+			}
 			var structured interface{ RuntimePlanError() RuntimePlanError }
 			if errors.As(prepareErr, &structured) {
 				record.operation.Errors = append(record.operation.Errors, structured.RuntimePlanError())

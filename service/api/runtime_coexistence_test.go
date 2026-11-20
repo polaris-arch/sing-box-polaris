@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -91,7 +92,16 @@ func TestRuntimeDesktopDefaultAPIUsesOwningGraphAndExistingRPCs(t *testing.T) {
 				encodedPath, _ := json.Marshal(path)
 				apiJSON = strings.TrimSuffix(apiJSON, "}") + `,"dashboard":{"enabled":true,"path":` + string(encodedPath) + `,"http_client":{"detour":"select"}}}`
 			}
-			content := `{"log":{"disabled":true},"dns":{"servers":[{"type":"udp","tag":"resolver","server":"192.0.2.53"}],"final":"resolver"},"outbounds":[{"type":"socks","tag":"a","server":"192.0.2.1","server_port":1080,"version":"5"},{"type":"socks","tag":"b","server":"192.0.2.2","server_port":1080,"version":"5"},{"type":"selector","tag":"select","outbounds":["a","b"],"default":"a"}],"route":{"final":"select","rule_set":[{"type":"inline","tag":"sites","rules":[{"domain_suffix":["example.test"]}]}]},"services":[` + apiJSON + `]}`
+			var overflowRecords []string
+			for address := range 65 {
+				overflowRecords = append(overflowRecords, fmt.Sprintf("overflow.test. IN A 192.0.2.%d", address+1))
+			}
+			overflowAnswers, err := json.Marshal(overflowRecords)
+			if err != nil {
+				t.Fatal(err)
+			}
+			dnsRules := `[{"domain":["lookup.test"],"action":"predefined","rcode":"NOERROR","answer":["lookup.test. IN A 8.8.8.8","lookup.test. IN AAAA 2606:4700::1111","lookup.test. IN A 10.0.0.1"]},{"domain":["empty.test"],"action":"predefined","rcode":"NOERROR"},{"domain":["overflow.test"],"action":"predefined","rcode":"NOERROR","answer":` + string(overflowAnswers) + `}]`
+			content := `{"log":{"disabled":true},"dns":{"servers":[{"type":"udp","tag":"resolver","server":"192.0.2.53"}],"final":"resolver","rules":` + dnsRules + `},"outbounds":[{"type":"socks","tag":"a","server":"192.0.2.1","server_port":1080,"version":"5"},{"type":"socks","tag":"b","server":"192.0.2.2","server_port":1080,"version":"5"},{"type":"selector","tag":"select","outbounds":["a","b"],"default":"a"}],"route":{"final":"select","rule_set":[{"type":"inline","tag":"sites","rules":[{"domain_suffix":["example.test"]}]}]},"services":[` + apiJSON + `]}`
 			var options option.Options
 			if err := json.UnmarshalContext(ctx, []byte(content), &options); err != nil {
 				t.Fatal(err)
@@ -171,10 +181,32 @@ func TestRuntimeDesktopDefaultAPIUsesOwningGraphAndExistingRPCs(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				_, denied := daemon.NewRuntimeConfigServiceClient(unauthorized).GetRuntimeCapabilities(request, &emptypb.Empty{})
+				unauthorizedClient := daemon.NewRuntimeConfigServiceClient(unauthorized)
+				_, denied := unauthorizedClient.GetRuntimeCapabilities(request, &emptypb.Empty{})
+				_, lookupDenied := unauthorizedClient.LookupPublicDns(request, &daemon.LookupPublicDnsRequest{Domain: "lookup.test"})
 				closeErr := unauthorized.Close()
-				if status.Code(denied) != codes.Unauthenticated || closeErr != nil {
-					t.Fatalf("public authentication boundary: %v, close: %v", denied, closeErr)
+				if status.Code(denied) != codes.Unauthenticated || status.Code(lookupDenied) != codes.Unauthenticated || closeErr != nil {
+					t.Fatalf("public authentication boundary: capabilities: %v, DNS lookup: %v, close: %v", denied, lookupDenied, closeErr)
+				}
+			}
+			runtimeClient := daemon.NewRuntimeConfigServiceClient(connection)
+			checkLookup := func(want []string) {
+				t.Helper()
+				var reply daemon.LookupPublicDnsResponse
+				err := connection.Invoke(request, "/daemon.RuntimeConfigService/LookupPublicDns", &daemon.LookupPublicDnsRequest{Domain: "lookup.test"}, &reply)
+				slices.Sort(reply.Addresses)
+				if err != nil || reply.Version != 1 || !slices.Equal(reply.Addresses, want) {
+					t.Fatalf("public DNS lookup lost configured answers: %+v %v", &reply, err)
+				}
+			}
+			checkLookup([]string{"10.0.0.1", "2606:4700::1111", "8.8.8.8"})
+			for _, check := range []struct {
+				domain string
+				code   codes.Code
+			}{{".", codes.InvalidArgument}, {"https://lookup.test", codes.InvalidArgument}, {strings.Repeat("a", 255), codes.InvalidArgument}, {"empty.test", codes.Unavailable}, {"overflow.test", codes.ResourceExhausted}} {
+				response, err := runtimeClient.LookupPublicDns(request, &daemon.LookupPublicDnsRequest{Domain: check.domain})
+				if response != nil || status.Code(err) != check.code {
+					t.Fatalf("public DNS lookup domain length %d: response=%v status=%v want=%v", len(check.domain), response, status.Code(err), check.code)
 				}
 			}
 			var capabilities daemon.RuntimeCapabilities
@@ -244,12 +276,12 @@ func TestRuntimeDesktopDefaultAPIUsesOwningGraphAndExistingRPCs(t *testing.T) {
 			mark("Groups first frame")
 			// Use only generated public RPCs for the transaction. The control
 			// revision is freshly read after the existing selector RPC above.
-			runtimeClient := daemon.NewRuntimeConfigServiceClient(connection)
 			current, err := runtimeClient.GetRuntimeCapabilities(request, &emptypb.Empty{})
 			if err != nil || !current.GetConnectedHotEnabled() || current.GetImplementationManifestDigest() == "" {
 				t.Fatalf("public capability: %+v %v", current, err)
 			}
-			plan, err := runtimeClient.PlanRuntimeConfig(request, &daemon.PlanRuntimeConfigRequest{ContractVersion: 1, Expected: current.Active, ExpectedControlRevision: current.ControlRevision, ConfigContent: strings.Replace(content, "example.test", "updated.test", 1)})
+			candidate := strings.NewReplacer("example.test", "updated.test", "IN A 8.8.8.8", "IN A 1.1.1.1").Replace(content)
+			plan, err := runtimeClient.PlanRuntimeConfig(request, &daemon.PlanRuntimeConfigRequest{ContractVersion: 1, Expected: current.Active, ExpectedControlRevision: current.ControlRevision, ConfigContent: candidate})
 			if err != nil || !plan.GetApplicable() {
 				t.Fatalf("public plan: %+v %v", plan, err)
 			}
@@ -263,6 +295,7 @@ func TestRuntimeDesktopDefaultAPIUsesOwningGraphAndExistingRPCs(t *testing.T) {
 				t.Fatal("public Apply replaced instance or did not advance graph")
 			}
 			mark("Apply complete")
+			checkLookup([]string{"1.1.1.1", "10.0.0.1", "2606:4700::1111"})
 			receipt, err := runtimeClient.GetRuntimeConfigStatus(request, &daemon.RuntimeConfigStatusRequest{ContractVersion: 1, TransactionId: plan.TransactionId, RuntimeIncarnation: current.Active.Incarnation})
 			if err != nil || receipt.GetOperation().GetState() != daemon.RuntimeOperationState_COMMITTED_DURABILITY_PENDING {
 				t.Fatalf("public receipt: %+v %v", receipt, err)

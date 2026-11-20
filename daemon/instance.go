@@ -96,6 +96,7 @@ type OverrideOptions struct {
 type preparedInstance struct {
 	runtimeOverrides   *OverrideOptions
 	runtimeGraph       bool
+	startupReservation *startupRetirementReservation
 	ctx                context.Context
 	profileContent     string
 	options            option.Options
@@ -106,6 +107,14 @@ type preparedInstance struct {
 	directoryWatch     *directoryPreparationCancellation
 	directoryCommitted bool
 	directoryFinished  chan struct{}
+}
+
+func (p *preparedInstance) appendRetirementRun(s *StartedService, run *tailscaleRetirementRun) error {
+	if p.startupReservation == nil {
+		return s.appendTailscaleRetirementRun(run)
+	}
+	run.startupReservation = p.startupReservation
+	return p.startupReservation.consume(run)
 }
 
 // prepareInstance decodes once and changes only its fresh options graph. It must
@@ -169,9 +178,6 @@ func (s *StartedService) newInstance(ctx context.Context, profileContent string,
 
 func (s *StartedService) newPreparedInstance(prepared *preparedInstance, reloading bool) (*Instance, error) {
 	ctx, profileContent, options := prepared.ctx, prepared.profileContent, prepared.options
-	if prepared.runtimeGraph {
-		ctx = adapter.ContextWithRuntimeTailscaleChildRegistrar(ctx, s.registerRuntimeTailscaleChild)
-	}
 	if domain := adapter.TailscaleDirectoryDomainFromContext(s.ctx); domain != nil && prepared.directoryPlan == nil {
 		if !domain.Activated() {
 			return nil, E.New("managed directory domain is not activated")
@@ -201,7 +207,7 @@ func (s *StartedService) newPreparedInstance(prepared *preparedInstance, reloadi
 			cancel()
 			return nil, err
 		}
-		if err = s.appendTailscaleRetirementRun(retirement); err != nil {
+		if err = prepared.appendRetirementRun(s, retirement); err != nil {
 			cancel()
 			return nil, err
 		}
@@ -212,6 +218,10 @@ func (s *StartedService) newPreparedInstance(prepared *preparedInstance, reloadi
 			return nil, err
 		}
 	}
+	if prepared.runtimeGraph {
+		ctx = s.runtimeTailscaleContext(ctx, retirement)
+	}
+	retirement.startupExpected = tailscaleRetirementTags(options.Endpoints)
 	urlTestHistoryStorage := urltest.NewHistoryStorage()
 	ctx = service.ContextWithPtr(ctx, urlTestHistoryStorage)
 	ctx = context.WithValue(ctx, runtimeStartupOverridesKey{}, cloneRuntimeOverrides(prepared.runtimeOverrides))

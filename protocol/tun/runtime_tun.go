@@ -145,13 +145,10 @@ func (t *Inbound) RuntimeCloseAndWait() error {
 // runPhysical owns an actual operation until its goroutine returns. A caller's
 // cancellation only ends observation; it never clears the operation or closes
 // an object that the still-running constructor is using.
-func (r *runtimeTunState) runPhysical(ctx context.Context, fn func() error) error {
+func (r *runtimeTunState) runPhysical(ctx context.Context, waitForPending bool, fn func() error) error {
 	r.mu.Lock()
-	if r.closing {
-		r.mu.Unlock()
-		return errors.New("TUN owner closing")
-	}
-	if previous := r.operation; previous != nil {
+	for !r.closing && r.operation != nil {
+		previous := r.operation
 		select {
 		case <-previous.done:
 			if tls.IsRuntimeCleanupIncomplete(previous.err) {
@@ -160,8 +157,22 @@ func (r *runtimeTunState) runPhysical(ctx context.Context, fn func() error) erro
 			}
 		default:
 			r.mu.Unlock()
-			return errors.New("TUN physical operation still in progress")
+			if !waitForPending {
+				return errors.New("TUN physical operation still in progress")
+			}
+			select {
+			case <-previous.done:
+			case <-ctx.Done():
+				return ctx.Err()
+			}
+			r.mu.Lock()
+			continue
 		}
+		break
+	}
+	if r.closing {
+		r.mu.Unlock()
+		return errRuntimeTunOwnerClosing
 	}
 	operation := &runtimeTunOperation{done: make(chan struct{})}
 	r.operation = operation
@@ -189,7 +200,7 @@ func (t *Inbound) RuntimeStagePhysical(ctx context.Context) error {
 		return err
 	}
 	r := t.runtime
-	return r.runPhysical(ctx, func() error {
+	return r.runPhysical(ctx, false, func() error {
 		r.mu.Lock()
 		existing := r.physical
 		r.mu.Unlock()
@@ -220,10 +231,14 @@ func (t *Inbound) RuntimeStagePhysical(ctx context.Context) error {
 }
 
 func (t *Inbound) RuntimeSuspendPhysical(ctx context.Context) error {
+	return t.runtimeSuspendPhysical(ctx, false)
+}
+
+func (t *Inbound) runtimeSuspendPhysical(ctx context.Context, waitForPending bool) error {
 	if err := t.RuntimeValidate(); err != nil {
 		return err
 	}
-	return t.runtime.runPhysical(ctx, func() error {
+	return t.runtime.runPhysical(ctx, waitForPending, func() error {
 		t.runtime.mu.Lock()
 		physical, receipt := t.runtime.physical, t.runtime.nativeReceipt
 		t.runtime.mu.Unlock()
@@ -238,6 +253,29 @@ func (t *Inbound) RuntimeSuspendPhysical(ctx context.Context) error {
 		}
 		return physical.close()
 	})
+}
+
+var errRuntimeTunOwnerClosing = errors.New("TUN owner closing")
+
+// RuntimeShutdownPhysical stops the physical TUN before the graph drains at
+// shutdown. Its accepted flows hold generation leases until the stack closes,
+// so waiting for the owner to close it first never ends. Join an in-flight
+// operation before closing: the startup observer may have canceled without
+// stopping physical setup, which can still install persistent policy rules.
+func (t *Inbound) RuntimeShutdownPhysical(ctx context.Context) error {
+	if t.runtime == nil {
+		return nil
+	}
+	err := t.runtimeSuspendPhysical(ctx, true)
+	if errors.Is(err, errRuntimeTunOwnerClosing) {
+		select {
+		case <-t.runtime.closed:
+			return t.runtime.closeErr
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+	return err
 }
 
 // RuntimeTunPublication is a prevalidated, concrete memory-only participant.
@@ -371,16 +409,8 @@ func (t *Inbound) bindRuntimeNativePrevious(previous *Inbound) error {
 
 func (t *Inbound) openInterface(options *tun.Options, scope *adapter.Scope) (device tun.Tun, err error) {
 	var coldNative *runtimeTunState
-	scope.Add(func() error {
-		if coldNative != nil && coldNative.nativeReceipt != nil {
-			coldNative.nativeReceipt.Suspend()
-		}
+	closeInterface := func() error {
 		if device != nil {
-			if t.stackShutdown != nil {
-				if err := t.stackShutdown.WaitDetached(context.Background()); err != nil {
-					return err
-				}
-			}
 			if err := device.Close(); err != nil {
 				return err
 			}
@@ -389,6 +419,15 @@ func (t *Inbound) openInterface(options *tun.Options, scope *adapter.Scope) (dev
 			return coldNative.finishNative()
 		}
 		return nil
+	}
+	scope.Add(func() error {
+		if coldNative != nil && coldNative.nativeReceipt != nil {
+			coldNative.nativeReceipt.Suspend()
+		}
+		if t.stackShutdown != nil {
+			return t.stackShutdown.closeNative(context.Background(), closeInterface)
+		}
+		return closeInterface()
 	})
 	platform := t.platformInterface
 	if platform == nil || !platform.UsePlatformInterface() {
@@ -486,5 +525,5 @@ func (t *Inbound) RuntimeAbortNative(ctx context.Context) error {
 	if err := t.RuntimeValidate(); err != nil {
 		return err
 	}
-	return t.runtime.runPhysical(ctx, t.runtime.finishNative)
+	return t.runtime.runPhysical(ctx, false, t.runtime.finishNative)
 }

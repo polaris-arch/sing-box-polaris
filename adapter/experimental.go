@@ -3,8 +3,10 @@ package adapter
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/binary"
 	"io"
+	"net/http"
 	"time"
 
 	E "github.com/sagernet/sing/common/exceptions"
@@ -45,7 +47,7 @@ type CacheFile interface {
 	StoreSelected(group string, selected string) error
 	LoadGroupExpand(group string) (isExpand bool, loaded bool)
 	StoreGroupExpand(group string, expand bool) error
-	LoadRuleSet(tag string) *SavedBinary
+	LoadRuleSet(tag string, maxContentBytes int64) *SavedBinary
 	SaveRuleSet(tag string, set *SavedBinary) error
 }
 
@@ -93,7 +95,7 @@ func (s *SavedBinary) MarshalBinary() ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
-func (s *SavedBinary) UnmarshalBinary(data []byte) error {
+func (s *SavedBinary) UnmarshalBinaryWithContentLimit(data []byte, maxContentBytes int64) error {
 	reader := bytes.NewReader(data)
 	var version uint8
 	err := binary.Read(reader, binary.BigEndian, &version)
@@ -106,6 +108,9 @@ func (s *SavedBinary) UnmarshalBinary(data []byte) error {
 	}
 	if contentLength > uint64(reader.Len()) {
 		return E.New("invalid content length: ", contentLength)
+	}
+	if maxContentBytes < 0 || contentLength > uint64(maxContentBytes) {
+		return E.New("cached rule-set exceeds input bytes limit: ", contentLength)
 	}
 	s.Content = make([]byte, contentLength)
 	_, err = io.ReadFull(reader, s.Content)
@@ -125,20 +130,26 @@ func (s *SavedBinary) UnmarshalBinary(data []byte) error {
 	if etagLength > uint64(reader.Len()) {
 		return E.New("invalid etag length: ", etagLength)
 	}
-	etagBytes := make([]byte, etagLength)
-	_, err = io.ReadFull(reader, etagBytes)
+	// A validator is optional. Keep usable rule content from old caches
+	// without allocating or sending an oversized validator.
+	s.LastEtag = ""
+	if etagLength <= http.DefaultMaxHeaderBytes {
+		etagStart := len(data) - reader.Len()
+		s.LastEtag = string(data[etagStart : etagStart+int(etagLength)])
+	}
+	_, err = reader.Seek(int64(etagLength), io.SeekCurrent)
 	if err != nil {
 		return err
 	}
-	s.LastEtag = string(etagBytes)
 	if version < 2 {
+		s.URLHash = nil
 		return nil
 	}
 	urlHashLength, err := binary.ReadUvarint(reader)
 	if err != nil {
 		return err
 	}
-	if urlHashLength > uint64(reader.Len()) {
+	if (urlHashLength != 0 && urlHashLength != sha256.Size) || urlHashLength > uint64(reader.Len()) {
 		return E.New("invalid url hash length: ", urlHashLength)
 	}
 	s.URLHash = make([]byte, urlHashLength)

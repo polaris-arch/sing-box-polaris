@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -15,7 +16,48 @@ import (
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing/service"
+	"github.com/sagernet/sing/service/filemanager"
 )
+
+type dashboardResourceDirectoryManager struct {
+	filemanager.Manager
+	directory string
+}
+
+func (m dashboardResourceDirectoryManager) BasePath(path string) string {
+	if path == "" || filepath.IsAbs(path) {
+		return path
+	}
+	return filepath.Join(m.directory, path)
+}
+
+func (m dashboardResourceDirectoryManager) ConfigurationDirectoryPath(path string) string {
+	if path == "" {
+		path = "."
+	}
+	return m.BasePath(path)
+}
+
+func TestDashboardExpandedEmptyServesResourceDirectory(t *testing.T) {
+	resources := t.TempDir()
+	protected := t.TempDir()
+	t.Chdir(protected)
+	t.Setenv("POLARIS_DASHBOARD_EMPTY", "")
+	if err := os.WriteFile(filepath.Join(resources, "index.html"), []byte("resource dashboard"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	ctx := service.ContextWith[filemanager.Manager](context.Background(), dashboardResourceDirectoryManager{directory: resources})
+	options := option.APIDashboardOptions{Path: "$POLARIS_DASHBOARD_EMPTY"}
+	dashboard := newDashboard(ctx, log.NewNOPFactory().Logger(), "0", options)
+	response := httptest.NewRecorder()
+	dashboard.fileServer.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/dashboard/", nil))
+	if dashboard.path != resources || response.Code != http.StatusOK || response.Body.String() != "resource dashboard" {
+		t.Fatalf("dashboard path=%q, response=%d %q", dashboard.path, response.Code, response.Body.String())
+	}
+	if plain := newDashboard(context.Background(), log.NewNOPFactory().Logger(), "0", options); plain.path != "" {
+		t.Fatalf("unset resource directory changed expanded empty path: %q", plain.path)
+	}
+}
 
 func TestRuntimeDashboardPreparedWorkerNeedsPublicationAndPreviousJoin(t *testing.T) {
 	ctx, _ := dashboardFileContext(t)

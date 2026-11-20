@@ -2,13 +2,12 @@ package main
 
 import (
 	"bytes"
-	"io"
 	"os"
 	"path/filepath"
 
+	"github.com/sagernet/sing-box/common/srs"
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/log"
-	"github.com/sagernet/sing-box/option"
 	E "github.com/sagernet/sing/common/exceptions"
 	"github.com/sagernet/sing/common/json"
 
@@ -35,23 +34,11 @@ func init() {
 }
 
 func upgradeRuleSet(sourcePath string) error {
-	var (
-		reader io.Reader
-		err    error
-	)
-	if sourcePath == "stdin" {
-		reader = os.Stdin
-	} else {
-		reader, err = os.Open(sourcePath)
-		if err != nil {
-			return err
-		}
-	}
-	content, err := io.ReadAll(reader)
+	content, err := readRuleSetContent(sourcePath, srs.DefaultInputBytes)
 	if err != nil {
 		return err
 	}
-	plainRuleSetCompat, err := json.UnmarshalExtended[option.PlainRuleSetCompat](content)
+	plainRuleSetCompat, err := decodeRuleSetSource(content)
 	if err != nil {
 		return err
 	}

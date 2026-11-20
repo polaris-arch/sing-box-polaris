@@ -3,6 +3,7 @@ package srs
 import (
 	"bufio"
 	"compress/zlib"
+	"context"
 	"encoding/binary"
 	"io"
 	"net/netip"
@@ -53,6 +54,29 @@ const (
 )
 
 func Read(reader io.Reader, recover bool) (ruleSetCompat option.PlainRuleSetCompat, err error) {
+	return ReadContext(context.Background(), reader, recover)
+}
+
+// ReadContext checks cancellation at decoded reads, including buffered ReadByte
+// loops. It verifies the compressed stream checksum and the declared rule count.
+// Bytes following the zlib stream remain accepted for existing container callers.
+func ReadContext(ctx context.Context, reader io.Reader, recover bool) (option.PlainRuleSetCompat, error) {
+	return ReadContextWithLimits(ctx, reader, recover, ReadLimits{})
+}
+
+func ReadContextWithLimits(ctx context.Context, reader io.Reader, recover bool, limits ReadLimits) (ruleSetCompat option.PlainRuleSetCompat, err error) {
+	limits, err = ResolveReadLimits(limits)
+	if err != nil {
+		return
+	}
+	reader = limitInput(reader, limits.InputBytes)
+	// Preserve io.ByteReader when supplied: zlib must not read ahead into an
+	// enclosing container's trailer merely because cancellation was added.
+	if byteReader, ok := reader.(io.ByteReader); ok {
+		reader = contextInputByteReader{contextReader{ctx, reader}, byteReader}
+	} else {
+		reader = contextReader{ctx, reader}
+	}
 	var magicBytes [3]byte
 	_, err = io.ReadFull(reader, magicBytes[:])
 	if err != nil {
@@ -74,12 +98,23 @@ func Read(reader io.Reader, recover bool) (ruleSetCompat option.PlainRuleSetComp
 	if err != nil {
 		return
 	}
-	bReader := bufio.NewReader(compressReader)
+	defer compressReader.Close()
+	bReader := &budgetReader{
+		Reader: contextByteReader{ctx, bufio.NewReader(&byteLimitReader{
+			reader:    compressReader,
+			remaining: limits.DecodedBytes,
+			kind:      "decoded bytes",
+		})},
+		budget: &decodeBudget{limits: limits, ctx: ctx},
+	}
 	length, err := binary.ReadUvarint(bReader)
 	if err != nil {
 		return
 	}
 	ruleSetCompat.Version = version
+	if err = checkRules(bReader, length); err != nil {
+		return
+	}
 	for i := range length {
 		var rule option.HeadlessRule
 		rule, err = readRule(bReader, recover, 0, nil)
@@ -89,7 +124,60 @@ func Read(reader io.Reader, recover bool) (ruleSetCompat option.PlainRuleSetComp
 		}
 		ruleSetCompat.Options.Rules = append(ruleSetCompat.Options.Rules, rule)
 	}
+	// Reading through EOF verifies zlib's checksum; Close alone does not.
+	if _, readErr := bReader.ReadByte(); readErr != io.EOF {
+		if readErr == nil {
+			readErr = E.New("unexpected data after declared rules")
+		}
+		return option.PlainRuleSetCompat{}, readErr
+	}
+	if err = ctx.Err(); err != nil {
+		return option.PlainRuleSetCompat{}, err
+	}
 	return
+}
+
+type contextReader struct {
+	ctx    context.Context
+	reader io.Reader
+}
+
+func (r contextReader) Read(p []byte) (int, error) {
+	if err := r.ctx.Err(); err != nil {
+		return 0, err
+	}
+	return r.reader.Read(p)
+}
+
+type contextInputByteReader struct {
+	contextReader
+	byteReader io.ByteReader
+}
+
+func (r contextInputByteReader) ReadByte() (byte, error) {
+	if err := r.ctx.Err(); err != nil {
+		return 0, err
+	}
+	return r.byteReader.ReadByte()
+}
+
+type contextByteReader struct {
+	ctx    context.Context
+	reader *bufio.Reader
+}
+
+func (r contextByteReader) Read(p []byte) (int, error) {
+	if err := r.ctx.Err(); err != nil {
+		return 0, err
+	}
+	return r.reader.Read(p)
+}
+
+func (r contextByteReader) ReadByte() (byte, error) {
+	if err := r.ctx.Err(); err != nil {
+		return 0, err
+	}
+	return r.reader.ReadByte()
 }
 
 func Write(writer io.Writer, ruleSet option.PlainRuleSet, generateVersion uint8) error {
@@ -126,6 +214,12 @@ func Write(writer io.Writer, ruleSet option.PlainRuleSet, generateVersion uint8)
 const maxLogicalRuleDepth = 100
 
 func readRule(reader varbin.Reader, recover bool, depth int, mmap *mmapReader) (rule option.HeadlessRule, err error) {
+	if err = checkRules(reader, 1); err != nil {
+		return
+	}
+	if b := resourceBudget(reader); b != nil {
+		b.rules++
+	}
 	if depth > maxLogicalRuleDepth {
 		err = E.New("logical rule nested too deep")
 		return
@@ -162,6 +256,9 @@ func writeRule(writer varbin.Writer, rule option.HeadlessRule, generateVersion u
 func readDefaultRule(reader varbin.Reader, recover bool, mmap *mmapReader) (rule option.DefaultHeadlessRule, err error) {
 	var lastItemType uint8
 	for {
+		if err = claimEntries(reader, 1); err != nil {
+			return
+		}
 		var itemType uint8
 		err = binary.Read(reader, binary.BigEndian, &itemType)
 		if err != nil {
@@ -170,7 +267,7 @@ func readDefaultRule(reader varbin.Reader, recover bool, mmap *mmapReader) (rule
 		switch itemType {
 		case ruleItemQueryType:
 			var rawQueryType []uint16
-			rawQueryType, err = varbin.ReadSlice[uint16](reader, binary.BigEndian)
+			rawQueryType, err = readLimitedSlice[uint16](reader, binary.BigEndian)
 			if err != nil {
 				return
 			}
@@ -191,6 +288,9 @@ func readDefaultRule(reader varbin.Reader, recover bool, mmap *mmapReader) (rule
 			}
 			rule.DomainMatcher = matcher
 			if recover {
+				if err = checkMatcherRecovery(reader, matcher.Mmap()); err != nil {
+					return
+				}
 				rule.Domain, rule.DomainSuffix = matcher.Dump()
 			}
 		case ruleItemDomainKeyword:
@@ -207,6 +307,9 @@ func readDefaultRule(reader varbin.Reader, recover bool, mmap *mmapReader) (rule
 				return
 			}
 			if recover {
+				if err = checkIPSetRecovery(reader, rule.SourceIPSet); err != nil {
+					return
+				}
 				rule.SourceIPCIDR = common.Map(rule.SourceIPSet.Prefixes(), func(it netip.Prefix) *badoption.Prefixable {
 					return new(badoption.Prefixable(it))
 				})
@@ -221,16 +324,19 @@ func readDefaultRule(reader varbin.Reader, recover bool, mmap *mmapReader) (rule
 				return
 			}
 			if recover {
+				if err = checkIPSetRecovery(reader, rule.IPSet); err != nil {
+					return
+				}
 				rule.IPCIDR = common.Map(rule.IPSet.Prefixes(), func(it netip.Prefix) *badoption.Prefixable {
 					return new(badoption.Prefixable(it))
 				})
 			}
 		case ruleItemSourcePort:
-			rule.SourcePort, err = varbin.ReadSlice[uint16](reader, binary.BigEndian)
+			rule.SourcePort, err = readLimitedSlice[uint16](reader, binary.BigEndian)
 		case ruleItemSourcePortRange:
 			rule.SourcePortRange, err = readRuleItemString(reader)
 		case ruleItemPort:
-			rule.Port, err = varbin.ReadSlice[uint16](reader, binary.BigEndian)
+			rule.Port, err = readLimitedSlice[uint16](reader, binary.BigEndian)
 		case ruleItemPortRange:
 			rule.PortRange, err = readRuleItemString(reader)
 		case ruleItemProcessName:
@@ -259,10 +365,13 @@ func readDefaultRule(reader varbin.Reader, recover bool, mmap *mmapReader) (rule
 			}
 			rule.AdGuardDomainMatcher = matcher
 			if recover {
+				if err = checkMatcherRecovery(reader, matcher.Mmap()); err != nil {
+					return
+				}
 				rule.AdGuardDomain = matcher.Dump()
 			}
 		case ruleItemNetworkType:
-			rule.NetworkType, err = varbin.ReadSlice[option.InterfaceType](reader, binary.BigEndian)
+			rule.NetworkType, err = readLimitedSlice[option.InterfaceType](reader, binary.BigEndian)
 		case ruleItemNetworkIsExpensive:
 			rule.NetworkIsExpensive = true
 		case ruleItemNetworkIsConstrained:
@@ -272,6 +381,9 @@ func readDefaultRule(reader varbin.Reader, recover bool, mmap *mmapReader) (rule
 			var size uint64
 			size, err = binary.ReadUvarint(reader)
 			if err != nil {
+				return
+			}
+			if err = claimEntries(reader, size); err != nil {
 				return
 			}
 			for range size {
@@ -284,6 +396,9 @@ func readDefaultRule(reader varbin.Reader, recover bool, mmap *mmapReader) (rule
 				var prefixCount uint64
 				prefixCount, err = binary.ReadUvarint(reader)
 				if err != nil {
+					return
+				}
+				if err = claimEntries(reader, prefixCount); err != nil {
 					return
 				}
 				for j := uint64(0); j < prefixCount; j++ {
@@ -301,6 +416,9 @@ func readDefaultRule(reader varbin.Reader, recover bool, mmap *mmapReader) (rule
 			var prefixCount uint64
 			prefixCount, err = binary.ReadUvarint(reader)
 			if err != nil {
+				return
+			}
+			if err = claimEntries(reader, prefixCount); err != nil {
 				return
 			}
 			for j := uint64(0); j < prefixCount; j++ {
@@ -573,10 +691,13 @@ func readRuleItemString(reader varbin.Reader) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	if err := claimEntries(reader, length); err != nil {
+		return nil, err
+	}
 	var result []string
 	for range length {
 		var value []byte
-		value, err = varbin.ReadSlice[byte](reader, binary.BigEndian)
+		value, err = readLimitedString(reader)
 		if err != nil {
 			return nil, err
 		}
@@ -671,6 +792,9 @@ func readLogicalRule(reader varbin.Reader, recovery bool, depth int, mmap *mmapR
 	}
 	length, err := binary.ReadUvarint(reader)
 	if err != nil {
+		return
+	}
+	if err = checkRules(reader, length); err != nil {
 		return
 	}
 	for i := range length {

@@ -238,10 +238,15 @@ func RuntimePhysicalDirectories(ctx context.Context, options option.TailscaleEnd
 	if taildrop == "" {
 		taildrop = "Taildrop"
 	}
-	state, err = filepath.Abs(filemanager.BasePath(ctx, os.ExpandEnv(state)))
+	state, err = filepath.Abs(expandedDirectoryBasePath(ctx, state))
 	if err != nil {
 		return "", "", err
 	}
-	taildrop, err = filepath.Abs(filemanager.BasePath(ctx, os.ExpandEnv(taildrop)))
+	taildrop, err = filepath.Abs(expandedDirectoryBasePath(ctx, taildrop))
 	return
+}
+
+func expandedDirectoryBasePath(ctx context.Context, path string) string {
+	path = filemanager.BasePath(ctx, os.ExpandEnv(path))
+	return adapter.ConfigurationDirectoryPath(ctx, path)
 }

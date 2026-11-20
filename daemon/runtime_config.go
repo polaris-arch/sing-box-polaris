@@ -2,13 +2,19 @@ package daemon
 
 import (
 	"context"
+	"errors"
 
 	box "github.com/sagernet/sing-box"
 	boxtls "github.com/sagernet/sing-box/common/tls"
+	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing/common/json"
+	M "github.com/sagernet/sing/common/metadata"
 
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -84,6 +90,9 @@ func (s *StartedService) GetRuntimeCapabilities(ctx context.Context, _ *emptypb.
 	}
 	result := &RuntimeCapabilities{ContractVersion: capability.ContractVersion, ConnectedHotEnabled: capability.Enabled, ImplementationManifestDigest: capability.ImplementationManifestDigest, Active: runtimeIdentity(capability.Identity), ReceiptRetentionSeconds: 300, MaxReceipts: 256, FullEffectiveSchemaSupported: capability.FullConfiguration, ControlRevision: capability.Identity.ControlRevision}
 	result.TlsFingerprintCapabilitiesJson = document
+	if capability.Enabled && capability.Identity.Revision != 0 {
+		result.ExitIpProbeVersion = box.RuntimeExitIPProbeVersion
+	}
 	for _, version := range capability.SupportedClientImpactPolicyVersions {
 		result.SupportedClientImpactPolicyVersions = append(result.SupportedClientImpactPolicyVersions, uint32(version))
 	}
@@ -91,6 +100,80 @@ func (s *StartedService) GetRuntimeCapabilities(ctx context.Context, _ *emptypb.
 		result.Fields = append(result.Fields, &RuntimeFieldCapability{EffectivePath: field.Path, Variant: field.Variant, PlatformBuild: field.PlatformBuild, UpdateClass: RuntimeUpdateClass(RuntimeUpdateClass_value[field.UpdateClass]), AdapterVersion: field.AdapterVersion, Conditions: append([]string(nil), field.Conditions...)})
 	}
 	return result, nil
+}
+
+func (s *StartedService) ProbeExitIP(ctx context.Context, request *ProbeExitIPRequest) (*ProbeExitIPResponse, error) {
+	if _, err := runtimeActor(ctx); err != nil {
+		return nil, err
+	}
+	if request == nil || request.Version != box.RuntimeExitIPProbeVersion || request.LeafTag == "" ||
+		len(request.LeafTag) > 512 || proto.Size(request) > 2048 {
+		return nil, status.Error(codes.InvalidArgument, "invalid exit probe request")
+	}
+	expected, err := runtimeExpected(request.Expected, request.ExpectedControlRevision)
+	if err != nil {
+		return nil, err
+	}
+	instance, err := s.readStartedInstance()
+	if err != nil || instance.instance == nil {
+		return nil, status.Error(codes.FailedPrecondition, "runtime unavailable before exit probe")
+	}
+	body, err := instance.instance.ProbeRuntimeExitIP(ctx, expected, request.LeafTag)
+	if err == nil {
+		if current, currentErr := s.readStartedInstance(); currentErr != nil || current != instance {
+			err = box.ErrRuntimeExitIPSuperseded
+		}
+	}
+	switch {
+	case err == nil:
+		return &ProbeExitIPResponse{Active: runtimeIdentity(expected), ControlRevision: expected.ControlRevision, LeafTag: request.LeafTag, TraceBody: body}, nil
+	case errors.Is(err, box.ErrRuntimeExitIPNotAdmitted):
+		return nil, status.Error(codes.FailedPrecondition, err.Error())
+	case errors.Is(err, box.ErrRuntimeExitIPBusy):
+		return nil, status.Error(codes.ResourceExhausted, err.Error())
+	case errors.Is(err, box.ErrRuntimeExitIPSuperseded):
+		_ = grpc.SetTrailer(ctx, metadata.Pairs("polaris-exit-ip-result", "drained"))
+		return nil, status.Error(codes.Aborted, err.Error())
+	case errors.Is(err, box.ErrRuntimeExitIPUncertain):
+		return nil, status.Error(codes.Unavailable, err.Error())
+	case ctx.Err() != nil:
+		return nil, status.FromContextError(ctx.Err()).Err()
+	default:
+		_ = grpc.SetTrailer(ctx, metadata.Pairs("polaris-exit-ip-result", "drained"))
+		return nil, status.Error(codes.Unavailable, box.ErrRuntimeExitIPUnavailable.Error())
+	}
+}
+
+func (s *StartedService) LookupPublicDns(ctx context.Context, request *LookupPublicDnsRequest) (*LookupPublicDnsResponse, error) {
+	if _, err := runtimeActor(ctx); err != nil {
+		return nil, err
+	}
+	domain := request.GetDomain()
+	if len(domain) > 254 || domain == "." || !M.IsDomainName(domain) {
+		return nil, status.Error(codes.InvalidArgument, "invalid DNS lookup domain")
+	}
+	instance, err := s.readStartedInstance()
+	if err != nil {
+		return nil, err
+	}
+	ctx, cancel := context.WithTimeout(ctx, C.DNSTimeout)
+	defer cancel()
+	addresses, err := instance.instance.LookupPublicDNS(ctx, domain)
+	if ctx.Err() != nil {
+		return nil, status.FromContextError(ctx.Err()).Err()
+	}
+	if err != nil || len(addresses) == 0 {
+		return nil, status.Error(codes.Unavailable, "DNS lookup failed")
+	}
+	if len(addresses) > 64 {
+		return nil, status.Error(codes.ResourceExhausted, "DNS answer exceeds address limit")
+	}
+	// The App checks the complete answer, including mixed public and private addresses.
+	response := &LookupPublicDnsResponse{Version: 1, Addresses: make([]string, len(addresses))}
+	for index, address := range addresses {
+		response.Addresses[index] = address.String()
+	}
+	return response, nil
 }
 
 func (s *StartedService) PlanRuntimeConfig(ctx context.Context, request *PlanRuntimeConfigRequest) (*RuntimeConfigPlan, error) {

@@ -6,6 +6,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"path/filepath"
+	"slices"
 	"sync"
 
 	"github.com/sagernet/sing-box/adapter"
@@ -16,7 +18,9 @@ import (
 
 const (
 	tailscaleStoreRetirementVersion = "polaris-ts-auth-writer-retirement-v1"
+	tailscaleStartupCohortVersion   = "polaris-ts-startup-cohort-v1"
 	maxTailscaleRetirementRuns      = 256
+	maxTailscaleStartupCohortBytes  = 1 << 20
 )
 
 type tailscaleRetirementInstance struct {
@@ -32,6 +36,8 @@ type tailscaleRetirementRun struct {
 	closeFinished           <-chan struct{}
 	originalCloseSucceeded  bool
 	runtimeNoAcquisition    bool // exact runtime child marker plus actual never-entered preparation
+	historyPinned           bool // original native-writer or typed startup census
+	nativeChildReservations int
 	directoryPreparation    preparedDirectoryResources
 	directoryAuthority      *adapter.TailscaleDirectoryDomain
 	directoryAuthorityBound bool
@@ -40,18 +46,33 @@ type tailscaleRetirementRun struct {
 	access                  sync.Mutex
 	binding                 adapter.TailscaleStoreRunBinding
 	expected                []string
+	startupExpected         []string
+	startupChildren         []*tailscaleRetirementRun
+	startupSealed           bool
+	startupReservation      *startupRetirementReservation
 	active                  []adapter.TailscaleStoreNode
 	final                   *tailscaleRetirementInstance
 }
 
 func newTailscaleRetirementRun(content string, options option.Options) (*tailscaleRetirementRun, error) {
+	digest := sha256.Sum256([]byte(content))
+	return newTailscaleRetirementRunWithDigest(hex.EncodeToString(digest[:]), options)
+}
+
+func newTailscaleRetirementRunWithDigest(digest string, options option.Options) (*tailscaleRetirementRun, error) {
 	var nonce [32]byte
 	if _, err := rand.Read(nonce[:]); err != nil {
 		return nil, err
 	}
-	digest := sha256.Sum256([]byte(content))
-	run := &tailscaleRetirementRun{binding: adapter.TailscaleStoreRunBinding{RunNonce: hex.EncodeToString(nonce[:]), ConfigDigest: hex.EncodeToString(digest[:])}}
-	for index, endpoint := range options.Endpoints {
+	return &tailscaleRetirementRun{
+		binding:  adapter.TailscaleStoreRunBinding{RunNonce: hex.EncodeToString(nonce[:]), ConfigDigest: digest},
+		expected: tailscaleRetirementTags(options.Endpoints),
+	}, nil
+}
+
+func tailscaleRetirementTags(endpoints []option.Endpoint) []string {
+	var tags []string
+	for index, endpoint := range endpoints {
 		if endpoint.Type != C.TypeTailscale {
 			continue
 		}
@@ -59,9 +80,87 @@ func newTailscaleRetirementRun(content string, options option.Options) (*tailsca
 		if tag == "" {
 			tag = format.ToString(index)
 		}
-		run.expected = append(run.expected, tag)
+		tags = append(tags, tag)
 	}
-	return run, nil
+	return tags
+}
+
+func (r *tailscaleRetirementRun) recordStartupChild(child *tailscaleRetirementRun) {
+	r.access.Lock()
+	defer r.access.Unlock()
+	if !r.startupSealed {
+		r.startupChildren = append(r.startupChildren, child)
+	}
+}
+
+type tailscaleStartupCohort struct {
+	ContractVersion string                        `json:"contractVersion"`
+	CensusComplete  bool                          `json:"censusComplete"`
+	Parent          tailscaleRetirementInstance   `json:"parent"`
+	InitialChildren []tailscaleRetirementInstance `json:"initialChildren"`
+}
+
+func (r *tailscaleRetirementRun) sealStartup(observe bool) string {
+	r.access.Lock()
+	r.startupSealed = true
+	expected := r.startupExpected
+	children := r.startupChildren
+	r.startupExpected = nil
+	r.startupChildren = nil
+	r.access.Unlock()
+	if !observe {
+		return ""
+	}
+	parent, complete := r.startupScope()
+	cohort := tailscaleStartupCohort{
+		ContractVersion: tailscaleStartupCohortVersion,
+		Parent:          parent,
+		InitialChildren: make([]tailscaleRetirementInstance, 0, len(children)),
+	}
+	tags := make(map[string]bool, len(expected))
+	for _, tag := range expected {
+		complete = complete && !tags[tag]
+		tags[tag] = true
+	}
+	files := make(map[string]bool, len(tags))
+	consume := func(row tailscaleRetirementInstance) {
+		for _, node := range row.Nodes {
+			complete = complete && tags[node.Tag] && !files[node.StateFile]
+			delete(tags, node.Tag)
+			files[node.StateFile] = true
+		}
+	}
+	consume(parent)
+	for _, child := range children {
+		row, known := child.startupScope()
+		complete = complete && known
+		consume(row)
+		cohort.InitialChildren = append(cohort.InitialChildren, row)
+	}
+	cohort.CensusComplete = complete && len(tags) == 0
+	payload, err := json.Marshal(cohort)
+	if err != nil || len(payload) > maxTailscaleStartupCohortBytes {
+		return ""
+	}
+	// Retain the same original row after later whole-service reloads, even
+	// when its exact observed startup/terminal census has no StateStore.
+	r.access.Lock()
+	r.historyPinned = true
+	r.access.Unlock()
+	return string(payload)
+}
+
+func (r *tailscaleRetirementRun) startupScope() (tailscaleRetirementInstance, bool) {
+	r.access.Lock()
+	defer r.access.Unlock()
+	row := r.snapshotUnderLock()
+	complete := r.active != nil && r.final == nil && len(row.Nodes) == len(r.expected)
+	for _, node := range row.Nodes {
+		complete = complete && slices.Contains(r.expected, node.Tag) &&
+			node.RunNonce == r.binding.RunNonce && node.ConfigDigest == r.binding.ConfigDigest &&
+			filepath.IsAbs(node.StateDirectory) && filepath.Join(node.StateDirectory, "tailscaled.state") == node.StateFile
+	}
+	return row, complete
 }
 
 func (r *tailscaleRetirementRun) capture(nodes []adapter.TailscaleStoreNode) {
@@ -147,14 +246,64 @@ func (s *StartedService) ExportTailscaleStoreRetirement() string {
 // lifecycleAccess. Never prune at stop/export: native prepareStop and terminal
 // receipts require the same original run census, including empty runs.
 func (s *StartedService) admitTailscaleRetirementRun() error {
-	s.serviceAccess.Lock()
-	var live *tailscaleRetirementRun
-	if s.instance != nil {
-		live = s.instance.tailscaleRetirement
-	}
-	s.serviceAccess.Unlock()
+	live := s.liveTailscaleRetirementRun()
 	s.tailscaleRetirementAccess.Lock()
 	defer s.tailscaleRetirementAccess.Unlock()
+	return s.checkTailscaleRetirementAdmissionLocked(live, 1)
+}
+
+func (s *StartedService) liveTailscaleRetirementRun() *tailscaleRetirementRun {
+	s.serviceAccess.Lock()
+	defer s.serviceAccess.Unlock()
+	if s.instance != nil {
+		return s.instance.tailscaleRetirement
+	}
+	return nil
+}
+
+type startupRetirementReservation struct {
+	host      *StartedService
+	remaining int // protected by the original host retirement lock
+}
+
+// Reserve the full initial construction before detaching the old instance.
+// Warm native reservations use the same capacity and cannot steal these slots.
+func (s *StartedService) reserveTailscaleStartupRuns(count int) (*startupRetirementReservation, error) {
+	live := s.liveTailscaleRetirementRun()
+	s.tailscaleRetirementAccess.Lock()
+	defer s.tailscaleRetirementAccess.Unlock()
+	if err := s.checkTailscaleRetirementAdmissionLocked(live, count); err != nil {
+		return nil, err
+	}
+	s.tailscaleReservedRuns += count
+	return &startupRetirementReservation{host: s, remaining: count}, nil
+}
+
+func (r *startupRetirementReservation) consume(run *tailscaleRetirementRun) error {
+	r.host.tailscaleRetirementAccess.Lock()
+	defer r.host.tailscaleRetirementAccess.Unlock()
+	if r.remaining == 0 {
+		return fmt.Errorf("original startup Tailscale census reservation exhausted")
+	}
+	if err := r.host.checkTailscaleRetirementAdmissionLocked(nil, 0); err != nil {
+		return err
+	}
+	r.remaining--
+	r.host.tailscaleReservedRuns--
+	r.host.tailscaleRetirementRuns = append(r.host.tailscaleRetirementRuns, run)
+	return nil
+}
+
+func (r *startupRetirementReservation) releaseUnused() {
+	r.host.tailscaleRetirementAccess.Lock()
+	defer r.host.tailscaleRetirementAccess.Unlock()
+	r.host.tailscaleReservedRuns -= r.remaining
+	r.remaining = 0
+}
+
+// Construction admission is the only pruning boundary. Count native
+// reservations even though they have no writer history until classified.
+func (s *StartedService) checkTailscaleRetirementAdmissionLocked(live *tailscaleRetirementRun, required int) error {
 	retained := s.tailscaleRetirementRuns[:0]
 	for _, run := range s.tailscaleRetirementRuns {
 		if run == live || !run.reclaimableEmptyRun() {
@@ -163,7 +312,7 @@ func (s *StartedService) admitTailscaleRetirementRun() error {
 	}
 	clear(s.tailscaleRetirementRuns[len(retained):])
 	s.tailscaleRetirementRuns = retained
-	if len(retained) >= maxTailscaleRetirementRuns {
+	if len(retained)+s.tailscaleReservedRuns+required > maxTailscaleRetirementRuns {
 		return fmt.Errorf("tailscale retirement census capacity reached")
 	}
 	return nil
@@ -177,7 +326,8 @@ func (r *tailscaleRetirementRun) reclaimableEmptyRun() bool {
 	default:
 		return false
 	}
-	return r.originalCloseSucceeded && (len(r.expected) == 0 || r.runtimeNoAcquisition) &&
+	return !r.historyPinned && r.nativeChildReservations == 0 && r.originalCloseSucceeded &&
+		(len(r.expected) == 0 || r.runtimeNoAcquisition) &&
 		r.final != nil && r.final.CensusComplete && r.final.Terminal == "NoStoreConstruction" && len(r.final.Nodes) == 0 &&
 		r.directoryFinal != nil && r.directoryFinal.CensusComplete && r.directoryFinal.Terminal == "NoDirectoryConstruction" && len(r.directoryFinal.Nodes) == 0
 }
@@ -194,18 +344,59 @@ func (s *StartedService) snapshotTailscaleRetirementRuns() []*tailscaleRetiremen
 func (s *StartedService) appendTailscaleRetirementRun(run *tailscaleRetirementRun) error {
 	s.tailscaleRetirementAccess.Lock()
 	defer s.tailscaleRetirementAccess.Unlock()
-	// This is a new construction admission, the only allowed pruning boundary.
-	retained := s.tailscaleRetirementRuns[:0]
-	for _, original := range s.tailscaleRetirementRuns {
-		if !original.reclaimableEmptyRun() {
-			retained = append(retained, original)
-		}
-	}
-	clear(s.tailscaleRetirementRuns[len(retained):])
-	s.tailscaleRetirementRuns = retained
-	if len(s.tailscaleRetirementRuns) >= maxTailscaleRetirementRuns {
-		return fmt.Errorf("tailscale retirement census capacity reached")
+	if err := s.checkTailscaleRetirementAdmissionLocked(nil, 1); err != nil {
+		return err
 	}
 	s.tailscaleRetirementRuns = append(s.tailscaleRetirementRuns, run)
 	return nil
+}
+
+type nativeTailscaleRunReservation struct {
+	once   sync.Once
+	host   *StartedService
+	run    *tailscaleRetirementRun
+	parent *tailscaleRetirementRun
+}
+
+func (s *StartedService) reserveNativeTailscaleRetirementRun(run, parent *tailscaleRetirementRun) (*nativeTailscaleRunReservation, error) {
+	s.tailscaleRetirementAccess.Lock()
+	defer s.tailscaleRetirementAccess.Unlock()
+	if parent != nil && !slices.Contains(s.tailscaleRetirementRuns, parent) {
+		return nil, fmt.Errorf("original native Tailscale parent census is unavailable")
+	}
+	if err := s.checkTailscaleRetirementAdmissionLocked(parent, 1); err != nil {
+		return nil, err
+	}
+	if parent != nil {
+		parent.access.Lock()
+		parent.nativeChildReservations++
+		parent.access.Unlock()
+	}
+	run.historyPinned = true
+	s.tailscaleReservedRuns++
+	return &nativeTailscaleRunReservation{host: s, run: run, parent: parent}, nil
+}
+
+func (r *nativeTailscaleRunReservation) finish(retain bool) {
+	if r == nil {
+		return
+	}
+	r.once.Do(func() {
+		r.host.tailscaleRetirementAccess.Lock()
+		defer r.host.tailscaleRetirementAccess.Unlock()
+		if r.parent != nil {
+			r.parent.access.Lock()
+			r.parent.nativeChildReservations--
+			if retain {
+				// The host native ledger can observe both original rows. Keep the
+				// empty parent even when the old Box closes at strict Reload.
+				r.parent.historyPinned = true
+			}
+			r.parent.access.Unlock()
+		}
+		if retain {
+			r.host.tailscaleRetirementRuns = append(r.host.tailscaleRetirementRuns, r.run)
+		}
+		r.host.tailscaleReservedRuns--
+	})
 }

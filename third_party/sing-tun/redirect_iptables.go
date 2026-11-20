@@ -102,7 +102,7 @@ func (r *autoRedirect) iptablesChain(family *iptablesFamily, table string, name 
 		name:     name,
 		chain:    name,
 	}
-	builder.err = iptablesRun(family.path, "-t", table, "-N", name)
+	builder.err = r.installIPTables(family.path, "-t", table, "-N", name)
 	return builder
 }
 
@@ -110,14 +110,14 @@ func (b *iptablesBuilder) add(args ...string) {
 	if b.err != nil {
 		return
 	}
-	b.err = iptablesRun(b.family.path, slices.Concat([]string{"-t", b.table, "-A", b.chain}, args)...)
+	b.err = b.redirect.installIPTables(b.family.path, slices.Concat([]string{"-t", b.table, "-A", b.chain}, args)...)
 }
 
 func (b *iptablesBuilder) newChain(prefix string) string {
 	b.family.chainCounter++
 	name := F.ToString(b.redirect.tableName, "-", prefix, "-", b.family.chainCounter)
 	if b.err == nil {
-		b.err = iptablesRun(b.family.path, "-t", b.table, "-N", name)
+		b.err = b.redirect.installIPTables(b.family.path, "-t", b.table, "-N", name)
 	}
 	return name
 }
@@ -235,7 +235,7 @@ func (r *autoRedirect) iptablesFillLocalChain(chain iptablesLocalChain, addresse
 		if chain.hook == iptablesHookPrerouting {
 			for _, prefix := range prefixes {
 				for _, protocol := range []string{"udp", "tcp"} {
-					err := iptablesRun(chain.family.path, slices.Concat([]string{
+					err := r.installIPTables(chain.family.path, slices.Concat([]string{
 						"-t", chain.table, "-A", chain.name,
 						"-s", prefix.String(), "-p", protocol, "--dport", "53",
 					}, action(protocol))...)
@@ -246,7 +246,7 @@ func (r *autoRedirect) iptablesFillLocalChain(chain iptablesLocalChain, addresse
 			}
 		} else {
 			for _, protocol := range []string{"udp", "tcp"} {
-				err := iptablesRun(chain.family.path, slices.Concat([]string{
+				err := r.installIPTables(chain.family.path, slices.Concat([]string{
 					"-t", chain.table, "-A", chain.name,
 					"!", "-o", "lo", "-p", protocol, "--dport", "53",
 				}, action(protocol))...)
@@ -257,12 +257,12 @@ func (r *autoRedirect) iptablesFillLocalChain(chain iptablesLocalChain, addresse
 		}
 	}
 	for _, prefix := range prefixes {
-		err := iptablesRun(chain.family.path, "-t", chain.table, "-A", chain.name, "-d", prefix.String(), "-j", "RETURN")
+		err := r.installIPTables(chain.family.path, "-t", chain.table, "-A", chain.name, "-d", prefix.String(), "-j", "RETURN")
 		if err != nil {
 			return err
 		}
 	}
-	return iptablesRun(chain.family.path, "-t", chain.table, "-A", chain.name, "-j", chain.next)
+	return r.installIPTables(chain.family.path, "-t", chain.table, "-A", chain.name, "-j", chain.next)
 }
 
 func (r *autoRedirect) updateIPTablesLocalAddresses() error {
@@ -270,20 +270,29 @@ func (r *autoRedirect) updateIPTablesLocalAddresses() error {
 	if err != nil {
 		return err
 	}
-	if slices.Equal(localAddresses, r.localAddresses) {
+	if !r.iptablesLocalDirty && slices.Equal(localAddresses, r.localAddresses) {
 		return nil
 	}
-	r.localAddresses = localAddresses
+	r.iptablesLocalDirty = true
 	for _, chain := range r.iptablesLocalChains {
-		err = iptablesRun(chain.family.path, "-t", chain.table, "-F", chain.name)
-		if err != nil {
+		match := func(receipt iptablesReceipt) bool {
+			return receipt.path == chain.family.path && receipt.args[1] == chain.table && receipt.args[2] == "-D" && receipt.args[3] == chain.name
+		}
+		if err = r.removeIPTables(match); err != nil {
 			return err
 		}
-		err = r.iptablesFillLocalChain(chain, localAddresses)
-		if err != nil {
-			return err
+		if err = r.iptablesFillLocalChain(chain, localAddresses); err != nil {
+			// Roll back only this instance's newly added rules. If deletion fails,
+			// keep its receipts and do not append a duplicate old configuration.
+			cleanupErr := r.removeIPTables(match)
+			if cleanupErr != nil {
+				return E.Errors(err, cleanupErr)
+			}
+			return E.Errors(err, r.iptablesFillLocalChain(chain, r.localAddresses))
 		}
 	}
+	r.localAddresses = localAddresses
+	r.iptablesLocalDirty = false
 	return nil
 }
 
@@ -420,6 +429,9 @@ func (r *autoRedirect) iptablesAddLoopbackReroute(builder *iptablesBuilder, hook
 func (r *autoRedirect) setupIPTables() error {
 	r.iptablesAccess.Lock()
 	defer r.iptablesAccess.Unlock()
+	if r.iptablesClosed {
+		return E.New("iptables owner is closed")
+	}
 	localAddresses, err := r.findLocalAddresses()
 	if err != nil {
 		return err
@@ -700,7 +712,7 @@ func (r *autoRedirect) setupIPTablesForFamily(family *iptablesFamily) error {
 	}
 
 	for _, insert := range slices.Backward(inserts) {
-		err := iptablesRun(family.path, slices.Concat([]string{"-t", insert.table, "-I", insert.base}, insert.args)...)
+		err := r.installIPTables(family.path, slices.Concat([]string{"-t", insert.table, "-I", insert.base}, insert.args)...)
 		if err != nil {
 			return err
 		}
@@ -745,11 +757,11 @@ func (r *autoRedirect) setupIPTablesUnreachable() error {
 	if forwardBuilder.err != nil {
 		return forwardBuilder.err
 	}
-	err = iptablesRun(path, "-t", iptablesTableFilter, "-I", "OUTPUT", "-j", outputName)
+	err = r.installIPTables(path, "-t", iptablesTableFilter, "-I", "OUTPUT", "-j", outputName)
 	if err != nil {
 		return err
 	}
-	return iptablesRun(path, "-t", iptablesTableFilter, "-I", "FORWARD", "-j", forwardName)
+	return r.installIPTables(path, "-t", iptablesTableFilter, "-I", "FORWARD", "-j", forwardName)
 }
 
 func findIPTablesBinary(isIPv6 bool) (string, error) {
@@ -768,88 +780,59 @@ func findIPTablesBinary(isIPv6 bool) (string, error) {
 	return exec.LookPath(name)
 }
 
-func (r *autoRedirect) cleanupIPTables() {
-	r.iptablesAccess.Lock()
-	defer r.iptablesAccess.Unlock()
-	r.iptablesLocalChains = nil
-	var paths []string
-	for _, isIPv6 := range []bool{false, true} {
-		path, err := findIPTablesBinary(isIPv6)
-		if err == nil {
-			paths = append(paths, path)
-		}
-	}
-	for _, path := range common.Uniq(paths) {
-		r.cleanupIPTablesForFamily(path)
-	}
+// Successful commands, not name prefixes, establish cleanup receipts. Callers
+// hold iptablesAccess. Identical external replacements remain indistinguishable.
+type iptablesReceipt struct {
+	path string
+	args []string
 }
 
-var (
-	iptablesChainSuffixes = []string{
-		"forward", "input", "output", "output-loopback", "output-mark", "output-prematch",
-		"output-protect", "output-tproxy", "postrouting", "prerouting", "prerouting-local",
-		"prerouting-loopback", "prerouting-mark", "prerouting-prematch", "prerouting-tproxy",
-		"reset", "unreachable-forward", "unreachable-output",
+func (r *autoRedirect) installIPTables(path string, args ...string) error {
+	if r.iptablesClosed {
+		return E.New("iptables owner is closed")
 	}
-	iptablesBranchPrefixes = []string{"cont", "include", "local", "redirect"}
-)
-
-func (r *autoRedirect) ownsIPTablesChain(name string) bool {
-	suffix, found := strings.CutPrefix(name, r.tableName+"-")
-	if !found {
-		return false
+	if len(args) < 4 || args[0] != "-t" {
+		return E.New("invalid tracked iptables command")
 	}
-	if slices.Contains(iptablesChainSuffixes, suffix) {
-		return true
+	undo := slices.Clone(args)
+	switch undo[2] {
+	case "-N":
+		undo[2] = "-X"
+	case "-A", "-I":
+		undo[2] = "-D"
+	default:
+		return E.New("untracked iptables mutation")
 	}
-	prefix, counter, found := strings.Cut(suffix, "-")
-	if !found || !slices.Contains(iptablesBranchPrefixes, prefix) {
-		return false
+	if err := iptablesRun(path, args...); err != nil {
+		return err
 	}
-	_, err := strconv.ParseUint(counter, 10, 32)
-	return err == nil
+	r.iptablesReceipts = append(r.iptablesReceipts, iptablesReceipt{path, undo})
+	return nil
 }
 
-func (r *autoRedirect) cleanupIPTablesForFamily(iptablesPath string) {
-	for _, table := range []string{iptablesTableNAT, iptablesTableMangle, iptablesTableFilter} {
-		output, err := iptablesRunOutput(iptablesPath, "-t", table, "-S")
-		if err != nil {
+func (r *autoRedirect) removeIPTables(match func(iptablesReceipt) bool) error {
+	var failures []error
+	for i := len(r.iptablesReceipts) - 1; i >= 0; i-- {
+		receipt := r.iptablesReceipts[i]
+		if match != nil && !match(receipt) {
 			continue
 		}
-		var chains []string
-		var references [][]string
-		for line := range strings.SplitSeq(output, "\n") {
-			fields := strings.Fields(line)
-			if len(fields) < 2 {
-				continue
-			}
-			switch fields[0] {
-			case "-N":
-				if r.ownsIPTablesChain(fields[1]) {
-					chains = append(chains, fields[1])
-				}
-			case "-A":
-				if r.ownsIPTablesChain(fields[1]) {
-					continue
-				}
-				for index := 2; index < len(fields)-1; index++ {
-					if fields[index] == "-j" && r.ownsIPTablesChain(fields[index+1]) {
-						references = append(references, fields[1:])
-						break
-					}
-				}
-			}
+		if err := iptablesRun(receipt.path, receipt.args...); err != nil {
+			failures = append(failures, err)
+			continue
 		}
-		for _, reference := range references {
-			_ = iptablesRun(iptablesPath, slices.Concat([]string{"-t", table, "-D"}, reference)...)
-		}
-		for _, chain := range chains {
-			_ = iptablesRun(iptablesPath, "-t", table, "-F", chain)
-		}
-		for _, chain := range chains {
-			_ = iptablesRun(iptablesPath, "-t", table, "-X", chain)
-		}
+		r.iptablesReceipts[i] = iptablesReceipt{}
 	}
+	r.iptablesReceipts = slices.DeleteFunc(r.iptablesReceipts, func(receipt iptablesReceipt) bool { return receipt.args == nil })
+	return E.Errors(failures...)
+}
+
+func (r *autoRedirect) cleanupIPTables() error {
+	r.iptablesAccess.Lock()
+	defer r.iptablesAccess.Unlock()
+	r.iptablesClosed = true
+	r.iptablesLocalChains = nil
+	return r.removeIPTables(nil)
 }
 
 // netd runs its own iptables commands whenever a network (including the VPN
@@ -862,13 +845,4 @@ func iptablesRun(path string, args ...string) error {
 		return E.Extend(err, F.ToString(path, " ", strings.Join(args, " "), ": ", strings.TrimSpace(string(combinedOutput))))
 	}
 	return nil
-}
-
-func iptablesRunOutput(path string, args ...string) (string, error) {
-	args = append([]string{"-w"}, args...)
-	output, err := exec.Command(path, args...).Output()
-	if err != nil {
-		return "", E.Extend(err, F.ToString(path, " ", strings.Join(args, " ")))
-	}
-	return string(output), nil
 }

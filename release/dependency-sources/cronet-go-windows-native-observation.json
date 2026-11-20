@@ -1061,10 +1061,46 @@
         "sha256": "08fd3fd224277f506c5f05465f580c035c57947f814e9a78ea65318d53130358",
         "gitBlob": "46b6619236e0d99afcdd86f9e7d6ffcf8df3b46d"
       }
+    },
+    {
+      "path": "naive_client.go",
+      "operation": "modify",
+      "before": {
+        "path": "naive_client.go",
+        "mode": "100644",
+        "bytes": 18616,
+        "sha256": "c5274db6d92f62ad61a127245045c20e5a5dca2cf7f67faae1a02d7cc42eddb5",
+        "gitBlob": "6e4effd832abd3b0ab569a036f5511d123c302d2"
+      },
+      "after": {
+        "path": "naive_client.go",
+        "mode": "100644",
+        "bytes": 20035,
+        "sha256": "f1ce6a8c1c29b77d48d38924bfa36371363e41f165328199a6c6180303648913",
+        "gitBlob": "d95a264f0008061f017fd0222546a3a3df457df8"
+      }
+    },
+    {
+      "path": "naive_client_lifecycle_test.go",
+      "operation": "modify",
+      "before": {
+        "path": "naive_client_lifecycle_test.go",
+        "mode": "100644",
+        "bytes": 6826,
+        "sha256": "a71990e9362e623dfd33f4ad9cdc6fdfe5571d6436bd09de55db5322b2c8dc2c",
+        "gitBlob": "100d4f1890fb5b6ff44f432a58d8796ac1499ac6"
+      },
+      "after": {
+        "path": "naive_client_lifecycle_test.go",
+        "mode": "100644",
+        "bytes": 7590,
+        "sha256": "5a69fa95f39fe21f7cb588aedcd03aa52acfd5ab74bfc91307823df31274ef1c",
+        "gitBlob": "caa3a2c8a46a34bc265addfff23b28c01d2fe4de"
+      }
     }
   ],
   "patch": "release/dependency-sources/cronet-go-windows-native-observation.patch",
-  "patchSHA256": "8f386f58494d1f75cccb5646645fa1ca784f84a359b93f721a378f079f7a49fb",
+  "patchSHA256": "bb00d331d985c132a65194c701f7b8509e8c0bb33d6d56019e452e18a4638520",
   "historicalMaterials": {
     "release/dependency-sources/cronet-go-replacement.json": {
       "bytes": 54745,
@@ -1076,6 +1112,6 @@
     }
   },
   "nativeBinaryValidated": false,
-  "scope": "Current P2 source base to Windows retained-object/actual-loaded-module observation delta only; no upstream124 reassociation, no SDK/native proof, no historical receipt refresh.",
+  "scope": "P2 source base to Windows retained-object and loaded-module observation plus Naive demand startup and probe lifecycle. Historical receipts and native binary validation are outside this source proof.",
   "patchContextLines": 0
 }

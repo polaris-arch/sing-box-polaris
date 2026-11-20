@@ -220,15 +220,15 @@ func (c *ClientEndpoint) buildClientOptions(options option.OpenVPNClientEndpoint
 	if options.Cipher != "" {
 		return ovpn.ClientOptions{}, E.New("`cipher` is only supported in `static_key` mode; use `data_ciphers` or `data_ciphers_fallback` in TLS mode")
 	}
-	certificateAuthority, err := materialSource("tls.certificate", options.TLS.Certificate, options.TLS.CertificatePath)
+	certificateAuthority, err := materialSource(c.ctx, "tls.certificate", options.TLS.Certificate, options.TLS.CertificatePath)
 	if err != nil {
 		return ovpn.ClientOptions{}, err
 	}
-	clientCertificate, err := materialSource("tls.client_certificate", options.TLS.ClientCertificate, options.TLS.ClientCertificatePath)
+	clientCertificate, err := materialSource(c.ctx, "tls.client_certificate", options.TLS.ClientCertificate, options.TLS.ClientCertificatePath)
 	if err != nil {
 		return ovpn.ClientOptions{}, err
 	}
-	clientKey, err := materialSource("tls.client_key", options.TLS.ClientKey, options.TLS.ClientKeyPath)
+	clientKey, err := materialSource(c.ctx, "tls.client_key", options.TLS.ClientKey, options.TLS.ClientKeyPath)
 	if err != nil {
 		return ovpn.ClientOptions{}, err
 	}
@@ -238,7 +238,7 @@ func (c *ClientEndpoint) buildClientOptions(options option.OpenVPNClientEndpoint
 	var controlCryptV2 ovpn.Material
 	controlWrap := options.TLS.ControlWrap
 	if controlWrap != nil && (controlWrap.Type != "" || len(controlWrap.Key) > 0 || controlWrap.KeyPath != "" || controlWrap.Direction != "") {
-		controlKey, controlErr := requiredMaterialSource("tls.control_wrap.key", controlWrap.Key, controlWrap.KeyPath)
+		controlKey, controlErr := requiredMaterialSource(c.ctx, "tls.control_wrap.key", controlWrap.Key, controlWrap.KeyPath)
 		if controlErr != nil {
 			return ovpn.ClientOptions{}, controlErr
 		}
@@ -294,7 +294,7 @@ func (c *ClientEndpoint) buildClientOptions(options option.OpenVPNClientEndpoint
 		CryptV2:              controlCryptV2,
 		VerifyX509Type:       options.TLS.ServerNameType,
 		PeerFingerprint:      options.TLS.PeerFingerprint,
-		CRLVerify:            options.TLS.CRLPath,
+		CRLVerify:            materialPath(c.ctx, options.TLS.CRLPath),
 		RemoteCertificateKU:  options.TLS.RemoteCertificateKU,
 		RemoteCertificateEKU: options.TLS.RemoteCertificateEKU,
 		RemoteCertificateTLS: remoteCertificateTLS,
@@ -359,7 +359,7 @@ func (c *ClientEndpoint) buildStaticKeyClientOptions(options option.OpenVPNClien
 	if len(options.DataCiphers) > 0 || options.DataCiphersFallback != "" {
 		return ovpn.ClientOptions{}, E.New("`data_ciphers` and `data_ciphers_fallback` are not supported in `static_key` mode; use `cipher`")
 	}
-	staticKey, err := requiredMaterialSource("static_key", options.StaticKey, options.StaticKeyPath)
+	staticKey, err := requiredMaterialSource(c.ctx, "static_key", options.StaticKey, options.StaticKeyPath)
 	if err != nil {
 		return ovpn.ClientOptions{}, err
 	}

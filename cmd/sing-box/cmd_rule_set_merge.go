@@ -2,12 +2,12 @@ package main
 
 import (
 	"bytes"
-	"io"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 
+	"github.com/sagernet/sing-box/common/srs"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
 	E "github.com/sagernet/sing/common/exceptions"
@@ -42,43 +42,34 @@ func init() {
 }
 
 type RuleSetEntry struct {
-	content []byte
 	path    string
 	options option.PlainRuleSetCompat
 }
 
-func readRuleSetAt(path string) (*RuleSetEntry, error) {
-	var (
-		configContent []byte
-		err           error
-	)
-	if path == "stdin" {
-		configContent, err = io.ReadAll(os.Stdin)
-	} else {
-		configContent, err = os.ReadFile(path)
-	}
-	if err != nil {
-		return nil, E.Cause(err, "read config at ", path)
-	}
-	options, err := json.UnmarshalExtendedContext[option.PlainRuleSetCompat](globalCtx, configContent)
-	if err != nil {
-		return nil, E.Cause(err, "decode config at ", path)
-	}
-	return &RuleSetEntry{
-		content: configContent,
-		path:    path,
-		options: options,
-	}, nil
-}
-
 func readRuleSet() ([]*RuleSetEntry, error) {
 	var optionsList []*RuleSetEntry
-	for _, path := range ruleSetPaths {
-		optionsEntry, err := readRuleSetAt(path)
+	remainingBytes := srs.DefaultInputBytes
+	remainingRules := srs.DefaultReadLimits().Rules
+	readEntry := func(path string) error {
+		if remainingBytes == 0 {
+			return E.Cause(srs.ErrResourceLimit, "read config at ", path)
+		}
+		content, err := readRuleSetContent(path, remainingBytes)
 		if err != nil {
+			return E.Cause(err, "read config at ", path)
+		}
+		remainingBytes -= int64(len(content))
+		options, err := decodeRuleSetSourceWithRuleBudget(content, &remainingRules)
+		if err != nil {
+			return E.Cause(err, "decode config at ", path)
+		}
+		optionsList = append(optionsList, &RuleSetEntry{path: path, options: options})
+		return nil
+	}
+	for _, path := range ruleSetPaths {
+		if err := readEntry(path); err != nil {
 			return nil, err
 		}
-		optionsList = append(optionsList, optionsEntry)
 	}
 	for _, directory := range ruleSetDirectories {
 		entries, err := os.ReadDir(directory)
@@ -89,11 +80,9 @@ func readRuleSet() ([]*RuleSetEntry, error) {
 			if !strings.HasSuffix(entry.Name(), ".json") || entry.IsDir() {
 				continue
 			}
-			optionsEntry, err := readRuleSetAt(filepath.Join(directory, entry.Name()))
-			if err != nil {
+			if err := readEntry(filepath.Join(directory, entry.Name())); err != nil {
 				return nil, err
 			}
-			optionsList = append(optionsList, optionsEntry)
 		}
 	}
 	sort.Slice(optionsList, func(i, j int) bool {
@@ -123,7 +112,7 @@ func readRuleSetAndMerge() (option.PlainRuleSetCompat, error) {
 			return option.PlainRuleSetCompat{}, E.Cause(err, "merge config at ", options.path)
 		}
 	}
-	mergedOptions, err := json.UnmarshalExtendedContext[option.PlainRuleSetCompat](globalCtx, mergedMessage)
+	mergedOptions, err := decodeRuleSetSource(mergedMessage)
 	if err != nil {
 		return option.PlainRuleSetCompat{}, E.Cause(err, "unmarshal merged config")
 	}
@@ -142,11 +131,6 @@ func mergeRuleSet(outputPath string) error {
 	err = encoder.Encode(mergedOptions)
 	if err != nil {
 		return E.Cause(err, "encode config")
-	}
-	if existsContent, err := os.ReadFile(outputPath); err != nil {
-		if string(existsContent) == buffer.String() {
-			return nil
-		}
 	}
 	err = rw.MkdirParent(outputPath)
 	if err != nil {

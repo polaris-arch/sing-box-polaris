@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/sagernet/sing-box/common/usagepersist"
 	"github.com/sagernet/sing-box/log"
 	E "github.com/sagernet/sing/common/exceptions"
 	"github.com/sagernet/sing/service/filemanager"
@@ -35,16 +36,26 @@ type CostCombination struct {
 }
 
 type AggregatedUsage struct {
-	LastUpdated  time.Time         `json:"last_updated"`
-	Combinations []CostCombination `json:"combinations"`
-	mutex        sync.Mutex
-	ctx          context.Context
-	filePath     string
-	logger       log.ContextLogger
-	lastSaveTime time.Time
-	pendingSave  bool
-	saveTimer    *time.Timer
-	saveMutex    sync.Mutex
+	IncompleteObservations uint64            `json:"incomplete_observations"`
+	LastUpdated            time.Time         `json:"last_updated"`
+	Combinations           []CostCombination `json:"combinations"`
+	mutex                  sync.Mutex
+	ctx                    context.Context
+	filePath               string
+	logger                 log.ContextLogger
+	lastSaveTime           time.Time
+	lastSaveAttempt        time.Time
+	pendingSave            bool
+	saveTimer              *time.Timer
+	saveMutex              sync.Mutex
+	saveWriteMutex         sync.Mutex
+	fileLease              *usagepersist.FileLease
+	saveDirty              bool
+	saveStopping           bool
+	saveGroup              sync.WaitGroup
+	closed                 bool
+	closeOnce              sync.Once
+	closeErr               error
 }
 
 type UsageStatsJSON struct {
@@ -75,9 +86,10 @@ type CostsSummaryJSON struct {
 }
 
 type AggregatedUsageJSON struct {
-	LastUpdated  time.Time             `json:"last_updated"`
-	Costs        CostsSummaryJSON      `json:"costs"`
-	Combinations []CostCombinationJSON `json:"combinations"`
+	IncompleteObservations uint64                `json:"incomplete_observations"`
+	LastUpdated            time.Time             `json:"last_updated"`
+	Costs                  CostsSummaryJSON      `json:"costs"`
+	Combinations           []CostCombinationJSON `json:"combinations"`
 }
 
 type WeeklyCycleHint struct {
@@ -534,7 +546,8 @@ func (u *AggregatedUsage) ToJSON() *AggregatedUsageJSON {
 	defer u.mutex.Unlock()
 
 	result := &AggregatedUsageJSON{
-		LastUpdated: u.LastUpdated,
+		LastUpdated:            u.LastUpdated,
+		IncompleteObservations: u.IncompleteObservations,
 		Costs: CostsSummaryJSON{
 			TotalUSD: 0,
 			ByUser:   make(map[string]float64),
@@ -563,11 +576,29 @@ func (u *AggregatedUsage) ToJSON() *AggregatedUsageJSON {
 	return result
 }
 
-func (u *AggregatedUsage) Load() error {
+func (u *AggregatedUsage) Load() (result error) {
+	u.saveWriteMutex.Lock()
+	defer u.saveWriteMutex.Unlock()
+	u.mutex.Lock()
+	closed := u.closed
+	u.mutex.Unlock()
+	if closed {
+		return E.New("usage tracker is closed")
+	}
+	if err := u.acquireFileLocked(); err != nil {
+		return err
+	}
+	defer func() {
+		if result != nil {
+			result = E.Errors(result, u.fileLease.Close())
+			u.fileLease = nil
+		}
+	}()
 	u.mutex.Lock()
 	defer u.mutex.Unlock()
 
 	u.LastUpdated = time.Time{}
+	u.IncompleteObservations = 0
 	u.Combinations = nil
 
 	data, err := filemanager.ReadFile(u.ctx, u.filePath)
@@ -579,8 +610,9 @@ func (u *AggregatedUsage) Load() error {
 	}
 
 	var temp struct {
-		LastUpdated  time.Time         `json:"last_updated"`
-		Combinations []CostCombination `json:"combinations"`
+		IncompleteObservations uint64            `json:"incomplete_observations"`
+		LastUpdated            time.Time         `json:"last_updated"`
+		Combinations           []CostCombination `json:"combinations"`
 	}
 
 	err = json.Unmarshal(data, &temp)
@@ -589,6 +621,7 @@ func (u *AggregatedUsage) Load() error {
 	}
 
 	u.LastUpdated = temp.LastUpdated
+	u.IncompleteObservations = temp.IncompleteObservations
 	u.Combinations = temp.Combinations
 	normalizeCombinations(u.Combinations)
 
@@ -596,6 +629,22 @@ func (u *AggregatedUsage) Load() error {
 }
 
 func (u *AggregatedUsage) Save() error {
+	u.saveWriteMutex.Lock()
+	defer u.saveWriteMutex.Unlock()
+	u.mutex.Lock()
+	closed := u.closed
+	u.mutex.Unlock()
+	if closed {
+		return E.New("usage tracker is closed")
+	}
+	return u.saveLocked()
+}
+
+// saveLocked requires the full snapshot-to-rename transaction lock.
+func (u *AggregatedUsage) saveLocked() error {
+	if err := u.acquireFileLocked(); err != nil {
+		return err
+	}
 	jsonData := u.ToJSON()
 
 	data, err := json.MarshalIndent(jsonData, "", "  ")
@@ -649,61 +698,116 @@ func (u *AggregatedUsage) AddUsageWithCycleHint(
 
 	u.mutex.Lock()
 	defer u.mutex.Unlock()
+	if u.closed {
+		return E.New("usage tracker is closed")
+	}
 
 	u.LastUpdated = observedAt
 	weekStartUnix := deriveWeekStartUnix(cycleHint)
 
 	addUsageToCombinations(&u.Combinations, model, contextWindow, weekStartUnix, messagesCount, inputTokens, outputTokens, cacheReadTokens, cacheCreationTokens, cacheCreation5MinuteTokens, cacheCreation1HourTokens, user)
 
-	go u.scheduleSave()
+	u.scheduleSave()
 
 	return nil
 }
 
 func (u *AggregatedUsage) scheduleSave() {
-	const saveInterval = time.Minute
-
 	u.saveMutex.Lock()
 	defer u.saveMutex.Unlock()
-
-	timeSinceLastSave := time.Since(u.lastSaveTime)
-
-	if timeSinceLastSave >= saveInterval {
-		go u.saveAsync()
+	if u.saveStopping {
 		return
 	}
+	u.saveDirty = true
+	u.scheduleSaveLocked()
+}
 
-	if u.pendingSave {
+// At most one timer or callback belongs to a tracker. Updates during a save
+// remain dirty and coalesce into the next interval; no per-request goroutine.
+// Failed attempts also advance the cadence: new events cannot cause a hot
+// retry loop. Without a new update, failures retain the legacy no-retry policy.
+func (u *AggregatedUsage) scheduleSaveLocked() {
+	if u.pendingSave || u.saveStopping {
 		return
 	}
-
 	u.pendingSave = true
-	remainingTime := saveInterval - timeSinceLastSave
-
-	u.saveTimer = time.AfterFunc(remainingTime, func() {
+	lastAttempt := u.lastSaveTime
+	if u.lastSaveAttempt.After(lastAttempt) {
+		lastAttempt = u.lastSaveAttempt
+	}
+	delay := max(time.Duration(0), time.Minute-time.Since(lastAttempt))
+	u.saveGroup.Add(1)
+	u.saveTimer = time.AfterFunc(delay, func() {
+		defer u.saveGroup.Done()
+		u.saveMutex.Lock()
+		u.saveDirty = false
+		u.lastSaveAttempt = time.Now()
+		u.saveMutex.Unlock()
+		if err := u.Save(); err != nil && u.logger != nil {
+			u.logger.Error("save usage statistics: ", err)
+		}
 		u.saveMutex.Lock()
 		u.pendingSave = false
+		u.saveTimer = nil
+		if u.saveDirty {
+			u.scheduleSaveLocked()
+		}
 		u.saveMutex.Unlock()
-		u.saveAsync()
 	})
 }
 
-func (u *AggregatedUsage) saveAsync() {
-	err := u.Save()
-	if err != nil {
-		if u.logger != nil {
-			u.logger.Error("save usage statistics: ", err)
+// Close must follow producer drain. It rejects new updates, joins an already
+// running save, and performs exactly one final transaction before returning.
+func (u *AggregatedUsage) Close() error {
+	u.closeOnce.Do(func() {
+		u.mutex.Lock()
+		u.closed = true
+		u.mutex.Unlock()
+		u.saveMutex.Lock()
+		u.saveStopping = true
+		if u.saveTimer != nil && u.saveTimer.Stop() {
+			u.saveGroup.Done()
+			u.saveTimer = nil
+			u.pendingSave = false
 		}
-	}
+		u.saveMutex.Unlock()
+		u.saveGroup.Wait()
+		u.saveWriteMutex.Lock()
+		u.closeErr = u.saveLocked()
+		if u.fileLease != nil {
+			u.closeErr = E.Errors(u.closeErr, u.fileLease.Close())
+			u.fileLease = nil
+		}
+		u.saveWriteMutex.Unlock()
+	})
+	return u.closeErr
 }
 
-func (u *AggregatedUsage) cancelPendingSave() {
-	u.saveMutex.Lock()
-	defer u.saveMutex.Unlock()
-
-	if u.saveTimer != nil {
-		u.saveTimer.Stop()
-		u.saveTimer = nil
+// MarkIncomplete records missing accounting separately from known token totals.
+// It never invents a zero-token usage record or changes provider token values.
+func (u *AggregatedUsage) MarkIncomplete() {
+	u.mutex.Lock()
+	defer u.mutex.Unlock()
+	if u.closed {
+		return
 	}
-	u.pendingSave = false
+	if u.IncompleteObservations < ^uint64(0) {
+		u.IncompleteObservations++
+	}
+	u.LastUpdated = time.Now()
+	u.scheduleSave()
+}
+
+// Caller holds saveWriteMutex through Load or the entire save transaction.
+func (u *AggregatedUsage) acquireFileLocked() error {
+	if u.fileLease != nil {
+		return nil
+	}
+	lease, err := usagepersist.AcquireFile(u.ctx, u.filePath)
+	if err != nil {
+		return err
+	}
+	u.fileLease = lease
+	u.filePath = lease.ManagedPath
+	return nil
 }

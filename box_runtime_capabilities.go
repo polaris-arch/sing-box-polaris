@@ -93,6 +93,11 @@ func runtimeCapabilityFieldsForBuild(tags string, known, quic, cgo bool) []Runti
 	for _, item := range []struct{ name, tag string }{
 		{C.TypeWireGuard, "with_wireguard"}, {C.TypeOpenConnect, "with_openconnect"}, {C.TypeOpenVPNClient, "with_openvpn"}, {C.TypeTailscale, "with_tailscale"}, {C.TypeMASQUEClient, ""},
 	} {
+		if item.name == C.TypeTailscale && runtime.GOOS == "android" {
+			add("endpoints", item.name, "RUNTIME_UPDATE_UNSPECIFIED", "required-build-tag="+item.tag, "build-tag-state="+features[item.tag],
+				"Android-warm-addition-requires-typed-original-main-writer-admission", "implementation-inventory-only;mobile-readiness-is-not-advertised-by-build")
+			continue
+		}
 		variant("endpoints", item.name, item.tag, "userspace-node-only", "physical-identity-overlap-preflight")
 	}
 	for _, name := range []string{C.DNSTypeUDP, C.DNSTypeTCP, C.DNSTypeTLS, C.DNSTypeHTTPS, C.DNSTypeHosts, C.DNSTypeFakeIP, C.DNSTypeLocal, C.DNSTypeMDNS} {

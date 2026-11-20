@@ -2,7 +2,6 @@ package tun
 
 import (
 	"errors"
-	"os"
 	"slices"
 	"strconv"
 	"strings"
@@ -128,51 +127,24 @@ func (r *autoRedirect) discoverAndroidVPNServiceRules() ([]*netlink.Rule, error)
 	return rules, nil
 }
 
-func androidVPNServiceRuleEquals(left *netlink.Rule, right *netlink.Rule) bool {
-	return left.Family == right.Family &&
-		left.Priority == right.Priority &&
-		left.Mark == right.Mark &&
-		left.Mask == right.Mask &&
-		left.IifName == right.IifName &&
-		left.Table == right.Table
+func vpnServiceKernelOps() vpnRuleOps {
+	return vpnRuleOps{
+		list: func() ([]netlink.Rule, error) { return netlink.RuleList(netlink.FAMILY_ALL) },
+		add:  netlink.RuleAdd,
+		del:  netlink.RuleDel,
+	}
 }
 
 func (r *autoRedirect) setupAndroidVPNServiceRules() error {
 	r.androidVPNServiceRuleAccess.Lock()
 	defer r.androidVPNServiceRuleAccess.Unlock()
-	priority := r.androidVPNServiceRulePriority()
-	inputMark := r.tunOptions.AutoRedirectInputMark
-	outputMark := r.tunOptions.AutoRedirectOutputMark
-	resetMark := r.tunOptions.AutoRedirectResetMark
-	for _, family := range []int{unix.AF_INET, unix.AF_INET6} {
-		staleRules, err := netlink.RuleListFiltered(family, &netlink.Rule{Priority: priority}, netlink.RT_FILTER_PRIORITY)
-		if err != nil {
-			continue
-		}
-		for _, staleRule := range staleRules {
-			if staleRule.Mark != inputMark && staleRule.Mark != outputMark && staleRule.Mark != resetMark {
-				continue
-			}
-			deleteRule := netlink.NewRule()
-			deleteRule.Family = family
-			deleteRule.Priority = priority
-			deleteRule.Mark = staleRule.Mark
-			deleteRule.MarkSet = true
-			deleteRule.Mask = staleRule.Mask
-			_ = netlink.RuleDel(deleteRule)
-		}
-	}
 	rules, err := r.discoverAndroidVPNServiceRules()
 	if err != nil {
 		return err
 	}
 	r.androidVPNServiceRulesActive = true
-	for _, rule := range rules {
-		err = netlink.RuleAdd(rule)
-		if err != nil && !E.IsMulti(err, unix.EEXIST, os.ErrExist) {
-			return E.Cause(err, "add rule ", rule)
-		}
-		r.androidVPNServiceRules = append(r.androidVPNServiceRules, rule)
+	if err := reconcileVPNServiceRules(&r.androidVPNServiceRules, rules, vpnServiceKernelOps()); err != nil {
+		return err
 	}
 	return r.removeAndroidIngressDiscardRulesLocked()
 }
@@ -191,50 +163,19 @@ func (r *autoRedirect) updateAndroidVPNServiceRules() error {
 		}
 		return err
 	}
-	currentRules, err := netlink.RuleListFiltered(netlink.FAMILY_ALL, &netlink.Rule{Priority: r.androidVPNServiceRulePriority()}, netlink.RT_FILTER_PRIORITY)
-	if err != nil {
-		return E.Cause(err, "list current vpn service rules")
+	if err := reconcileVPNServiceRules(&r.androidVPNServiceRules, rules, vpnServiceKernelOps()); err != nil {
+		return err
 	}
-	var errorList []error
-	var installedRules []*netlink.Rule
-	for _, installedRule := range r.androidVPNServiceRules {
-		if slices.ContainsFunc(rules, func(it *netlink.Rule) bool {
-			return androidVPNServiceRuleEquals(it, installedRule)
-		}) {
-			continue
-		}
-		deleteErr := netlink.RuleDel(installedRule)
-		if deleteErr != nil && !E.IsMulti(deleteErr, unix.ENOENT, os.ErrNotExist) {
-			errorList = append(errorList, E.Cause(deleteErr, "delete rule ", installedRule))
-			installedRules = append(installedRules, installedRule)
-		}
-	}
-	for _, rule := range rules {
-		if slices.ContainsFunc(currentRules, func(it netlink.Rule) bool {
-			return androidVPNServiceRuleEquals(&it, rule)
-		}) {
-			installedRules = append(installedRules, rule)
-			continue
-		}
-		addErr := netlink.RuleAdd(rule)
-		if addErr != nil && !E.IsMulti(addErr, unix.EEXIST, os.ErrExist) {
-			errorList = append(errorList, E.Cause(addErr, "add rule ", rule))
-			continue
-		}
-		installedRules = append(installedRules, rule)
-	}
-	r.androidVPNServiceRules = installedRules
-	errorList = append(errorList, r.removeAndroidIngressDiscardRulesLocked())
-	return E.Errors(errorList...)
+	return r.removeAndroidIngressDiscardRulesLocked()
 }
 
-func (r *autoRedirect) cleanupAndroidVPNServiceRules() {
+func (r *autoRedirect) cleanupAndroidVPNServiceRules() error {
 	r.androidVPNServiceRuleAccess.Lock()
 	defer r.androidVPNServiceRuleAccess.Unlock()
 	r.androidVPNServiceRulesActive = false
-	r.restoreAndroidIngressDiscardRulesLocked()
-	for _, rule := range r.androidVPNServiceRules {
-		_ = netlink.RuleDel(rule)
+	restoreErr := r.restoreAndroidIngressDiscardRulesLocked()
+	if len(r.androidVPNServiceRules) == 0 {
+		return restoreErr
 	}
-	r.androidVPNServiceRules = nil
+	return E.Errors(restoreErr, reconcileVPNServiceRules(&r.androidVPNServiceRules, nil, vpnServiceKernelOps()))
 }

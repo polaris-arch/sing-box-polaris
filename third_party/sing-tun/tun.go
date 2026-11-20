@@ -85,6 +85,7 @@ type Options struct {
 	InterfaceScope                        bool
 	Inet4Gateway                          netip.Addr
 	Inet6Gateway                          netip.Addr
+	LinuxResolvedExternal                 bool
 	DNSMode                               string
 	DNSAddress                            []netip.Addr
 	IPRoute2TableIndex                    int
@@ -271,4 +272,10 @@ func CalculateInterfaceName(name string) (tunName string) {
 	}
 	tunName = F.ToString(tunName, tunIndex)
 	return
+}
+
+// ManageLinuxResolved controls only Linux system resolver configuration, not
+// DNS packet interception or TUN routing. External managers retain ownership.
+func (o *Options) ManageLinuxResolved() bool {
+	return !o.LinuxResolvedExternal && !o.EXP_ExternalConfiguration && o.NetNs == "" && o.DNSModeOrDefault() != DNSModeDisabled
 }

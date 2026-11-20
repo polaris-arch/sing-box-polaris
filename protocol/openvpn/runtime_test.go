@@ -3,6 +3,8 @@ package openvpn
 import (
 	"context"
 	"errors"
+	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -10,7 +12,40 @@ import (
 	"github.com/sagernet/sing-box/adapter/outbound"
 	"github.com/sagernet/sing-box/common/tls"
 	"github.com/sagernet/sing-box/log"
+	"github.com/sagernet/sing/service"
+	"github.com/sagernet/sing/service/filemanager"
 )
+
+type materialResourceDirectoryManager struct{ filemanager.Manager }
+
+func (m materialResourceDirectoryManager) ConfigurationDirectoryPath(path string) string {
+	return m.BasePath(path)
+}
+
+func TestMaterialSourcePreservesEmptyAndUsesWindowsResourceBase(t *testing.T) {
+	directory := t.TempDir()
+	ctx := filemanager.WithDefault(context.Background(), directory, "", 0, 0)
+	if material, err := materialSource(ctx, "tls.client_certificate", nil, "client.pem"); err != nil || material.Path != "client.pem" {
+		t.Fatalf("ordinary file manager changed material: %+v, %v", material, err)
+	}
+	ctx = service.ContextWith[filemanager.Manager](ctx, materialResourceDirectoryManager{service.FromContext[filemanager.Manager](ctx)})
+	for _, path := range []string{"", "client.pem"} {
+		material, err := materialSource(ctx, "tls.client_certificate", nil, path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		expected := path
+		if runtime.GOOS == "windows" && path != "" {
+			expected = filepath.Join(directory, path)
+		}
+		if material.Path != expected {
+			t.Fatalf("material path = %q; want %q", material.Path, expected)
+		}
+	}
+	if _, err := materialSource(ctx, "tls.client_certificate", []string{"inline"}, "client.pem"); err == nil {
+		t.Fatal("inline material and a path must still conflict")
+	}
+}
 
 func fixtureRuntimeClient() *runtimeClientState {
 	ctx, cancel := context.WithCancel(context.Background())

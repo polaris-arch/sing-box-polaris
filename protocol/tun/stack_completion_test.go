@@ -94,3 +94,42 @@ func TestInboundShutdownMissingCompletionFailsClosed(t *testing.T) {
 		t.Fatal("missing completion lost its sticky error")
 	}
 }
+
+func TestNativeCleanupAfterCompletedDetachPreservesCloseErrors(t *testing.T) {
+	stackErr := errors.New("stack close failed")
+	nativeErr := errors.New("native cleanup failed")
+	stack := &shutdownBarrierStack{entered: make(chan struct{}), finish: make(chan struct{}), closeErr: stackErr}
+	close(stack.finish)
+	shutdown := newStackShutdown(stack)
+	if err := shutdown.Close(); !errors.Is(err, stackErr) {
+		t.Fatalf("stack close error lost: %v", err)
+	}
+	calls := 0
+	err := shutdown.closeNative(context.Background(), func() error { calls++; return nativeErr })
+	if calls != 1 || !errors.Is(err, stackErr) || !errors.Is(err, nativeErr) {
+		t.Fatalf("completed detach skipped cleanup or lost errors: calls=%d err=%v", calls, err)
+	}
+}
+
+func TestNativeCleanupDoesNotReleaseUnconfirmedDetach(t *testing.T) {
+	failure := errors.New("detach failed")
+	stack := &shutdownBarrierStack{entered: make(chan struct{}), finish: make(chan struct{}), detachErr: failure}
+	close(stack.finish)
+	shutdown := newStackShutdown(stack)
+	_ = shutdown.Close()
+	calls := 0
+	err := shutdown.closeNative(context.Background(), func() error { calls++; return nil })
+	if calls != 0 || !errors.Is(err, failure) {
+		t.Fatalf("failed detach released native device: calls=%d err=%v", calls, err)
+	}
+	pending := newStackShutdown(&noCompletionStack{})
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if err := pending.closeNative(ctx, func() error { calls++; return nil }); !errors.Is(err, context.Canceled) || calls != 0 {
+		t.Fatalf("pending detach released native device: calls=%d err=%v", calls, err)
+	}
+	_ = pending.Close()
+	if err := pending.closeNative(context.Background(), func() error { calls++; return nil }); err == nil || calls != 0 {
+		t.Fatalf("missing adapter released native device: calls=%d err=%v", calls, err)
+	}
+}

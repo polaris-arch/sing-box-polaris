@@ -2,7 +2,7 @@ module github.com/sagernet/sing-box
 
 go 1.27.0
 
-toolchain go1.27.2
+toolchain go1.27.4
 
 require (
 	filippo.io/age v1.3.1
@@ -64,6 +64,7 @@ require (
 	github.com/sagernet/tailscale v1.102.1-sing-box-1.14-mod.5.0.20260925112514-35e61219dedd
 	github.com/sagernet/wireguard-go v0.0.8-0.20260929150556-ca3bc60c4ce7
 	github.com/sagernet/ws v0.0.0-20231204124109-acfe8907c854
+	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.12.0
 	github.com/tailscale/go-winio v0.0.0-20231025203758-c4f33415bf55
@@ -120,7 +121,7 @@ require (
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/gopacket v1.1.19 // indirect
-	github.com/google/nftables v0.2.1-0.20240414091927-5e242ec57806 // indirect
+	github.com/google/nftables v0.3.1-0.20261116164147-4ffa86fab994 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/hashicorp/yamux v0.1.2 // indirect
 	github.com/hdevalence/ed25519consensus v0.2.0 // indirect
@@ -233,3 +234,8 @@ replace github.com/sagernet/sing-vmess => ./third_party/sing-vmess
 
 // Pinned NAT discovery/mapping completion; upstream identity and full license are retained in-tree.
 replace github.com/libp2p/go-nat => ./third_party/go-nat
+
+replace github.com/sagernet/sing-openconnect => github.com/polaris-arch/sing-openconnect v0.1.1-0.20261115073945-1ec24f04ff47
+
+// Pinned official nftables: one 32-bit panic-format fix; provenance/removal gate in third_party/google-nftables/UPSTREAM.json.
+replace github.com/google/nftables => ./third_party/google-nftables

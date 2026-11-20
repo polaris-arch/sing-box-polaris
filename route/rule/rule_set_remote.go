@@ -5,7 +5,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"io"
+	"fmt"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -20,7 +20,6 @@ import (
 	"github.com/sagernet/sing/common"
 	E "github.com/sagernet/sing/common/exceptions"
 	F "github.com/sagernet/sing/common/format"
-	"github.com/sagernet/sing/common/json"
 	"github.com/sagernet/sing/common/logger"
 	"github.com/sagernet/sing/common/x/list"
 	"github.com/sagernet/sing/service"
@@ -53,6 +52,9 @@ type RemoteRuleSet struct {
 }
 
 func NewRemoteRuleSet(ctx context.Context, logger logger.ContextLogger, tag string, options option.RuleSet) (*RemoteRuleSet, error) {
+	if _, err := ruleSetLimits(options.ResourceLimits); err != nil {
+		return nil, err
+	}
 	ctx, cancel := context.WithCancel(ctx)
 	var updateInterval time.Duration
 	if options.RemoteOptions.UpdateInterval > 0 {
@@ -91,20 +93,24 @@ func (s *RemoteRuleSet) String() string {
 }
 
 func (s *RemoteRuleSet) StartContext(ctx context.Context, startContext *adapter.HTTPStartContext) error {
+	limits, err := ruleSetLimits(s.options.ResourceLimits)
+	if err != nil {
+		return err
+	}
 	s.cacheFile = service.FromContext[adapter.CacheFile](s.ctx)
 	transport, err := s.resolveTransport()
 	if err != nil {
 		return E.Cause(err, "create rule-set http client")
 	}
 	startContext.Register(transport)
-	s.httpClient = &http.Client{Transport: transport}
+	s.httpClient = &http.Client{Transport: transport, Timeout: C.RuleSetDownloadTimeout}
 	if s.cacheFile != nil {
-		savedSet := s.cacheFile.LoadRuleSet(s.tag)
+		savedSet := s.cacheFile.LoadRuleSet(s.tag, limits.InputBytes)
 		if savedSet != nil {
 			if len(savedSet.URLHash) > 0 && !bytes.Equal(savedSet.URLHash, s.urlHash[:]) {
 				s.logger.Info("cached rule-set was downloaded from another URL, will refetch")
 			} else {
-				err = s.loadBytes(savedSet.Content)
+				err = s.loadBytesContext(ctx, savedSet.Content)
 				if err != nil {
 					s.logger.Warn(E.Cause(err, "restore cached rule-set, will refetch"))
 				} else {
@@ -117,9 +123,9 @@ func (s *RemoteRuleSet) StartContext(ctx context.Context, startContext *adapter.
 	var loadedFromInitialPath bool
 	if s.lastUpdated.IsZero() && s.initialPath != "" {
 		var content []byte
-		content, err = filemanager.ReadFile(s.ctx, s.initialPath)
+		content, err = readRuleSetFile(s.ctx, s.initialPath, s.options.ResourceLimits)
 		if err == nil {
-			err = s.loadBytes(content)
+			err = s.loadBytesContext(ctx, content)
 		}
 		if err != nil {
 			s.logger.Warn(E.Cause(err, "load initial rule-set from ", s.initialPath))
@@ -172,7 +178,7 @@ func (s *RemoteRuleSet) UnregisterCallback(element *list.Element[adapter.RuleSet
 	s.callbacks.Remove(element)
 }
 
-func (s *RemoteRuleSet) loadBytes(content []byte) (result error) {
+func (s *RemoteRuleSet) loadBytesContext(ctx context.Context, content []byte) (result error) {
 	s.reloadAccess.Lock()
 	var callbacks []adapter.RuleSetUpdateCallback
 	defer func() {
@@ -184,18 +190,28 @@ func (s *RemoteRuleSet) loadBytes(content []byte) (result error) {
 			}
 		}
 	}()
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	limits, limitsErr := ruleSetLimits(s.options.ResourceLimits)
+	if limitsErr != nil {
+		return limitsErr
+	}
+	if int64(len(content)) > limits.InputBytes {
+		return fmt.Errorf("%w: input bytes", srs.ErrResourceLimit)
+	}
 	var (
 		ruleSet option.PlainRuleSetCompat
 		err     error
 	)
 	switch s.options.Format {
 	case C.RuleSetFormatSource:
-		ruleSet, err = json.UnmarshalExtended[option.PlainRuleSetCompat](content)
+		ruleSet, err = srs.ReadSourceContextWithLimits(ctx, content, limits)
 		if err != nil {
 			return err
 		}
 	case C.RuleSetFormatBinary:
-		ruleSet, err = srs.Read(bytes.NewReader(content), false)
+		ruleSet, err = srs.ReadContextWithLimits(ctx, bytes.NewReader(content), false, limits)
 		if err != nil {
 			return err
 		}
@@ -208,6 +224,9 @@ func (s *RemoteRuleSet) loadBytes(content []byte) (result error) {
 	}
 	rules := make([]adapter.HeadlessRule, len(plainRuleSet.Rules))
 	for i, ruleOptions := range plainRuleSet.Rules {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		rules[i], err = NewHeadlessRule(s.ctx, ruleOptions)
 		if err != nil {
 			return E.Cause(err, "parse rule_set.rules.[", i, "]")
@@ -218,8 +237,11 @@ func (s *RemoteRuleSet) loadBytes(content []byte) (result error) {
 	if err != nil {
 		return err
 	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	sum := sha256.Sum256(content)
-	callbacks, result = s.publish(rules, metadata, hex.EncodeToString(sum[:]))
+	callbacks, result = s.publishContext(ctx, rules, metadata, hex.EncodeToString(sum[:]))
 	return result
 }
 
@@ -233,6 +255,10 @@ func (s *RemoteRuleSet) updateOnce() {
 }
 
 func (s *RemoteRuleSet) fetch(ctx context.Context, isStart bool) error {
+	limits, limitsErr := ruleSetLimits(s.options.ResourceLimits)
+	if limitsErr != nil {
+		return limitsErr
+	}
 	s.logger.Debug("updating rule-set ", s.tag, " from URL: ", s.url)
 	request, err := http.NewRequest("GET", s.url, nil)
 	if err != nil {
@@ -251,13 +277,20 @@ func (s *RemoteRuleSet) fetch(ctx context.Context, isStart bool) error {
 	defer response.Body.Close()
 	switch response.StatusCode {
 	case http.StatusOK:
+		if response.ContentLength > limits.InputBytes {
+			return fmt.Errorf("%w: input bytes", srs.ErrResourceLimit)
+		}
 	case http.StatusNotModified:
+		if s.lastEtag == "" {
+			return E.New("unexpected 304 response without a rule-set validator")
+		}
 		s.lastUpdated = time.Now()
 		if s.cacheFile != nil {
-			savedRuleSet := s.cacheFile.LoadRuleSet(s.tag)
-			if savedRuleSet != nil {
+			savedRuleSet := s.cacheFile.LoadRuleSet(s.tag, limits.InputBytes)
+			// A conditional response confirms the validator that was sent.
+			// A same-tag disk entry can still belong to another URL or version.
+			if savedRuleSet != nil && savedRuleSet.LastEtag == s.lastEtag && bytes.Equal(savedRuleSet.URLHash, s.urlHash[:]) {
 				savedRuleSet.LastUpdated = s.lastUpdated
-				savedRuleSet.URLHash = s.urlHash[:]
 				err = s.cacheFile.SaveRuleSet(s.tag, savedRuleSet)
 				if err != nil {
 					s.logger.Error("save rule-set updated time: ", err)
@@ -270,17 +303,17 @@ func (s *RemoteRuleSet) fetch(ctx context.Context, isStart bool) error {
 	default:
 		return E.New("unexpected status: ", response.Status)
 	}
-	content, err := io.ReadAll(response.Body)
+	content, err := srs.ReadContent(response.Body, limits.InputBytes)
 	if err != nil {
 		return err
 	}
-	err = s.loadBytes(content)
+	err = s.loadBytesContext(ctx, content)
 	if err != nil {
 		return err
 	}
-	eTagHeader := response.Header.Get("Etag")
-	if eTagHeader != "" {
-		s.lastEtag = eTagHeader
+	s.lastEtag = response.Header.Get("Etag")
+	if len(s.lastEtag) > http.DefaultMaxHeaderBytes {
+		s.lastEtag = ""
 	}
 	s.lastUpdated = time.Now()
 	if s.cacheFile != nil {
@@ -334,4 +367,33 @@ func (s *RemoteRuleSet) Match(metadata *adapter.InboundContext) bool {
 
 func (s *RemoteRuleSet) mergeableRule() *DefaultHeadlessRule {
 	return mergeableRuleIn(s.loadSnapshot().rules)
+}
+
+// Bound file acquisition too: validating len(content) after ReadFile is too late.
+func readRuleSetFile(ctx context.Context, path string, configured *option.RuleSetResourceLimits) ([]byte, error) {
+	limits, err := ruleSetLimits(configured)
+	if err != nil {
+		return nil, err
+	}
+	file, err := filemanager.Open(ctx, path)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	stat, err := file.Stat()
+	if err != nil {
+		return nil, err
+	}
+	if stat.Size() > limits.InputBytes {
+		return nil, fmt.Errorf("%w: input bytes", srs.ErrResourceLimit)
+	}
+	// Still bound actual reads in case the file grows after Stat.
+	return srs.ReadContent(file, limits.InputBytes)
+}
+
+func ruleSetLimits(configured *option.RuleSetResourceLimits) (srs.ReadLimits, error) {
+	if configured == nil {
+		return srs.DefaultReadLimits(), nil
+	}
+	return srs.ResolveReadLimits(*configured)
 }

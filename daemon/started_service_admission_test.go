@@ -3,13 +3,17 @@ package daemon
 import (
 	"context"
 	"errors"
+	"net"
 	"os"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/sagernet/sing-box/adapter"
+	"github.com/sagernet/sing-box/common/trafficcontrol"
 	"github.com/sagernet/sing/common/observable"
 
+	"github.com/gofrs/uuid/v5"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -248,5 +252,38 @@ func TestSubscribeConnectionsRejectsMissingInstanceBeforeDereference(t *testing.
 	err := s.SubscribeConnections(&SubscribeConnectionsRequest{}, &admissionConnectionStream{})
 	if status.Code(err) != codes.Unavailable {
 		t.Fatalf("missing instance result: %v", err)
+	}
+}
+
+type sampleConnectionOutbound struct{ adapter.Outbound }
+
+func (sampleConnectionOutbound) Tag() string  { return "direct" }
+func (sampleConnectionOutbound) Type() string { return "direct" }
+
+func TestTrafficSampleReconcilesReplacementWithoutChangingConnectionCount(t *testing.T) {
+	var service StartedService
+	manager := trafficcontrol.NewManager()
+	metadata := adapter.InboundContext{OutboundChain: []adapter.Outbound{sampleConnectionOutbound{}}}
+	first, firstPeer := net.Pipe()
+	tracked := manager.RoutedConnection(t.Context(), first, metadata, nil, nil)
+	t.Cleanup(func() { _ = tracked.Close(); _ = firstPeer.Close() })
+	snapshots := make(map[uuid.UUID]connectionSnapshot)
+	initial := service.buildInitialConnectionState(manager, snapshots)
+	if len(initial) != 1 {
+		t.Fatalf("initial connections: %d", len(initial))
+	}
+	if events := service.buildTrafficUpdates(manager, snapshots); len(events) != 0 {
+		t.Fatalf("unchanged sample sent events: %v", events)
+	}
+	_ = tracked.Close()
+	second, secondPeer := net.Pipe()
+	replacement := manager.RoutedConnection(t.Context(), second, metadata, nil, nil)
+	t.Cleanup(func() { _ = replacement.Close(); _ = secondPeer.Close() })
+	// Skip the event stream to exercise recovery of a missed NEW and CLOSED.
+	events := service.buildTrafficUpdates(manager, snapshots)
+	if len(events) != 2 || events[0].Type != ConnectionEventType_CONNECTION_EVENT_NEW ||
+		events[1].Type != ConnectionEventType_CONNECTION_EVENT_CLOSED ||
+		events[1].Id != initial[0].Id || events[1].Connection == nil || len(snapshots) != 1 {
+		t.Fatalf("replacement sample did not reconcile the missed close: %v", events)
 	}
 }

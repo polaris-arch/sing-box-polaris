@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"time"
 
+	C "github.com/sagernet/sing-box/constant"
 	E "github.com/sagernet/sing/common/exceptions"
 	"github.com/sagernet/sing/service/filemanager"
 )
@@ -18,6 +19,7 @@ import (
 const (
 	oauth2ClientID          = "9d1c250a-e61b-44d9-88ed-5944d1962f5e"
 	oauth2TokenURL          = "https://console.anthropic.com/v1/oauth/token"
+	maxOAuthResponseBytes   = 1 << 20
 	claudeAPIBaseURL        = "https://api.anthropic.com"
 	tokenRefreshBufferMs    = 60000
 	anthropicBetaOAuthValue = "oauth-2025-04-20"
@@ -88,7 +90,7 @@ func (c *oauthCredentials) needsRefresh() bool {
 	return time.Now().UnixMilli() >= c.ExpiresAt-tokenRefreshBufferMs
 }
 
-func refreshToken(httpClient *http.Client, credentials *oauthCredentials) (*oauthCredentials, error) {
+func refreshToken(ctx context.Context, httpClient *http.Client, credentials *oauthCredentials) (*oauthCredentials, error) {
 	if credentials.RefreshToken == "" {
 		return nil, E.New("refresh token is empty")
 	}
@@ -102,7 +104,9 @@ func refreshToken(httpClient *http.Client, credentials *oauthCredentials) (*oaut
 		return nil, E.Cause(err, "marshal request")
 	}
 
-	request, err := http.NewRequest("POST", oauth2TokenURL, bytes.NewReader(requestBody))
+	ctx, cancel := context.WithTimeout(ctx, C.TCPTimeout)
+	defer cancel()
+	request, err := http.NewRequestWithContext(ctx, "POST", oauth2TokenURL, bytes.NewReader(requestBody))
 	if err != nil {
 		return nil, err
 	}
@@ -115,9 +119,17 @@ func refreshToken(httpClient *http.Client, credentials *oauthCredentials) (*oaut
 	}
 	defer response.Body.Close()
 
+	// Admit the whole body before accepting any tokens, even when a valid
+	// JSON object comes before an oversized or interrupted remainder.
+	body, err := io.ReadAll(http.MaxBytesReader(nil, response.Body, maxOAuthResponseBytes))
 	if response.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(response.Body)
+		if err != nil {
+			return nil, E.Cause(err, "refresh failed: ", response.Status)
+		}
 		return nil, E.New("refresh failed: ", response.Status, " ", string(body))
+	}
+	if err != nil {
+		return nil, E.Cause(err, "read response")
 	}
 
 	var tokenResponse struct {
@@ -125,8 +137,7 @@ func refreshToken(httpClient *http.Client, credentials *oauthCredentials) (*oaut
 		RefreshToken string `json:"refresh_token"`
 		ExpiresIn    int    `json:"expires_in"`
 	}
-	err = json.NewDecoder(response.Body).Decode(&tokenResponse)
-	if err != nil {
+	if err := json.Unmarshal(body, &tokenResponse); err != nil {
 		return nil, E.Cause(err, "decode response")
 	}
 

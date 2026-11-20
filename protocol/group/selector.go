@@ -191,19 +191,34 @@ func (s *Selector) RuntimeSelectInitial(tag string) bool {
 }
 
 func (s *Selector) DialContext(ctx context.Context, network string, destination M.Socksaddr) (net.Conn, error) {
-	conn, err := s.selected.Load().DialContext(ctx, network, destination)
+	selected := s.selected.Load()
+	conn, err := selected.DialContext(ctx, network, destination)
 	if err != nil {
 		return nil, err
 	}
-	return s.interruptGroup.NewConn(conn, interrupt.IsExternalConnectionFromContext(ctx)), nil
+	isExternal := interrupt.IsExternalConnectionFromContext(ctx)
+	conn = s.interruptGroup.NewConn(conn, isExternal)
+	// Register before checking so a concurrent switch cannot miss this dial.
+	if s.selected.Load() != selected && (!isExternal || s.interruptExternalConnections) {
+		conn.Close()
+		return nil, net.ErrClosed
+	}
+	return conn, nil
 }
 
 func (s *Selector) ListenPacket(ctx context.Context, destination M.Socksaddr) (net.PacketConn, error) {
-	conn, err := s.selected.Load().ListenPacket(ctx, destination)
+	selected := s.selected.Load()
+	conn, err := selected.ListenPacket(ctx, destination)
 	if err != nil {
 		return nil, err
 	}
-	return s.interruptGroup.NewPacketConn(conn, interrupt.IsExternalConnectionFromContext(ctx)), nil
+	isExternal := interrupt.IsExternalConnectionFromContext(ctx)
+	conn = s.interruptGroup.NewPacketConn(conn, isExternal)
+	if s.selected.Load() != selected && (!isExternal || s.interruptExternalConnections) {
+		conn.Close()
+		return nil, net.ErrClosed
+	}
+	return conn, nil
 }
 
 func RealTag(detour adapter.Outbound, network string) string {

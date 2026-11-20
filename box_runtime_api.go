@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"net/netip"
-	"reflect"
 	"sync"
 
 	"github.com/sagernet/sing-box/adapter"
@@ -39,18 +38,24 @@ func (s *Box) AcquireRuntimeAPI() (lease adapter.RuntimeLease, changed <-chan st
 	return lease, changed, true, err
 }
 
+// LookupPublicDNS runs the configured dial-side DNS lookup against the admitted graph.
+func (s *Box) LookupPublicDNS(ctx context.Context, domain string) ([]netip.Addr, error) {
+	lease, _, connected, err := s.AcquireRuntimeAPI()
+	if err != nil {
+		return nil, err
+	}
+	options := adapter.DNSQueryOptions{UseRules: true}
+	if connected {
+		defer lease.Release()
+		return lease.View().DNSRouter().Lookup(adapter.ContextWithRuntimeLease(ctx, lease), domain, options)
+	}
+	return s.dnsRouter.Lookup(ctx, domain, options)
+}
+
 // Only the App's explicit inline detour-only client has a stable adapter. Check
 // the complete structure, including fields deliberately omitted from JSON.
 func runtimeStableDashboard(options *option.APIDashboardOptions) bool {
-	if options == nil || !options.Enabled {
-		return true
-	}
-	if options.HTTPClient == nil || options.HTTPClient.Detour == "" {
-		return false
-	}
-	client := *options.HTTPClient
-	client.Detour = ""
-	return reflect.ValueOf(client).IsZero()
+	return options == nil || !options.Enabled || adapter.RuntimeDashboardHTTPDetour(options) != ""
 }
 
 // This key lives outside the public named/default HTTP client namespace.
@@ -232,28 +237,58 @@ func (s *Box) prepareRuntimeAPI(ctx context.Context, graph *preparedRuntimeGraph
 	return nil
 }
 
-// Keep the legacy address/port/secret projection unchanged. A policy-v1
-// dashboard toggle additionally requires the exact typed client shape on both
-// sides and keeps cardinality, service tag and all other raw fields fixed.
-func runtimeClientDashboardChanges(before, after stdjson.RawMessage, policy RuntimeClientImpactPolicyVersion) bool {
+type runtimeDashboardChange uint8
+
+const (
+	runtimeDashboardNoHotChange runtimeDashboardChange = iota
+	runtimeDashboardToggle
+	runtimeDashboardDetour
+)
+
+// A toggle can be combined with an API handoff. A detour change replaces only
+// the download transport, so all other service fields must match exactly.
+func runtimeClientDashboardChange(before, after stdjson.RawMessage, policy RuntimeClientImpactPolicyVersion) runtimeDashboardChange {
 	if policy != RuntimeClientImpactPolicyExplicit {
-		return false
+		return runtimeDashboardNoHotChange
 	}
 	var left, right []map[string]stdjson.RawMessage
-	if stdjson.Unmarshal(before, &left) != nil || stdjson.Unmarshal(after, &right) != nil || len(left) != 1 || len(right) != 1 || string(left[0]["type"]) != `"api"` || string(right[0]["type"]) != `"api"` {
-		return false
+	if bytes.Equal(before, after) || stdjson.Unmarshal(before, &left) != nil || stdjson.Unmarshal(after, &right) != nil || len(left) != 1 || len(right) != 1 || string(left[0]["type"]) != `"api"` || string(right[0]["type"]) != `"api"` {
+		return runtimeDashboardNoHotChange
 	}
 	a, _ := stdjson.Marshal(left[0])
 	b, _ := stdjson.Marshal(right[0])
 	var oldOptions, nextOptions option.APIServiceOptions
-	if stdjson.Unmarshal(a, &oldOptions) != nil || stdjson.Unmarshal(b, &nextOptions) != nil || !adapter.RuntimeDashboardToggleEligible(oldOptions, nextOptions) {
-		return false
+	if stdjson.Unmarshal(a, &oldOptions) != nil || stdjson.Unmarshal(b, &nextOptions) != nil {
+		return runtimeDashboardNoHotChange
 	}
-	for _, key := range []string{"listen", "listen_port", "secret", "dashboard"} {
-		delete(left[0], key)
-		delete(right[0], key)
+	change := runtimeDashboardToggle
+	if adapter.RuntimeDashboardToggleEligible(oldOptions, nextOptions) {
+		for _, key := range []string{"listen", "listen_port", "secret", "dashboard"} {
+			delete(left[0], key)
+			delete(right[0], key)
+		}
+	} else {
+		oldDetour := adapter.RuntimeDashboardHTTPDetour(oldOptions.Dashboard)
+		nextDetour := adapter.RuntimeDashboardHTTPDetour(nextOptions.Dashboard)
+		if oldDetour == "" || nextDetour == "" || oldDetour == nextDetour {
+			return runtimeDashboardNoHotChange
+		}
+		change = runtimeDashboardDetour
+		for _, service := range []map[string]stdjson.RawMessage{left[0], right[0]} {
+			var dashboard, client map[string]stdjson.RawMessage
+			if stdjson.Unmarshal(service["dashboard"], &dashboard) != nil ||
+				stdjson.Unmarshal(dashboard["http_client"], &client) != nil ||
+				len(client) != 1 || client["detour"] == nil {
+				return runtimeDashboardNoHotChange
+			}
+			delete(dashboard, "http_client")
+			service["dashboard"], _ = stdjson.Marshal(dashboard)
+		}
 	}
 	a, _ = stdjson.Marshal(left[0])
 	b, _ = stdjson.Marshal(right[0])
-	return bytes.Equal(a, b)
+	if bytes.Equal(a, b) {
+		return change
+	}
+	return runtimeDashboardNoHotChange
 }

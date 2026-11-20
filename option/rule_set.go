@@ -18,13 +18,25 @@ import (
 	"github.com/sagernet/sing/common/json/badoption"
 )
 
+// RuleSetResourceLimits sets per-load admission limits. Zero fields retain
+// bounded defaults; explicit larger values support trusted larger datasets.
+// These are not a total-process memory or execution-time guarantee.
+type RuleSetResourceLimits struct {
+	InputBytes   int64  `json:"input_bytes,omitempty"`
+	DecodedBytes int64  `json:"decoded_bytes,omitempty"`
+	Rules        uint64 `json:"rules,omitempty"`
+	Entries      uint64 `json:"entries,omitempty"`
+	StringBytes  uint64 `json:"string_bytes,omitempty"`
+}
+
 type _RuleSet struct {
-	Type          string                     `json:"type,omitempty" enum:"inline,local,remote"`
-	Tag           badoption.Listable[string] `json:"tag"`
-	Format        string                     `json:"format,omitempty" enum:"source,binary"`
-	InlineOptions PlainRuleSet               `json:"-"`
-	LocalOptions  LocalRuleSet               `json:"-"`
-	RemoteOptions RemoteRuleSet              `json:"-"`
+	ResourceLimits *RuleSetResourceLimits     `json:"resource_limits,omitempty"`
+	Type           string                     `json:"type,omitempty" enum:"inline,local,remote"`
+	Tag            badoption.Listable[string] `json:"tag"`
+	Format         string                     `json:"format,omitempty" enum:"source,binary"`
+	InlineOptions  PlainRuleSet               `json:"-"`
+	LocalOptions   LocalRuleSet               `json:"-"`
+	RemoteOptions  RemoteRuleSet              `json:"-"`
 }
 
 type RuleSet _RuleSet

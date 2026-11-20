@@ -217,6 +217,7 @@ func NewInbound(ctx context.Context, router adapter.Router, logger log.ContextLo
 			MultiQueue:                            options.MultiQueue,
 			Inet4Address:                          inet4Address,
 			Inet6Address:                          inet6Address,
+			LinuxResolvedExternal:                 options.LinuxResolvedExternal,
 			DNSMode:                               options.DNSMode,
 			DNSAddress:                            options.DNSAddress,
 			AutoRoute:                             options.AutoRoute,
@@ -541,7 +542,11 @@ func (t *Inbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 			return E.Cause(err, "starting tun stack")
 		}
 		monitor.Start("starting tun interface")
-		err = t.tunIf.Start()
+		if starter, ok := t.tunIf.(interface{ StartContext(context.Context) error }); ok {
+			err = starter.StartContext(scope.Context())
+		} else {
+			err = t.tunIf.Start()
+		}
 		monitor.Finish()
 		if err != nil {
 			return E.Cause(err, "starting TUN interface")

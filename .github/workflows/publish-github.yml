@@ -35,6 +35,8 @@ concurrency:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    env:
+      GOTOOLCHAIN: local
     if: github.repository == 'polaris-arch/sing-box-polaris' && github.repository_id == '1421657509'
     permissions:
       contents: read
@@ -45,8 +47,12 @@ jobs:
       with:
         ref: ${{ github.sha }}
         persist-credentials: false
-    - name: Install final native index validator
-      run: python3 -m pip install jsonschema==4.23.0
+    - uses: actions/setup-go@v5
+      with:
+        go-version: '1.27.4'
+        cache: false
+    - name: Build the publisher
+      run: go build -mod=readonly -o "$RUNNER_TEMP/polaris-ci" ./cmd/internal/ci
     - name: Checkout exact build source separately
       uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
       with:
@@ -65,9 +71,9 @@ jobs:
       run: |
         args=(--source "$SOURCE" --all-run "$ALL_RUN")
         if [[ "$MODE" == inventory ]]; then
-          python3 scripts/ci/github_release.py inventory "${args[@]}" --output release-inventory-proposal.json
+          "$RUNNER_TEMP/polaris-ci" publish-github inventory "${args[@]}" --output release-inventory-proposal.json
         else
-          python3 scripts/ci/github_release.py validate "${args[@]}" --inventory-run "$INVENTORY_RUN" --inventory-sha256 "$INVENTORY_SHA256"
+          "$RUNNER_TEMP/polaris-ci" publish-github validate "${args[@]}" --inventory-run "$INVENTORY_RUN" --inventory-sha256 "$INVENTORY_SHA256"
         fi
     - name: Retain bounded validation evidence (not a full public payload copy)
       if: always()
@@ -82,6 +88,8 @@ jobs:
     needs: validate
     if: inputs.mode == 'publish' && vars.POLARIS_GITHUB_PUBLISH_ENABLED == 'true'
     runs-on: ubuntu-latest
+    env:
+      GOTOOLCHAIN: local
     environment: polaris-github-release
     permissions:
       contents: write
@@ -92,8 +100,12 @@ jobs:
       with:
         ref: ${{ github.sha }}
         persist-credentials: false
-    - name: Install final native index validator
-      run: python3 -m pip install jsonschema==4.23.0
+    - uses: actions/setup-go@v5
+      with:
+        go-version: '1.27.4'
+        cache: false
+    - name: Build the publisher
+      run: go build -mod=readonly -o "$RUNNER_TEMP/polaris-ci" ./cmd/internal/ci
     - name: Checkout exact build source separately
       uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
       with:
@@ -110,7 +122,7 @@ jobs:
         INVENTORY_RUN: ${{ inputs.inventory_run }}
         INVENTORY_SHA256: ${{ inputs.inventory_sha256 }}
       run: |
-        python3 scripts/ci/github_release.py publish --source "$SOURCE" --all-run "$ALL_RUN" --inventory-run "$INVENTORY_RUN" --inventory-sha256 "$INVENTORY_SHA256"
+        "$RUNNER_TEMP/polaris-ci" publish-github publish --source "$SOURCE" --all-run "$ALL_RUN" --inventory-run "$INVENTORY_RUN" --inventory-sha256 "$INVENTORY_SHA256"
     - name: Retain publication result and source materials
       if: always()
       uses: actions/upload-artifact@v4

@@ -113,6 +113,7 @@ func NewInbound(ctx context.Context, router adapter.Router, logger log.ContextLo
 		switch options.Masquerade.Type {
 		case C.Hysterai2MasqueradeTypeFile:
 			masqueradeDirectory := filemanager.BasePath(ctx, os.ExpandEnv(options.Masquerade.FileOptions.Directory))
+			masqueradeDirectory = adapter.ConfigurationDirectoryPath(ctx, masqueradeDirectory)
 			_, err = filemanager.ReadDir(ctx, masqueradeDirectory)
 			if err != nil && !os.IsNotExist(err) {
 				return nil, E.Cause(err, "read masquerade directory")

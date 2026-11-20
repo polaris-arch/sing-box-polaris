@@ -18,14 +18,22 @@ func (r *autoRedirect) setupBypassRoute() {
 	}
 	r.bypassRouteAccess.Lock()
 	defer r.bypassRouteAccess.Unlock()
-	r.cleanupStaleRouteRules(r.androidVPNServiceRulePriority(), 0)
-	r.bypassRouteTableIndex = chooseRouteTableIndex(r.tunOptions.IPRoute2TableIndex, r.redirectRouteTableIndex, r.tproxyRouteTableIndex)
-	err := r.refreshBypassAddressesLocked()
+	tableIndex, err := chooseRouteTableIndex(r.tunOptions.IPRoute2TableIndex, r.redirectRouteTableIndex, r.tproxyRouteTableIndex)
+	if err != nil {
+		r.logger.Warn("address set destinations keep their pre-match bypass: select bypass route table: ", err)
+		return
+	}
+	if err := r.cleanupBypassRouteLocked(); err != nil {
+		r.logger.Warn("previous owned bypass cleanup pending: ", err)
+		return
+	}
+	r.bypassRouteTableIndex = tableIndex
+	err = r.refreshBypassAddressesLocked()
 	if err == nil {
 		err = r.rebuildBypassRouteLocked()
 	}
 	if err != nil {
-		r.cleanupBypassRouteLocked()
+		err = E.Errors(err, r.cleanupBypassRouteLocked())
 		r.logger.Warn("address set destinations keep their pre-match bypass: setup bypass route: ", err)
 		return
 	}
@@ -64,21 +72,15 @@ func (r *autoRedirect) refreshBypassAddressesLocked() error {
 	return nil
 }
 
-func (r *autoRedirect) cleanupBypassRoute() {
+func (r *autoRedirect) cleanupBypassRoute() error {
 	r.bypassRouteAccess.Lock()
 	defer r.bypassRouteAccess.Unlock()
 	r.bypassRouteActive = false
-	r.cleanupBypassRouteLocked()
+	return r.cleanupBypassRouteLocked()
 }
 
-func (r *autoRedirect) cleanupBypassRouteLocked() {
-	if r.bypassRouteTableIndex == 0 {
-		return
-	}
-	for _, family := range []int{unix.AF_INET, unix.AF_INET6} {
-		_ = netlink.RuleDel(r.bypassRouteRule(family))
-	}
-	flushRouteTable(r.bypassRouteTableIndex)
+func (r *autoRedirect) cleanupBypassRouteLocked() error {
+	return r.bypassOwned.clear(bypassKernelOps(r.bypassRouteTableIndex))
 }
 
 func (r *autoRedirect) rebuildBypassRouteLocked() error {
@@ -105,15 +107,17 @@ func (r *autoRedirect) rebuildBypassRouteFamilyLocked(family int) error {
 	}
 	rule := r.bypassRouteRule(family)
 	if len(set.Ranges()) == 0 {
-		_ = netlink.RuleDel(rule)
-		flushRouteTableFamily(r.bypassRouteTableIndex, family)
-		return nil
+		_, err = r.bypassOwned.reconcile(family, nil, nil, bypassKernelOps(r.bypassRouteTableIndex))
+		return err
 	}
 	ruleList, err := netlink.RuleList(family)
 	if err != nil {
 		return E.Cause(err, "list rules")
 	}
-	sources := r.bypassRouteSources(family, ruleList)
+	sources, err := r.bypassRouteSources(family, ruleList)
+	if err != nil {
+		return err
+	}
 	// netd rebuilds its rules and tables asynchronously after a network
 	// change, so an update can observe them half-built; the repopulated
 	// tables generate route events that schedule another rebuild.
@@ -129,80 +133,14 @@ func (r *autoRedirect) rebuildBypassRouteFamilyLocked(family int) error {
 		r.logger.Debug("bypass route family ", family, ": no routes built from ", len(sources), " sources, keeping current routes")
 		return nil
 	}
-	changed, err := r.reconcileBypassRoutesLocked(family, routes)
+	changed, err := r.bypassOwned.reconcile(family, routes, rule, bypassKernelOps(r.bypassRouteTableIndex))
 	if err != nil {
 		return err
 	}
 	if changed > 0 {
 		r.logger.Debug("bypass route family ", family, ": ", changed, " of ", len(routes), " routes changed, from ", len(sources), " sources")
 	}
-	if !slices.ContainsFunc(ruleList, func(it netlink.Rule) bool {
-		return it.Table == r.bypassRouteTableIndex
-	}) {
-		err = netlink.RuleAdd(rule)
-		if err != nil {
-			return E.Cause(err, "add bypass rule")
-		}
-	}
 	return nil
-}
-
-func (r *autoRedirect) reconcileBypassRoutesLocked(family int, desired []netlink.Route) (int, error) {
-	current, err := netlink.RouteListFiltered(family, &netlink.Route{Table: r.bypassRouteTableIndex}, netlink.RT_FILTER_TABLE)
-	if err != nil {
-		return 0, E.Cause(err, "list bypass routes")
-	}
-	desiredByDestination := make(map[string]*netlink.Route, len(desired))
-	for index := range desired {
-		desiredByDestination[desired[index].Dst.String()] = &desired[index]
-	}
-	matched := make(map[string]bool, len(desired))
-	var changed int
-	for index := range current {
-		currentRoute := &current[index]
-		if currentRoute.Dst == nil {
-			currentRoute.Dst = defaultDestination(family)
-		}
-		destination := currentRoute.Dst.String()
-		desiredRoute, exists := desiredByDestination[destination]
-		if exists && bypassRouteEquals(currentRoute, desiredRoute) {
-			matched[destination] = true
-			continue
-		}
-		// RouteReplace only overwrites a route with the same metric; a
-		// current route with another metric would survive alongside it.
-		if !exists || currentRoute.Priority != desiredRoute.Priority {
-			_ = netlink.RouteDel(currentRoute)
-			changed++
-		}
-	}
-	for index := range desired {
-		desiredRoute := &desired[index]
-		if matched[desiredRoute.Dst.String()] {
-			continue
-		}
-		err = netlink.RouteReplace(desiredRoute)
-		if err != nil {
-			return changed, E.Cause(err, "add bypass route ", desiredRoute.Dst)
-		}
-		changed++
-	}
-	return changed, nil
-}
-
-func bypassRouteEquals(left *netlink.Route, right *netlink.Route) bool {
-	return left.LinkIndex == right.LinkIndex &&
-		left.Scope == right.Scope &&
-		left.Priority == right.Priority &&
-		left.Gw.Equal(right.Gw) &&
-		routeSourceEquals(left.Src, right.Src)
-}
-
-func routeSourceEquals(left *net.IPNet, right *net.IPNet) bool {
-	if left == nil || right == nil {
-		return left == right
-	}
-	return left.IP.Equal(right.IP) && slices.Equal(left.Mask, right.Mask)
 }
 
 func (r *autoRedirect) bypassRouteRule(family int) *netlink.Rule {
@@ -217,7 +155,7 @@ func (r *autoRedirect) bypassRouteRule(family int) *netlink.Rule {
 	return rule
 }
 
-func (r *autoRedirect) bypassRouteSources(family int, ruleList []netlink.Rule) []netlink.Route {
+func (r *autoRedirect) bypassRouteSources(family int, ruleList []netlink.Rule) ([]netlink.Route, error) {
 	tables := discoverAndroidVPNServiceTables(ruleList, r.tunOptions.Name)
 	var sourceTables []int
 	if tables.localNetwork > 0 {
@@ -229,7 +167,7 @@ func (r *autoRedirect) bypassRouteSources(family int, ruleList []netlink.Rule) [
 	for _, sourceTable := range sourceTables {
 		routes, listErr := netlink.RouteListFiltered(family, &netlink.Route{Table: sourceTable}, netlink.RT_FILTER_TABLE)
 		if listErr != nil {
-			continue
+			return nil, E.Cause(listErr, "list bypass source table ", sourceTable)
 		}
 		for _, route := range routes {
 			if route.Type != 0 && route.Type != unix.RTN_UNICAST {
@@ -245,7 +183,7 @@ func (r *autoRedirect) bypassRouteSources(family int, ruleList []netlink.Rule) [
 	slices.SortStableFunc(specificRoutes, func(left netlink.Route, right netlink.Route) int {
 		return routeDestination(family, right.Dst).Bits() - routeDestination(family, left.Dst).Bits()
 	})
-	return append(specificRoutes, defaultRoutes...)
+	return append(specificRoutes, defaultRoutes...), nil
 }
 
 func buildBypassRoutes(family int, set *netipx.IPSet, sources []netlink.Route, tableIndex int) ([]netlink.Route, error) {

@@ -359,6 +359,9 @@ func TestRuntimePreparationCancellationIsPrivateAndExactRetryDoesNotRestart(t *t
 	if operation.State != "ABORTING_UNAPPLIED" || f.identity() != before {
 		t.Fatal("canceled candidate was published")
 	}
+	if got := operation.Errors; len(got) != 2 || got[0].Code != "PREPARATION_FAILED" || got[1].Code != "PREPARATION_CANCELED" {
+		t.Fatalf("canceled candidate receipt lacks cancellation detail: %+v", got)
+	}
 	failed := f.object(t, "a", 1)
 	source, _ := adapter.RuntimeResourceSourceFromContext(failed.ctx)
 	if err := runtimeTestResource(t, f, source.ID()).owner.WaitClosed(runtimeTestContext(t)); err != nil {
@@ -370,6 +373,34 @@ func TestRuntimePreparationCancellationIsPrivateAndExactRetryDoesNotRestart(t *t
 	retry, err := f.box.applyRuntimeConfig(context.Background(), "actor-a", request)
 	if err != nil || (retry.State != "ABORTING_UNAPPLIED" && retry.State != "ABORTED_UNAPPLIED") || f.count("a") != 2 {
 		t.Fatalf("canceled transaction restarted: %+v %v", retry, err)
+	}
+}
+
+func TestRuntimePreparationDeadlineRemainsVisibleInStatus(t *testing.T) {
+	f := newRuntimeTestFixture(t, runtimeTestConfig(1080, "example.org"), nil)
+	f.start(t)
+	before := f.identity()
+	f.setConstructorHook(func(outbound *runtimeTestSocks) error {
+		if outbound.Tag() == "a" {
+			return errors.Join(errors.New("private candidate failure detail"), context.DeadlineExceeded)
+		}
+		return nil
+	})
+	_, request := f.plan(t, runtimeTestConfig(1081, "example.org"))
+	operation, err := f.box.ApplyRuntimeConfig(context.Background(), "actor-a", request)
+	if err != nil || operation.Active != before || f.identity() != before {
+		t.Fatalf("candidate deadline changed the active revision: %+v %v", operation, err)
+	}
+	current, err := f.box.GetRuntimeConfigStatus("actor-a", before.Incarnation, request.TransactionID)
+	if err != nil || current.LookupState != "FOUND" || current.Operation == nil {
+		t.Fatalf("deadline receipt unavailable: %+v %v", current, err)
+	}
+	want := []RuntimePlanError{
+		{Code: "PREPARATION_FAILED", Message: "candidate was not published"},
+		{Code: "PREPARATION_DEADLINE_EXCEEDED", Message: "candidate preparation deadline exceeded before publication"},
+	}
+	if !reflect.DeepEqual(operation.Errors, want) || !reflect.DeepEqual(current.Operation.Errors, want) {
+		t.Fatalf("deadline detail missing or unsanitized in Apply or Status: %+v %+v", operation.Errors, current.Operation.Errors)
 	}
 }
 

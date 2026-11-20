@@ -89,7 +89,7 @@ func dashboardRuntimeContent(path, url string, port uint16, detour string) strin
 	return fmt.Sprintf(`{"log":{"disabled":true},"dns":{"servers":[{"type":"udp","tag":"resolver","server":"192.0.2.53"}],"final":"resolver"},"outbounds":[{"type":"direct","tag":"direct"},{"type":"selector","tag":"download-path","outbounds":["direct"],"default":"direct"}],"route":{"final":"download-path"},"services":[{"type":"api","listen":"127.0.0.1","listen_port":%d,"dashboard":{"enabled":true,"path":%q,"download_url":%q,"http_client":{"detour":%q}}}]}`, port, path, url, detour)
 }
 
-func dashboardRuntimeBox(t *testing.T, ctx context.Context, path, url string, port uint16, detour string) (*box.Box, *Service) {
+func dashboardRuntimeBox(t *testing.T, ctx context.Context, content string) (*box.Box, *Service) {
 	t.Helper()
 	if runtime.GOOS == "android" || runtime.GOOS == "windows" {
 		t.Skip("native certificate/power boundary requires its platform fixture")
@@ -103,7 +103,6 @@ func dashboardRuntimeBox(t *testing.T, ctx context.Context, path, url string, po
 	RegisterService(services)
 	ctx = box.Context(ctx, inbound.NewRegistry(), outbounds, endpoint.NewRegistry(), transports, services, boxCertificate.NewRegistry())
 	ctx = service.ContextWith[adapter.PlatformInterface](ctx, &runtimeAPIPlatform{})
-	content := dashboardRuntimeContent(path, url, port, detour)
 	var options option.Options
 	if err := json.UnmarshalContext(ctx, []byte(content), &options); err != nil {
 		t.Fatal(err)
@@ -146,7 +145,7 @@ func TestRuntimeDashboardColdFirstFetchUsesPublishedGraph(t *testing.T) {
 		}
 		return err
 	}
-	instance, api := dashboardRuntimeBox(t, ctx, path, server.URL, 0, "download-path")
+	instance, api := dashboardRuntimeBox(t, ctx, dashboardRuntimeContent(path, server.URL, 0, "download-path"))
 	if count.Load() != 0 {
 		t.Fatal("candidate construction performed HTTP I/O")
 	}
@@ -187,7 +186,7 @@ func TestRuntimeDashboardStartFailureJoinsWorker(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) { <-r.Context().Done() }))
 	t.Cleanup(server.Close)
 	ctx, _ := dashboardFileContext(t)
-	instance, api := dashboardRuntimeBox(t, ctx, filepath.Join(t.TempDir(), "dashboard"), server.URL, uint16(occupied.Addr().(*net.TCPAddr).Port), "download-path")
+	instance, api := dashboardRuntimeBox(t, ctx, dashboardRuntimeContent(filepath.Join(t.TempDir(), "dashboard"), server.URL, uint16(occupied.Addr().(*net.TCPAddr).Port), "download-path"))
 	if err := instance.Start(); err == nil {
 		t.Fatal("occupied listener unexpectedly started")
 	}
@@ -376,7 +375,7 @@ func TestRuntimeDashboardEmptyDirectGuardRemainsEnforced(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { requests.Add(1) }))
 	t.Cleanup(server.Close)
 	ctx, _ := dashboardFileContext(t)
-	instance, api := dashboardRuntimeBox(t, ctx, filepath.Join(t.TempDir(), "dashboard"), server.URL, 0, "direct")
+	instance, api := dashboardRuntimeBox(t, ctx, dashboardRuntimeContent(filepath.Join(t.TempDir(), "dashboard"), server.URL, 0, "direct"))
 	failures := make(chan string, 4)
 	api.dashboard.logger = &dashboardFailureLogger{ContextLogger: api.dashboard.logger, failures: failures}
 	if err := instance.Start(); err != nil {
@@ -438,7 +437,7 @@ func TestRuntimeDashboardActiveDownloadCanceledOnStartFailure(t *testing.T) {
 	}))
 	t.Cleanup(server.Close)
 	ctx, _ := dashboardFileContext(t)
-	instance, api := dashboardRuntimeBox(t, ctx, filepath.Join(t.TempDir(), "dashboard"), server.URL, 0, "download-path")
+	instance, api := dashboardRuntimeBox(t, ctx, dashboardRuntimeContent(filepath.Join(t.TempDir(), "dashboard"), server.URL, 0, "download-path"))
 	providerDone := make(chan struct{})
 	var providerCloses atomic.Int32
 	api.tlsConfig = dashboardFailAfterDownload{requested: requested, stop: make(chan struct{}), done: providerDone, closed: &providerCloses}
@@ -554,7 +553,7 @@ func TestRuntimeDashboardActiveBodyNormalAndConnectionManagerClose(t *testing.T)
 			}))
 			t.Cleanup(server.Close)
 			ctx, _ := dashboardFileContext(t)
-			instance, api := dashboardRuntimeBox(t, ctx, filepath.Join(t.TempDir(), "dashboard"), server.URL, 0, "download-path")
+			instance, api := dashboardRuntimeBox(t, ctx, dashboardRuntimeContent(filepath.Join(t.TempDir(), "dashboard"), server.URL, 0, "download-path"))
 			observed := dashboardObserveFetches(api.dashboard)
 			if err := instance.Start(); err != nil {
 				t.Fatal(err)
@@ -581,7 +580,7 @@ func TestRuntimeDashboardActiveBodyNormalAndConnectionManagerClose(t *testing.T)
 
 // A narrow real Box/HTTP fixture, not a reproduction of the App's 68-inbound
 // generated configuration. The first actual download spans a graph commit;
-// the next fetch must use the new current graph and its newly prepared client.
+// the next fetch must use the new current graph and its newly prepared detour.
 func TestRuntimeDashboardRealDownloadSpansHOTCommit(t *testing.T) {
 	firstArchive := dashboardTestZip(t, map[string]string{"index.html": "graph-one"})
 	secondArchive := dashboardTestZip(t, map[string]string{"index.html": "graph-two"})
@@ -605,7 +604,9 @@ func TestRuntimeDashboardRealDownloadSpansHOTCommit(t *testing.T) {
 	t.Cleanup(server.Close)
 	ctx, _ := dashboardFileContext(t)
 	path := filepath.Join(t.TempDir(), "dashboard")
-	instance, api := dashboardRuntimeBox(t, ctx, path, server.URL, 0, "download-path")
+	// Polaris gives its direct outbound an explicit DNS resolver.
+	active := strings.Replace(dashboardRuntimeContent(path, server.URL, 0, "download-path"), `"type":"direct","tag":"direct"`, `"type":"direct","tag":"direct","domain_resolver":"resolver"`, 1)
+	instance, api := dashboardRuntimeBox(t, ctx, active)
 	if err := instance.BindRuntimePersistenceOptions(func(box.RuntimeIdentity, []byte) error { return nil }, "owner_acknowledged", false); err != nil {
 		t.Fatal(err)
 	}
@@ -619,18 +620,28 @@ func TestRuntimeDashboardRealDownloadSpansHOTCommit(t *testing.T) {
 	if first.identity.Revision != before.Revision || first.identity.Incarnation != before.Incarnation {
 		t.Fatal("initial fetch did not borrow current published graph")
 	}
-	content := dashboardRuntimeContent(path, server.URL, 0, "download-path")
-	candidate := strings.Replace(content, `"type":"direct","tag":"direct"`, `"type":"direct","tag":"direct","connect_timeout":"5s"`, 1)
-	if candidate == content {
-		t.Fatal("dependency change missing")
+	ingressBefore, err := api.runtime.identity()
+	if err != nil {
+		t.Fatal(err)
 	}
-	plan, err := instance.PlanRuntimeConfig(context.Background(), "dashboard-test", before, []byte(candidate))
+	candidate := strings.Replace(active, `"detour":"download-path"`, `"detour":"direct"`, 1)
+	candidate = strings.Replace(candidate, `"final":"download-path"`, `"final":"direct"`, 1)
+	plan, err := instance.PlanRuntimeConfigWithClientImpactPolicy(context.Background(), "dashboard-test", before, []byte(candidate), nil, box.RuntimeClientImpactPolicyExplicit)
 	if err != nil || !plan.Applicable {
-		t.Fatalf("real dependency plan: %+v %v", plan, err)
+		t.Fatalf("real detour plan: %+v %v", plan, err)
+	}
+	for _, impact := range plan.Impacts {
+		if impact.ReconnectRequired {
+			t.Fatalf("dashboard detour requested reconnect: %+v", impact)
+		}
 	}
 	operation, err := instance.ApplyRuntimeConfig(context.Background(), "dashboard-test", box.RuntimeConfigApply{ContractVersion: box.RuntimeConfigContractVersion, PlanID: plan.PlanID, TransactionID: plan.TransactionID, Expected: plan.Expected, CandidateDigest: plan.CandidateDigest, AcceptedImpactDigest: plan.ImpactDigest})
 	if err != nil || operation.State != "COMMITTED" || operation.Active.Revision != before.Revision+1 {
 		t.Fatalf("real HOT commit: %+v %v", operation, err)
+	}
+	ingressAfter, err := api.runtime.identity()
+	if err != nil || ingressAfter.Revision != operation.Active.Revision || ingressAfter.ConfigurationDigest != ingressBefore.ConfigurationDigest {
+		t.Fatalf("dashboard detour changed the API ingress: %+v %v", ingressAfter, err)
 	}
 	select {
 	case <-first.released:

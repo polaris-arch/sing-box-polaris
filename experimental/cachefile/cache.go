@@ -502,7 +502,7 @@ func (c *CacheFile) StoreGroupExpand(group string, isExpand bool) error {
 	})
 }
 
-func (c *CacheFile) LoadRuleSet(tag string) *adapter.SavedBinary {
+func (c *CacheFile) LoadRuleSet(tag string, maxContentBytes int64) *adapter.SavedBinary {
 	var savedSet adapter.SavedBinary
 	err := c.view(func(t *bbolt.Tx) error {
 		bucket := c.bucket(t, bucketRuleSet)
@@ -513,7 +513,7 @@ func (c *CacheFile) LoadRuleSet(tag string) *adapter.SavedBinary {
 		if len(setBinary) == 0 {
 			return os.ErrInvalid
 		}
-		return savedSet.UnmarshalBinary(setBinary)
+		return savedSet.UnmarshalBinaryWithContentLimit(setBinary, maxContentBytes)
 	})
 	if err != nil {
 		return nil

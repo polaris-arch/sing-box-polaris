@@ -139,6 +139,9 @@ func buildAndroidVariant(config AndroidBuildConfig, bindTarget string) {
 	args = append(args, "./experimental/libbox")
 
 	command := exec.Command(build_shared.GoBinPath+"/gomobile", args...)
+	// Cronet selects its static archive explicitly. Go 1.27.4 requires this
+	// exact linker argument to be allowed in cgo directives.
+	command.Env = append(os.Environ(), `CGO_LDFLAGS_ALLOW=^-l:libcronet\.a$`)
 	command.Stdout = os.Stdout
 	command.Stderr = os.Stderr
 	err := command.Run()

@@ -1,6 +1,6 @@
 module github.com/sagernet/sing-tun
 
-go 1.25.0
+go 1.26.0
 
 require (
 	github.com/florianl/go-nfqueue/v2 v2.1.0
@@ -23,10 +23,14 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
+	github.com/google/nftables v0.3.1-0.20261116164147-4ffa86fab994
 	github.com/mdlayher/socket v0.6.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/vishvananda/netns v0.0.4 // indirect
+	github.com/vishvananda/netns v0.0.5 // indirect
 	golang.org/x/sync v0.20.0 // indirect
 	golang.org/x/time v0.15.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+// Pinned official nftables: one 32-bit panic-format fix; provenance/removal gate in third_party/google-nftables/UPSTREAM.json.
+replace github.com/google/nftables => ../google-nftables

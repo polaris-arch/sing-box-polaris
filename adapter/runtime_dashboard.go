@@ -8,9 +8,21 @@ import (
 	"github.com/sagernet/sing-box/option"
 )
 
-// Only the actual client's dashboard toggle is a new policy-v1 variant.
-// This does not admit edits to URL/interval/path/client while both sides serve,
-// additional services, public binds, CORS, TLS, or other socket configuration.
+// RuntimeDashboardHTTPDetour returns the detour of the explicit inline client
+// whose transport is owned by the runtime graph.
+func RuntimeDashboardHTTPDetour(dashboard *option.APIDashboardOptions) string {
+	if dashboard == nil || !dashboard.Enabled || dashboard.HTTPClient == nil || dashboard.HTTPClient.Detour == "" {
+		return ""
+	}
+	client := *dashboard.HTTPClient
+	client.Detour = ""
+	if !reflect.ValueOf(client).IsZero() {
+		return ""
+	}
+	return dashboard.HTTPClient.Detour
+}
+
+// The dashboard toggle requires the client's bounded configuration on both sides.
 func RuntimeDashboardToggleEligible(before, after option.APIServiceOptions) bool {
 	shape := func(value option.APIServiceOptions) (bool, bool) {
 		if value.Listen == nil || netip.Addr(*value.Listen).Zone() != "" || !netip.Addr(*value.Listen).Unmap().IsLoopback() || !RuntimeAPISecretValid(value.Secret) {
@@ -27,12 +39,8 @@ func RuntimeDashboardToggleEligible(before, after option.APIServiceOptions) bool
 		if !dashboard.Enabled {
 			return false, reflect.ValueOf(*dashboard).IsZero()
 		}
-		if dashboard.DownloadURL != "" || dashboard.UpdateInterval != 0 || strings.ContainsRune(dashboard.Path, 0) || dashboard.HTTPClient == nil || dashboard.HTTPClient.Detour == "" {
-			return false, false
-		}
-		client := *dashboard.HTTPClient
-		client.Detour = ""
-		return true, reflect.ValueOf(client).IsZero()
+		return true, dashboard.DownloadURL == "" && dashboard.UpdateInterval == 0 &&
+			!strings.ContainsRune(dashboard.Path, 0) && RuntimeDashboardHTTPDetour(dashboard) != ""
 	}
 	a, validA := shape(before)
 	b, validB := shape(after)

@@ -30,7 +30,8 @@ func runtimeConfigCompatibilityWithClientImpactPolicy(ctx context.Context, previ
 		return nil, []RuntimePlanError{{Code: "INVALID_CANDIDATE_SNAPSHOT"}}
 	}
 	logToggleEligible := runtimeClientLogToggleEligible(ctx, before["log"], after["log"], policy, factory)
-	if impacts, problems := runtimeDailyStructuralChangesWithClientImpactPolicy(before, after, policy, logToggleEligible); len(problems) != 0 {
+	dashboardChange := runtimeClientDashboardChange(before["services"], after["services"], policy)
+	if impacts, problems := runtimeDailyStructuralChangesWithClientImpactPolicy(before, after, policy, logToggleEligible, dashboardChange); len(problems) != 0 {
 		return impacts, problems
 	}
 	var problems []RuntimePlanError
@@ -201,17 +202,19 @@ func runtimeConfigCompatibilityWithClientImpactPolicy(ctx context.Context, previ
 			impact.Reason = "switch the stable logger emission generation; retained loggers and subscriptions keep their owner"
 			impact.AffectedSessionClasses = []string{"log emissions"}
 		}
-		if path == "services" && policy == RuntimeClientImpactPolicyExplicit {
-			impact.ReconnectRequired = true
-			impact.AffectedSessionClasses = []string{"API streams on the replaced ingress", "api_generation_handoff_v1"}
-			if runtimeClientDashboardChanges(before["services"], after["services"], policy) {
-				impact.AffectedSessionClasses = append(impact.AffectedSessionClasses, "dashboard updater")
-			}
-		}
 		if path == "services" {
-			impact.Reason = "prepare a loopback API listener while retaining the original transaction recovery channel; authenticated channel handoff is separate from persistence"
-			if policy == RuntimeClientImpactPolicyLegacy {
+			if dashboardChange == runtimeDashboardDetour {
+				impact.Reason = "publish the Dashboard HTTP transport; in-flight downloads retain their original graph"
+			} else {
+				impact.Reason = "prepare a loopback API listener while retaining the original transaction recovery channel; authenticated channel handoff is separate from persistence"
 				impact.AffectedSessionClasses = []string{"API streams on the replaced ingress"}
+				if policy == RuntimeClientImpactPolicyExplicit {
+					impact.ReconnectRequired = true
+					impact.AffectedSessionClasses = append(impact.AffectedSessionClasses, "api_generation_handoff_v1")
+					if dashboardChange == runtimeDashboardToggle {
+						impact.AffectedSessionClasses = append(impact.AffectedSessionClasses, "dashboard updater")
+					}
+				}
 			}
 		}
 		if path == "inbounds" {
