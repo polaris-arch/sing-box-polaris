@@ -404,24 +404,50 @@
 +	clientStateDormant
 @@ -54,0 +56 @@
 +	startError               error
-@@ -184 +186,34 @@
+@@ -184 +186,7 @@
 -func (c *NaiveClient) Start() (startResult error) {
++// Start starts a new or prepared client without waiting for its first dial.
 +func (c *NaiveClient) Start() error {
-+	return c.start(clientStateCreated)
++	return c.start(false)
 +}
 +
-+// StartOnDemand prepares a client to start on its first dial. Custom trust
-+// roots still need to pass Cronet's native certificate parser at startup.
++// StartOnDemand validates custom roots before the first dial starts the engine.
 +func (c *NaiveClient) StartOnDemand() error {
-+	if c.trustedRootCertificates != "" {
-+		return c.Start()
-+	}
-+	c.lifecycle.Lock()
+@@ -186,11 +194,37 @@
+-	if !c.state.CompareAndSwap(uint32(clientStateCreated), uint32(clientStateStarting)) {
+-		state := clientState(c.state.Load())
+-		c.lifecycle.Unlock()
+-		switch state {
+-		case clientStateStarting:
+-			return errors.New("start already in progress")
+-		case clientStateRunning:
+-			return errors.New("already started")
+-		default:
+-			return net.ErrClosed
+-		}
 +	defer c.lifecycle.Unlock()
-+	if !c.state.CompareAndSwap(uint32(clientStateCreated), uint32(clientStateDormant)) {
-+		return startStateError(clientState(c.state.Load()))
++	if state := clientState(c.state.Load()); state != clientStateCreated {
++		return startStateError(state)
 +	}
++	if c.trustedRootCertificates != "" && !c.validateTrustedRoots() {
++		c.startError = E.New("failed to set trusted CA certificates")
++		c.state.Store(uint32(clientStateClosed))
++		close(c.started)
++		close(c.closed)
++		return c.startError
++	}
++	c.state.Store(uint32(clientStateDormant))
 +	return nil
++}
++
++func (c *NaiveClient) validateTrustedRoots() bool {
++	// An unstarted engine owns the verifier. Create and destroy it on
++	// the same OS thread, as required by Cronet's thread checker.
++	runtime.LockOSThread()
++	defer runtime.UnlockOSThread()
++	engine := NewEngine()
++	defer engine.Destroy()
++	return engine.SetTrustedRootCertificates(c.trustedRootCertificates)
 +}
 +
 +func (c *NaiveClient) IsDormant() bool {
@@ -436,33 +462,29 @@
 +		return errors.New("already started")
 +	default:
 +		return net.ErrClosed
-+	}
+@@ -197,0 +232 @@
 +}
-+
-+func (c *NaiveClient) start(expected clientState) (startResult error) {
-@@ -186 +221 @@
--	if !c.state.CompareAndSwap(uint32(clientStateCreated), uint32(clientStateStarting)) {
-+	if !c.state.CompareAndSwap(uint32(expected), uint32(clientStateStarting)) {
-@@ -189,7 +224,3 @@
--		switch state {
--		case clientStateStarting:
--			return errors.New("start already in progress")
--		case clientStateRunning:
--			return errors.New("already started")
--		default:
--			return net.ErrClosed
-+		if expected == clientStateDormant {
-+			// The first dial owns startup. Other dials wait on started.
-+			return nil
-@@ -196,0 +228 @@
+@@ -198,0 +234,13 @@
++func (c *NaiveClient) start(onDemand bool) (startResult error) {
++	c.lifecycle.Lock()
++	state := clientState(c.state.Load())
++	if onDemand && state != clientStateDormant {
++		// The first dial owns startup. Other dials wait on started.
++		c.lifecycle.Unlock()
++		return nil
++	}
++	if state != clientStateCreated && state != clientStateDormant {
++		c.lifecycle.Unlock()
 +		return startStateError(state)
-@@ -206,0 +239 @@
++	}
++	c.state.Store(uint32(clientStateStarting))
+@@ -206,0 +255 @@
 +			c.startError = startError
-@@ -382,0 +416,3 @@
+@@ -382,0 +432,3 @@
 +	if version := c.Version(); version != "" {
 +		c.logger.Info("NaiveProxy started, version: ", version)
 +	}
-@@ -494,5 +530,13 @@
+@@ -494,5 +546,13 @@
 -	switch state {
 -	case clientStateRunning:
 -	case clientStateClosed, clientStateClosing:
@@ -475,18 +497,18 @@
 +		if err := c.ctx.Err(); err != nil {
 +			return nil, err
 +		}
-+		if err := c.start(clientStateDormant); err != nil {
++		if err := c.start(true); err != nil {
 +			return nil, err
 +		}
 +		state = clientState(c.state.Load())
 +	}
 +	if state < clientStateRunning {
-@@ -501,3 +545 @@
+@@ -501,3 +561 @@
 -			if clientState(c.state.Load()) != clientStateRunning {
 -				return nil, net.ErrClosed
 -			}
 +			state = clientState(c.state.Load())
-@@ -509,0 +552,7 @@
+@@ -509,0 +568,7 @@
 +	if state != clientStateRunning {
 +		// A terminal startup error is published before the closing state.
 +		if c.startError != nil {
@@ -494,16 +516,25 @@
 +		}
 +		return nil, net.ErrClosed
 +	}
-@@ -576 +625 @@
+@@ -576 +641 @@
 -		case clientStateCreated:
 +		case clientStateCreated, clientStateDormant:
-@@ -655 +703,0 @@
+@@ -655 +719,0 @@
 -
 --- a/naive_client_lifecycle_test.go
 +++ b/naive_client_lifecycle_test.go
-@@ -5,0 +6 @@
+@@ -4,0 +5 @@
++	"encoding/pem"
+@@ -5,0 +7,2 @@
 +	"net"
-@@ -31,0 +33,24 @@
++	"net/http/httptest"
+@@ -11,0 +15,2 @@
++
++	mDNS "github.com/miekg/dns"
+@@ -28,0 +34,70 @@
++	}
++}
++
 +func TestNaiveDormantClientControlsAndClose(t *testing.T) {
 +	c := lifecycleTestClient(clientStateCreated)
 +	if err := c.StartOnDemand(); err != nil {
@@ -528,3 +559,46 @@
 +	}
 +}
 +
++func TestNaiveCustomRootsValidateBeforeDormancy(t *testing.T) {
++	if err := checkLibrary(); err != nil {
++		t.Skipf("Cronet library unavailable: %v", err)
++	}
++	server := httptest.NewTLSServer(nil)
++	cert := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: server.Certificate().Raw})
++	server.Close()
++
++	for _, roots := range []struct {
++		name    string
++		pem     string
++		invalid bool
++	}{
++		{name: "valid", pem: string(cert)},
++		{name: "invalid", pem: "invalid certificate", invalid: true},
++	} {
++		t.Run(roots.name, func(t *testing.T) {
++			client, err := NewNaiveClient(NaiveClientOptions{
++				Context:                 t.Context(),
++				ServerAddress:           M.ParseSocksaddrHostPort("127.0.0.1", 443),
++				TrustedRootCertificates: roots.pem,
++				DNSResolver:             func(context.Context, *mDNS.Msg) *mDNS.Msg { return nil },
++			})
++			if err != nil {
++				t.Fatal(err)
++			}
++			t.Cleanup(func() {
++				if err := client.Close(); err != nil {
++					t.Error(err)
++				}
++			})
++			err = client.StartOnDemand()
++			if roots.invalid {
++				if err == nil || clientState(client.state.Load()) != clientStateClosed {
++					t.Fatalf("invalid roots did not reject startup and close the client: %v", err)
++				}
++				return
++			}
++			if err != nil || !client.IsDormant() || len(client.engines) != 0 {
++				t.Fatalf("valid roots should leave a dormant client with no engine: state=%v, engines=%d, err=%v",
++					clientState(client.state.Load()), len(client.engines), err)
++			}
++		})

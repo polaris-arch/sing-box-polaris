@@ -2,14 +2,18 @@ package cronet
 
 import (
 	"context"
+	"encoding/pem"
 	"errors"
 	"net"
+	"net/http/httptest"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/sagernet/sing/common/logger"
 	M "github.com/sagernet/sing/common/metadata"
+
+	mDNS "github.com/miekg/dns"
 )
 
 func lifecycleTestClient(state clientState) *NaiveClient {
@@ -51,6 +55,52 @@ func TestNaiveDormantClientControlsAndClose(t *testing.T) {
 	}
 	if _, err := c.DialEarly(context.Background(), dest); !errors.Is(err, net.ErrClosed) {
 		t.Fatalf("dial after cold close: %v", err)
+	}
+}
+
+func TestNaiveCustomRootsValidateBeforeDormancy(t *testing.T) {
+	if err := checkLibrary(); err != nil {
+		t.Skipf("Cronet library unavailable: %v", err)
+	}
+	server := httptest.NewTLSServer(nil)
+	cert := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: server.Certificate().Raw})
+	server.Close()
+
+	for _, roots := range []struct {
+		name    string
+		pem     string
+		invalid bool
+	}{
+		{name: "valid", pem: string(cert)},
+		{name: "invalid", pem: "invalid certificate", invalid: true},
+	} {
+		t.Run(roots.name, func(t *testing.T) {
+			client, err := NewNaiveClient(NaiveClientOptions{
+				Context:                 t.Context(),
+				ServerAddress:           M.ParseSocksaddrHostPort("127.0.0.1", 443),
+				TrustedRootCertificates: roots.pem,
+				DNSResolver:             func(context.Context, *mDNS.Msg) *mDNS.Msg { return nil },
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() {
+				if err := client.Close(); err != nil {
+					t.Error(err)
+				}
+			})
+			err = client.StartOnDemand()
+			if roots.invalid {
+				if err == nil || clientState(client.state.Load()) != clientStateClosed {
+					t.Fatalf("invalid roots did not reject startup and close the client: %v", err)
+				}
+				return
+			}
+			if err != nil || !client.IsDormant() || len(client.engines) != 0 {
+				t.Fatalf("valid roots should leave a dormant client with no engine: state=%v, engines=%d, err=%v",
+					clientState(client.state.Load()), len(client.engines), err)
+			}
+		})
 	}
 }
 
