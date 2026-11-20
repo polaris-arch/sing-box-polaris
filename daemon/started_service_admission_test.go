@@ -3,8 +3,11 @@ package daemon
 import (
 	"context"
 	"errors"
+	"io"
 	"net"
 	"os"
+	"slices"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -16,7 +19,9 @@ import (
 	"github.com/gofrs/uuid/v5"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -255,15 +260,18 @@ func TestSubscribeConnectionsRejectsMissingInstanceBeforeDereference(t *testing.
 	}
 }
 
-type sampleConnectionOutbound struct{ adapter.Outbound }
+type sampleConnectionOutbound struct {
+	adapter.Outbound
+	tag string
+}
 
-func (sampleConnectionOutbound) Tag() string  { return "direct" }
-func (sampleConnectionOutbound) Type() string { return "direct" }
+func (o sampleConnectionOutbound) Tag() string { return o.tag }
+func (sampleConnectionOutbound) Type() string  { return "direct" }
 
 func TestTrafficSampleReconcilesReplacementWithoutChangingConnectionCount(t *testing.T) {
 	var service StartedService
 	manager := trafficcontrol.NewManager()
-	metadata := adapter.InboundContext{OutboundChain: []adapter.Outbound{sampleConnectionOutbound{}}}
+	metadata := adapter.InboundContext{OutboundChain: []adapter.Outbound{sampleConnectionOutbound{tag: "direct"}}}
 	first, firstPeer := net.Pipe()
 	tracked := manager.RoutedConnection(t.Context(), first, metadata, nil, nil)
 	t.Cleanup(func() { _ = tracked.Close(); _ = firstPeer.Close() })
@@ -285,5 +293,158 @@ func TestTrafficSampleReconcilesReplacementWithoutChangingConnectionCount(t *tes
 		events[1].Type != ConnectionEventType_CONNECTION_EVENT_CLOSED ||
 		events[1].Id != initial[0].Id || events[1].Connection == nil || len(snapshots) != 1 {
 		t.Fatalf("replacement sample did not reconcile the missed close: %v", events)
+	}
+}
+
+func snapshotTestConnection(t *testing.T, manager *trafficcontrol.Manager, chain ...string) trafficcontrol.Tracker {
+	t.Helper()
+	outbounds := make([]adapter.Outbound, len(chain))
+	for i, tag := range chain {
+		outbounds[len(chain)-1-i] = sampleConnectionOutbound{tag: tag}
+	}
+	connection, peer := net.Pipe()
+	tracked := manager.RoutedConnection(t.Context(), connection, adapter.InboundContext{OutboundChain: outbounds}, nil, nil).(trafficcontrol.Tracker)
+	t.Cleanup(func() { _ = tracked.Close(); _ = peer.Close() })
+	return tracked
+}
+
+func TestStreamConnectionSnapshot(t *testing.T) {
+	const chunkLimit = 256 * 1024
+	const totalLimit = 4 * 1024 * 1024
+	const secret = "snapshot-test-secret"
+	// The outer entry, the UUID, and the single long chain tag take 46 bytes beyond the tag contents.
+	fullTag := strings.Repeat("x", chunkLimit-46)
+	for _, test := range []struct {
+		name         string
+		connections  int
+		chain        []string
+		wantCode     codes.Code
+		wantFullSize bool
+	}{
+		{name: "empty"},
+		{name: "projection", connections: 2, chain: []string{"proxy", "selector"}},
+		{name: "exact_limits", connections: 16, chain: []string{fullTag}, wantFullSize: true},
+		{name: "entry_over_limit", connections: 1, chain: []string{fullTag + "x"}, wantCode: codes.ResourceExhausted},
+		{name: "total_over_limit", connections: 17, chain: []string{fullTag}, wantCode: codes.ResourceExhausted},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			manager := trafficcontrol.NewManager()
+			closed := snapshotTestConnection(t, manager, fullTag+"x")
+			if err := closed.Close(); err != nil {
+				t.Fatal(err)
+			}
+			remaining := make(map[string]bool)
+			for range test.connections {
+				tracked := snapshotTestConnection(t, manager, test.chain...)
+				remaining[tracked.Metadata().ID.String()] = true
+			}
+			s := &StartedService{
+				serviceStatus: &ServiceStatus{Status: ServiceStatus_STARTED},
+				instance:      &Instance{ctx: t.Context(), trafficManager: manager},
+			}
+			client := startedServiceClientFixture(t, s, secret)
+			ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+			defer cancel()
+			if test.name == "projection" {
+				unauthenticated, err := client.StreamConnectionSnapshot(ctx, &emptypb.Empty{})
+				if err == nil {
+					_, err = unauthenticated.Recv()
+				}
+				if status.Code(err) != codes.Unauthenticated {
+					t.Fatalf("unauthenticated snapshot: %v", err)
+				}
+			}
+			ctx = metadata.AppendToOutgoingContext(ctx, "authorization", "Bearer "+secret)
+			stream, err := client.StreamConnectionSnapshot(ctx, &emptypb.Empty{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			var complete bool
+			var totalBytes int
+			for {
+				chunk, err := stream.Recv()
+				if err != nil {
+					if test.wantCode == codes.OK {
+						if !errors.Is(err, io.EOF) || !complete || len(remaining) != 0 {
+							t.Fatalf("snapshot completion: complete=%t missing=%d err=%v", complete, len(remaining), err)
+						}
+					} else if status.Code(err) != test.wantCode || complete {
+						t.Fatalf("snapshot failure: complete=%t err=%v", complete, err)
+					}
+					break
+				}
+				if complete || chunk.Complete != (len(chunk.Entries) == 0) {
+					t.Fatal("invalid snapshot frame sequence")
+				}
+				complete = chunk.Complete
+				if complete {
+					continue
+				}
+				encoded, err := proto.Marshal(chunk)
+				if err != nil {
+					t.Fatal(err)
+				}
+				totalBytes += len(encoded)
+				if len(encoded) > chunkLimit || totalBytes > totalLimit || (test.wantFullSize && len(encoded) != chunkLimit) {
+					t.Fatalf("invalid size: frame=%d total=%d", len(encoded), totalBytes)
+				}
+				for _, entry := range chunk.Entries {
+					if !remaining[entry.Id] || !slices.Equal(entry.ChainList, test.chain) {
+						t.Fatalf("wrong or repeated live projection: id=%q chain elements=%d", entry.Id, len(entry.ChainList))
+					}
+					delete(remaining, entry.Id)
+				}
+			}
+			if test.wantFullSize && totalBytes != totalLimit {
+				t.Fatalf("exact total lost: %d", totalBytes)
+			}
+		})
+	}
+}
+
+type admissionSnapshotStream struct {
+	grpc.ServerStream
+	ctx  context.Context
+	send func(*ConnectionSnapshotChunk) error
+}
+
+func (s *admissionSnapshotStream) Context() context.Context { return s.ctx }
+func (s *admissionSnapshotStream) Send(chunk *ConnectionSnapshotChunk) error {
+	return s.send(chunk)
+}
+
+func TestStreamConnectionSnapshotStopsOnCancellation(t *testing.T) {
+	manager := trafficcontrol.NewManager()
+	for range 2 {
+		snapshotTestConnection(t, manager, strings.Repeat("x", 128*1024))
+	}
+	s := &StartedService{
+		serviceStatus: &ServiceStatus{Status: ServiceStatus_STARTED},
+		instance:      &Instance{ctx: t.Context(), trafficManager: manager},
+	}
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	sent := 0
+	stream := &admissionSnapshotStream{ctx: ctx, send: func(chunk *ConnectionSnapshotChunk) error {
+		sent++
+		if chunk.Complete {
+			t.Fatal("unexpected completion after cancellation")
+		}
+		cancel()
+		return nil
+	}}
+	if err := s.StreamConnectionSnapshot(&emptypb.Empty{}, stream); !errors.Is(err, context.Canceled) || sent != 1 {
+		t.Fatalf("snapshot cancellation: sent=%d err=%v", sent, err)
+	}
+}
+
+func TestStreamConnectionSnapshotWithoutTracking(t *testing.T) {
+	s := &StartedService{
+		serviceStatus: &ServiceStatus{Status: ServiceStatus_STARTED},
+		instance:      &Instance{ctx: t.Context()},
+	}
+	stream := &admissionSnapshotStream{ctx: t.Context()}
+	if err := s.StreamConnectionSnapshot(&emptypb.Empty{}, stream); status.Code(err) != codes.FailedPrecondition {
+		t.Fatalf("missing tracking: %v", err)
 	}
 }

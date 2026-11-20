@@ -59,11 +59,16 @@ func taildropStartedFixture(t *testing.T, p *taildropProviderFixture) *StartedSe
 
 func taildropClientFixture(t *testing.T, s *StartedService) StartedServiceClient {
 	t.Helper()
+	return startedServiceClientFixture(t, s, "taildrop-test-secret")
+}
+
+func startedServiceClientFixture(t *testing.T, s *StartedService, secret string) StartedServiceClient {
+	t.Helper()
 	listener := bufconn.Listen(64 * 1024)
-	server := NewServer(s, "taildrop-test-secret")
+	server := NewServer(s, secret)
 	done := make(chan error, 1)
 	go func() { done <- server.Serve(listener) }()
-	connection, err := grpc.NewClient("passthrough:///taildrop-owned-fixture",
+	connection, err := grpc.NewClient("passthrough:///started-service-fixture",
 		grpc.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) { return listener.DialContext(ctx) }),
 		grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {

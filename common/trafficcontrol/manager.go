@@ -136,11 +136,18 @@ func (m *Manager) ConnectionsLen() int {
 
 func (m *Manager) Connections() []*TrackerMetadata {
 	var connections []*TrackerMetadata
-	m.connections.Range(func(_ uuid.UUID, tracker Tracker) bool {
-		connections = append(connections, tracker.Metadata())
+	m.RangeConnections(func(metadata *TrackerMetadata) bool {
+		connections = append(connections, metadata)
 		return true
 	})
 	return connections
+}
+
+// RangeConnections visits live connections without holding a manager lock during the callback.
+func (m *Manager) RangeConnections(visit func(*TrackerMetadata) bool) {
+	m.connections.Range(func(_ uuid.UUID, tracker Tracker) bool {
+		return visit(tracker.Metadata())
+	})
 }
 
 func (m *Manager) ClosedConnections() []*TrackerMetadata {

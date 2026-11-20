@@ -53,6 +53,7 @@ service StartedService {
   rpc SubmitOpenVPNChallengeResponse(OpenVPNChallengeSubmission) returns (google.protobuf.Empty) {}
   rpc CancelOpenVPNChallenge(OpenVPNChallengeCancel) returns (google.protobuf.Empty) {}
   rpc SubscribeNotifications(google.protobuf.Empty) returns (stream NotificationEvent) {}
+  rpc StreamConnectionSnapshot(google.protobuf.Empty) returns (stream ConnectionSnapshotChunk) {}
 }
 
 message Version {
@@ -823,4 +824,14 @@ message RuleSetLoadStatus {
 message RuleSetStatusResponse {
   int64 instance_started_at_unix_nano = 1;
   repeated RuleSetLoadStatus rule_sets = 2;
+}
+
+message ConnectionSnapshotEntry {
+  string id = 1;
+  repeated string chainList = 2;
+}
+
+message ConnectionSnapshotChunk {
+  repeated ConnectionSnapshotEntry entries = 1;
+  bool complete = 2;
 }

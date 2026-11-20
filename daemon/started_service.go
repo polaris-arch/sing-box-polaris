@@ -32,6 +32,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/encoding/protowire"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -1112,6 +1114,74 @@ func (s *StartedService) SubscribeConnections(request *SubscribeConnectionsReque
 			}
 		}
 	}
+}
+
+const (
+	connectionSnapshotChunkLimit = 256 * 1024
+	connectionSnapshotTotalLimit = 4 * 1024 * 1024
+)
+
+func (s *StartedService) StreamConnectionSnapshot(_ *emptypb.Empty, stream grpc.ServerStreamingServer[ConnectionSnapshotChunk]) error {
+	ctx := stream.Context()
+	boxService, err := s.startedInstance(ctx)
+	if err != nil {
+		return err
+	}
+	trafficManager := boxService.trafficManager
+	if trafficManager == nil {
+		return status.Error(codes.FailedPrecondition, "connection tracking not available")
+	}
+	checkActive := func() error {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if boxService.closeStarted.Load() || boxService.ctx.Err() != nil {
+			return status.Error(codes.Unavailable, "no active instance")
+		}
+		return nil
+	}
+	send := func(chunk *ConnectionSnapshotChunk) error {
+		if err := checkActive(); err != nil {
+			return err
+		}
+		return stream.Send(chunk)
+	}
+
+	chunk := &ConnectionSnapshotChunk{}
+	var chunkSize, totalSize int
+	var rangeErr error
+	trafficManager.RangeConnections(func(metadata *trafficcontrol.TrackerMetadata) bool {
+		if rangeErr = checkActive(); rangeErr != nil {
+			return false
+		}
+		entry := &ConnectionSnapshotEntry{Id: metadata.ID.String(), ChainList: metadata.Chain}
+		// Field 1 encodes each entry as a length-delimited message. Complete is omitted on data frames.
+		entrySize := protowire.SizeTag(1) + protowire.SizeBytes(proto.Size(entry))
+		if entrySize > connectionSnapshotChunkLimit || entrySize > connectionSnapshotTotalLimit-totalSize {
+			rangeErr = status.Error(codes.ResourceExhausted, "connection snapshot exceeds size limit")
+			return false
+		}
+		if entrySize > connectionSnapshotChunkLimit-chunkSize {
+			if rangeErr = send(chunk); rangeErr != nil {
+				return false
+			}
+			chunk = &ConnectionSnapshotChunk{}
+			chunkSize = 0
+		}
+		chunk.Entries = append(chunk.Entries, entry)
+		chunkSize += entrySize
+		totalSize += entrySize
+		return true
+	})
+	if rangeErr != nil {
+		return rangeErr
+	}
+	if len(chunk.Entries) > 0 {
+		if err := send(chunk); err != nil {
+			return err
+		}
+	}
+	return send(&ConnectionSnapshotChunk{Complete: true})
 }
 
 type connectionSnapshot struct {

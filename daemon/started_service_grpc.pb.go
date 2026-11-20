@@ -63,6 +63,7 @@ const (
 	StartedService_SubmitOpenVPNChallengeResponse_FullMethodName = "/daemon.StartedService/SubmitOpenVPNChallengeResponse"
 	StartedService_CancelOpenVPNChallenge_FullMethodName         = "/daemon.StartedService/CancelOpenVPNChallenge"
 	StartedService_SubscribeNotifications_FullMethodName         = "/daemon.StartedService/SubscribeNotifications"
+	StartedService_StreamConnectionSnapshot_FullMethodName       = "/daemon.StartedService/StreamConnectionSnapshot"
 )
 
 // StartedServiceClient is the client API for StartedService service.
@@ -112,6 +113,7 @@ type StartedServiceClient interface {
 	SubmitOpenVPNChallengeResponse(ctx context.Context, in *OpenVPNChallengeSubmission, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	CancelOpenVPNChallenge(ctx context.Context, in *OpenVPNChallengeCancel, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	SubscribeNotifications(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (grpc.ServerStreamingClient[NotificationEvent], error)
+	StreamConnectionSnapshot(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (grpc.ServerStreamingClient[ConnectionSnapshotChunk], error)
 }
 
 type startedServiceClient struct {
@@ -714,6 +716,25 @@ func (c *startedServiceClient) SubscribeNotifications(ctx context.Context, in *e
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type StartedService_SubscribeNotificationsClient = grpc.ServerStreamingClient[NotificationEvent]
 
+func (c *startedServiceClient) StreamConnectionSnapshot(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (grpc.ServerStreamingClient[ConnectionSnapshotChunk], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &StartedService_ServiceDesc.Streams[20], StartedService_StreamConnectionSnapshot_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[emptypb.Empty, ConnectionSnapshotChunk]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type StartedService_StreamConnectionSnapshotClient = grpc.ServerStreamingClient[ConnectionSnapshotChunk]
+
 // StartedServiceServer is the server API for StartedService service.
 // All implementations must embed UnimplementedStartedServiceServer
 // for forward compatibility.
@@ -761,6 +782,7 @@ type StartedServiceServer interface {
 	SubmitOpenVPNChallengeResponse(context.Context, *OpenVPNChallengeSubmission) (*emptypb.Empty, error)
 	CancelOpenVPNChallenge(context.Context, *OpenVPNChallengeCancel) (*emptypb.Empty, error)
 	SubscribeNotifications(*emptypb.Empty, grpc.ServerStreamingServer[NotificationEvent]) error
+	StreamConnectionSnapshot(*emptypb.Empty, grpc.ServerStreamingServer[ConnectionSnapshotChunk]) error
 	mustEmbedUnimplementedStartedServiceServer()
 }
 
@@ -899,6 +921,9 @@ func (UnimplementedStartedServiceServer) CancelOpenVPNChallenge(context.Context,
 }
 func (UnimplementedStartedServiceServer) SubscribeNotifications(*emptypb.Empty, grpc.ServerStreamingServer[NotificationEvent]) error {
 	return status.Errorf(codes.Unimplemented, "method SubscribeNotifications not implemented")
+}
+func (UnimplementedStartedServiceServer) StreamConnectionSnapshot(*emptypb.Empty, grpc.ServerStreamingServer[ConnectionSnapshotChunk]) error {
+	return status.Errorf(codes.Unimplemented, "method StreamConnectionSnapshot not implemented")
 }
 func (UnimplementedStartedServiceServer) mustEmbedUnimplementedStartedServiceServer() {}
 func (UnimplementedStartedServiceServer) testEmbeddedByValue()                        {}
@@ -1543,6 +1568,17 @@ func _StartedService_SubscribeNotifications_Handler(srv interface{}, stream grpc
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type StartedService_SubscribeNotificationsServer = grpc.ServerStreamingServer[NotificationEvent]
 
+func _StartedService_StreamConnectionSnapshot_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(emptypb.Empty)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(StartedServiceServer).StreamConnectionSnapshot(m, &grpc.GenericServerStream[emptypb.Empty, ConnectionSnapshotChunk]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type StartedService_StreamConnectionSnapshotServer = grpc.ServerStreamingServer[ConnectionSnapshotChunk]
+
 // StartedService_ServiceDesc is the grpc.ServiceDesc for StartedService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1745,6 +1781,11 @@ var StartedService_ServiceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "SubscribeNotifications",
 			Handler:       _StartedService_SubscribeNotifications_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "StreamConnectionSnapshot",
+			Handler:       _StartedService_StreamConnectionSnapshot_Handler,
 			ServerStreams: true,
 		},
 	},
