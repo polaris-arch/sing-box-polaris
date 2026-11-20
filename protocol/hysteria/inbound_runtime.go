@@ -349,7 +349,7 @@ func (h *Inbound) PrepareRuntime(stage adapter.StartStage, _ *adapter.Scope) err
 		if err = h.service.Start(packet); err != nil {
 			return err
 		}
-		return h.protocolTLS.waitReady()
+		return h.protocolTLS.WaitReady()
 	})
 }
 
@@ -362,9 +362,4 @@ func (h *Inbound) closeRuntimeProtocol() error {
 		return fmt.Errorf("QUIC protocol cleanup incomplete: %v", err)
 	}
 	return nil
-}
-
-type inboundQUICTransportOptions struct {
-	DisableVersionNegotiationPackets bool
-	StatelessReset                   bool
 }

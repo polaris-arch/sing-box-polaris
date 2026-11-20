@@ -19,6 +19,7 @@ import (
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
+	"github.com/sagernet/sing-box/transport/runtimeingress"
 	qtls "github.com/sagernet/sing-quic"
 	"github.com/sagernet/sing-quic/hysteria"
 	"github.com/sagernet/sing-quic/hysteria2"
@@ -40,7 +41,7 @@ type Inbound struct {
 	realmEnabled        bool
 	masqueradeTransport *httpclient.ManagedTransport
 	runtime             *inboundRuntime
-	protocolTLS         *inboundRuntimeTLS
+	protocolTLS         *runtimeingress.QUICServerTLS
 	inbound.Adapter
 	router       adapter.Router
 	logger       log.ContextLogger
@@ -85,8 +86,6 @@ func NewInbound(ctx context.Context, router adapter.Router, logger log.ContextLo
 		if err := inbound.listener.DeclareRuntimePacketTransport(); err != nil {
 			return nil, err
 		}
-		inbound.protocolTLS = &inboundRuntimeTLS{ServerConfig: tlsConfig, runtime: runtime, listener: inbound.listener}
-		tlsConfig = inbound.protocolTLS
 	}
 	inbound.realmEnabled = options.Realm != nil
 
@@ -219,7 +218,16 @@ func NewInbound(ctx context.Context, router adapter.Router, logger log.ContextLo
 	}
 	if runtime != nil {
 		obfsEnabled := geckoPassword != "" || salamanderPassword != ""
-		inbound.protocolTLS.transportOptions = inboundQUICTransportOptions{DisableVersionNegotiationPackets: obfsEnabled, StatelessReset: !obfsEnabled}
+		inbound.protocolTLS = runtimeingress.NewQUICServerTLS(tlsConfig, runtimeingress.QUICServerTLSOptions{
+			Listener:                         inbound.listener,
+			Context:                          runtime.ctx,
+			Failed:                           runtime.failed,
+			RecordFailure:                    runtime.record,
+			RunTask:                          runtime.runTask,
+			DisableVersionNegotiationPackets: obfsEnabled,
+			StatelessReset:                   !obfsEnabled,
+		})
+		tlsConfig = inbound.protocolTLS
 		masqueradeHandler = runtime.wrapHTTPHandler(masqueradeHandler)
 	}
 	hysteriaService, err := hysteria2.NewService[int](hysteria2.ServiceOptions{
