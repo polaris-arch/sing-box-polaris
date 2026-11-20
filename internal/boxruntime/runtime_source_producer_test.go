@@ -238,14 +238,21 @@ func TestRuntimeEmptyLocalSourcesConstructConnectedGraph(t *testing.T) {
 				if err := srs.Write(&binary, option.PlainRuleSet{}, C.RuleSetVersion3); err != nil {
 					t.Fatal(err)
 				}
-				content = binary.Bytes()
+				content = append(binary.Bytes(), "container trailer"...)
 			}
 			path := filepath.Join(t.TempDir(), "empty.rules")
 			if err := os.WriteFile(path, content, 0o600); err != nil {
 				t.Fatal(err)
 			}
 			config := strings.Replace(string(runtimeTestLocalConfig(path)), `"format":"source"`, fmt.Sprintf(`"format":%q`, format), 1)
-			f := newRuntimeTestFixture(t, []byte(config), nil)
+			configWithLimit := func(limit int) []byte {
+				return []byte(strings.Replace(config, `"format":`, fmt.Sprintf(`"resource_limits":{"input_bytes":%d},"format":`, limit), 1))
+			}
+			accepted := []byte(config)
+			if format == C.RuleSetFormatBinary {
+				accepted = configWithLimit(len(content))
+			}
+			f := newRuntimeTestFixture(t, accepted, nil)
 			f.start(t)
 			_, view := f.acquire(t)
 			set, loaded := view.router.RuleSet("sites")
@@ -269,7 +276,7 @@ func TestRuntimeEmptyLocalSourcesConstructConnectedGraph(t *testing.T) {
 				t.Fatal("empty local source was not frozen with exact accepted bytes")
 			}
 			t.Run("configured limit", func(t *testing.T) {
-				bounded := []byte(strings.Replace(config, `"format":`, fmt.Sprintf(`"resource_limits":{"input_bytes":%d},"format":`, len(content)-1), 1))
+				bounded := configWithLimit(len(content) - 1)
 				_, options := newRuntimeTestConstruction(t, bounded, nil)
 				instance, err, report := NewWithConstructionReport(options)
 				if instance != nil {
@@ -287,7 +294,7 @@ func TestRuntimeEmptyLocalSourcesConstructConnectedGraph(t *testing.T) {
 				}
 			})
 			t.Run("cancel during decode", func(t *testing.T) {
-				_, options := newRuntimeTestConstruction(t, []byte(config), nil)
+				_, options := newRuntimeTestConstruction(t, accepted, nil)
 				ctx, cancel := context.WithCancel(f.ctx)
 				defer cancel()
 				request := &runtimeSourceDecodeCancelContext{Context: ctx, cancel: cancel}

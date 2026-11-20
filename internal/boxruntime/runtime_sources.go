@@ -127,6 +127,15 @@ func runtimeSnapshotSources(request context.Context, registry context.Context, o
 			case C.RuleSetFormatSource, "":
 				compatible, err = srs.ReadSourceContextWithLimits(request, content, limits)
 			case C.RuleSetFormatBinary:
+				limits, err = srs.ResolveReadLimits(limits)
+				if err != nil {
+					break
+				}
+				// The decoder leaves container trailers unread. Budget the entire artifact.
+				if int64(len(content)) > limits.InputBytes {
+					err = srs.ErrResourceLimit
+					break
+				}
 				compatible, err = srs.ReadContextWithLimits(request, bytes.NewReader(content), false, limits)
 			default:
 				err = fmt.Errorf("unsupported source format")
