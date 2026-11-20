@@ -14,6 +14,7 @@ import (
 type dockerTxnFixture struct {
 	gen                    uint32
 	snapshots              map[nftables.TableFamily]dockerNFTSnapshot
+	chainHandles           []uint64
 	inserts, deletes       []*nftables.Rule
 	flushes, probes, reads int
 	fail                   error
@@ -42,8 +43,9 @@ func (f *dockerTxnFixture) io() dockerNFTIO {
 			f.reads++
 			return f.snapshots[family], nil
 		},
-		insert: func(rule *nftables.Rule) *nftables.Rule { f.inserts = append(f.inserts, rule); return rule },
-		remove: func(rule *nftables.Rule) error { f.deletes = append(f.deletes, rule); return nil },
+		chainHandles: func(nftables.TableFamily) ([]uint64, error) { return f.chainHandles, nil },
+		insert:       func(rule *nftables.Rule) *nftables.Rule { f.inserts = append(f.inserts, rule); return rule },
+		remove:       func(rule *nftables.Rule) error { f.deletes = append(f.deletes, rule); return nil },
 		flush: func(gen uint32) error {
 			f.flushes++
 			if f.restartCount > 0 {
@@ -229,34 +231,43 @@ func TestDockerClosedNoNewWrite(t *testing.T) {
 	}
 }
 
-func TestDockerTxnTableRebuildNeverDeletesReusedRuleHandle(t *testing.T) {
-	r, f := newDockerTxnFixture()
-	if err := r.transactDockerFirewall(f.io(), false); err != nil {
-		t.Fatal(err)
-	}
-	snap := f.snapshots[nftables.TableFamilyIPv4]
-	oldHandle := snap.rules[0].Handle
-	snap.tableHandle++
-	foreign := nftablesDockerCompatibilityRule(snap.table, snap.chain, "other", expr.MetaKeyIIFNAME, "unrelated")
-	foreign.Handle = oldHandle
-	snap.rules = []*nftables.Rule{foreign}
-	f.snapshots[nftables.TableFamilyIPv4] = snap
-	if err := r.transactDockerFirewall(f.io(), false); err != nil {
-		t.Fatal("rebuild", err)
-	}
-	if len(r.dockerFirewallState.receipts) != 2 || len(f.snapshots[nftables.TableFamilyIPv4].rules) != 3 {
-		t.Fatal("old receipts kept or foreign removed")
-	}
-	for _, receipt := range r.dockerFirewallState.receipts {
-		if receipt.tableHandle != snap.tableHandle {
-			t.Fatal("old identity retained")
-		}
-	}
-	if err := r.transactDockerFirewall(f.io(), true); err != nil {
-		t.Fatal(err)
-	}
-	if rules := f.snapshots[nftables.TableFamilyIPv4].rules; len(rules) != 1 || rules[0] != foreign {
-		t.Fatal("foreign reused handle deleted")
+func TestDockerTxnRebuildNeverDeletesReusedRuleHandle(t *testing.T) {
+	for _, object := range []string{"table", "chain"} {
+		t.Run(object, func(t *testing.T) {
+			r, f := newDockerTxnFixture()
+			if err := r.transactDockerFirewall(f.io(), false); err != nil {
+				t.Fatal(err)
+			}
+			snap := f.snapshots[nftables.TableFamilyIPv4]
+			oldHandle := snap.rules[0].Handle
+			if object == "table" {
+				snap.tableHandle++
+			} else {
+				snap.chainHandle++
+				f.chainHandles = []uint64{snap.chainHandle}
+			}
+			foreign := nftablesDockerCompatibilityRule(snap.table, snap.chain, "other", expr.MetaKeyIIFNAME, "unrelated")
+			foreign.Handle = oldHandle
+			snap.rules = []*nftables.Rule{foreign}
+			f.snapshots[nftables.TableFamilyIPv4] = snap
+			if err := r.transactDockerFirewall(f.io(), false); err != nil {
+				t.Fatal("rebuild", err)
+			}
+			if len(r.dockerFirewallState.receipts) != 2 || len(f.snapshots[nftables.TableFamilyIPv4].rules) != 3 {
+				t.Fatal("old receipts kept or foreign removed")
+			}
+			for _, receipt := range r.dockerFirewallState.receipts {
+				if receipt.tableHandle != snap.tableHandle || receipt.chainHandle != snap.chainHandle {
+					t.Fatal("old identity retained")
+				}
+			}
+			if err := r.transactDockerFirewall(f.io(), true); err != nil {
+				t.Fatal(err)
+			}
+			if rules := f.snapshots[nftables.TableFamilyIPv4].rules; len(rules) != 1 || rules[0] != foreign {
+				t.Fatal("foreign reused handle deleted")
+			}
+		})
 	}
 }
 
@@ -268,6 +279,8 @@ func TestDockerTxnMissingTableVsRenamedChain(t *testing.T) {
 		}
 		snap := f.snapshots[nftables.TableFamilyIPv4]
 		snap.chain = nil
+		f.chainHandles = []uint64{snap.chainHandle}
+		snap.chainHandle = 0
 		if tableGone {
 			snap.table = nil
 		}

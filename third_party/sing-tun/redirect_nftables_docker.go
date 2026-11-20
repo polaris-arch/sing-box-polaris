@@ -141,6 +141,22 @@ func (r *autoRedirect) configureDockerFirewall(cleanup bool) error {
 			rules, err := nft.GetRules(table, chain)
 			return dockerNFTSnapshot{table: table, chain: chain, tableHandle: handle, chainHandle: chainHandle, rules: rules}, err
 		},
+		chainHandles: func(family nftables.TableFamily) ([]uint64, error) {
+			chains, err := nft.ListChainsOfTableFamily(family)
+			if err != nil {
+				return nil, err
+			}
+			var handles []uint64
+			for _, chain := range chains {
+				if chain == nil || chain.Table == nil || chain.Table.Family != family || chain.Handle == 0 {
+					return nil, E.New("incomplete Docker chain identity")
+				}
+				if chain.Table.Name == nftablesDockerFilterTable {
+					handles = append(handles, chain.Handle)
+				}
+			}
+			return handles, nil
+		},
 		insert: nft.InsertRule, remove: nft.DelRule, flush: nft.FlushWithGenID,
 	}, cleanup)
 }

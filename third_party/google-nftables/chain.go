@@ -98,6 +98,7 @@ const (
 type Chain struct {
 	Name     string
 	Table    *Table
+	Handle   uint64 // Kernel-assigned identity, populated on readback.
 	Hooknum  *ChainHook
 	Priority *ChainPriority
 	Type     ChainType
@@ -291,15 +292,21 @@ func chainFromMsg(msg netlink.Message) (*Chain, error) {
 
 	var c Chain
 
+	if len(msg.Data) < 4 {
+		return nil, fmt.Errorf("short chain message")
+	}
 	ad, err := netlink.NewAttributeDecoder(msg.Data[4:])
 	if err != nil {
 		return nil, err
 	}
+	ad.ByteOrder = binary.BigEndian
 
 	for ad.Next() {
 		switch ad.Type() {
 		case unix.NFTA_CHAIN_NAME:
 			c.Name = ad.String()
+		case unix.NFTA_CHAIN_HANDLE:
+			c.Handle = ad.Uint64()
 		case unix.NFTA_TABLE_NAME:
 			c.Table = &Table{Name: ad.String()}
 			// msg[0] carries TableFamily byte indicating whether it is IPv4, IPv6 or something else
@@ -317,7 +324,7 @@ func chainFromMsg(msg netlink.Message) (*Chain, error) {
 		}
 	}
 
-	return &c, nil
+	return &c, ad.Err()
 }
 
 func hookFromMsg(b []byte) (*ChainHook, *ChainPriority, error) {

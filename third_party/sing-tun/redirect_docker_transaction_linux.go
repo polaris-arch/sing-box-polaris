@@ -5,6 +5,7 @@ package tun
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"syscall"
 
 	"github.com/google/nftables"
@@ -26,14 +27,16 @@ type dockerNFTSnapshot struct {
 	chain                    *nftables.Chain
 	tableHandle, chainHandle uint64
 	rules                    []*nftables.Rule
+	chainHandles             []uint64
 }
 type dockerNFTIO struct {
-	generation func() (uint32, error)
-	probe      func(uint32) error
-	snapshot   func(nftables.TableFamily) (dockerNFTSnapshot, error)
-	insert     func(*nftables.Rule) *nftables.Rule
-	remove     func(*nftables.Rule) error
-	flush      func(uint32) error
+	generation   func() (uint32, error)
+	probe        func(uint32) error
+	snapshot     func(nftables.TableFamily) (dockerNFTSnapshot, error)
+	chainHandles func(nftables.TableFamily) ([]uint64, error)
+	insert       func(*nftables.Rule) *nftables.Rule
+	remove       func(*nftables.Rule) error
+	flush        func(uint32) error
 }
 type dockerPendingRule struct {
 	rule    *nftables.Rule
@@ -86,6 +89,14 @@ func (r *autoRedirect) transactDockerFirewall(io dockerNFTIO, cleanup bool) (res
 			if err != nil {
 				return err
 			}
+			if snapshot.table != nil && slices.ContainsFunc(state.receipts, func(receipt dockerRuleReceipt) bool {
+				return receipt.family == family && receipt.tableHandle == snapshot.tableHandle && receipt.chainHandle != snapshot.chainHandle
+			}) {
+				snapshot.chainHandles, err = io.chainHandles(family)
+				if err != nil {
+					return err
+				}
+			}
 			snapshots[family] = snapshot
 		}
 		after, err := io.generation()
@@ -112,8 +123,8 @@ func (r *autoRedirect) transactDockerFirewall(io dockerNFTIO, cleanup bool) (res
 			// Tables cannot be renamed by the nft table update API. Under this
 			// stable generation snapshot, a missing/replaced same-name table
 			// means its old rules are gone. Release receipts, never delete new
-			// objects by reused names/handles. Chains can be renamed, so a
-			// missing chain in the same table remains unresolved debt.
+			// objects by reused names/handles. Check a previous chain handle
+			// in the same table before forgetting receipts: it may have been renamed.
 			if snap.table == nil {
 				continue
 			}
@@ -122,15 +133,22 @@ func (r *autoRedirect) transactDockerFirewall(io dockerNFTIO, cleanup bool) (res
 			}
 			currentOwned := owned[:0]
 			for _, receipt := range owned {
-				if receipt.tableHandle == snap.tableHandle {
+				if receipt.tableHandle != snap.tableHandle {
+					continue
+				}
+				if receipt.chainHandle == snap.chainHandle {
 					currentOwned = append(currentOwned, receipt)
+					continue
+				}
+				if snap.chain != nil && !slices.Contains(snap.chainHandles, snap.chainHandle) {
+					return errors.New("Docker chain identity missing from chain dump")
+				}
+				if slices.Contains(snap.chainHandles, receipt.chainHandle) {
+					return errors.New("owned Docker chain renamed; receipts retained")
 				}
 			}
 			owned = currentOwned
 			if snap.chain == nil {
-				if len(owned) != 0 {
-					return errors.New("owned Docker chain missing in same table; receipts retained")
-				}
 				continue
 			}
 			if snap.chainHandle == 0 {
@@ -149,9 +167,6 @@ func (r *autoRedirect) transactDockerFirewall(io dockerNFTIO, cleanup bool) (res
 			recognized := make(map[uint64]bool, len(owned))
 			keptDirection := make(map[expr.MetaKey]bool, 2)
 			for _, receipt := range owned {
-				if receipt.chainHandle != snap.chainHandle {
-					return errors.New("Docker chain identity changed; receipts retained")
-				}
 				rule := live[receipt.handle]
 				if rule == nil {
 					continue
