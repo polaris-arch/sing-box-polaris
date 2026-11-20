@@ -9,6 +9,7 @@ import (
 	"math"
 	"os"
 	"reflect"
+	"sync/atomic"
 
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/adapter/certificate"
@@ -291,6 +292,10 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 	}
 	contexts := make(map[string]context.Context)
 	var tailscalePlanDigest string
+	// Borrowed components keep their contexts after the staging owner is gone.
+	componentPreparation := new(atomic.Pointer[preparedRuntimeGraph])
+	componentPreparation.Store(prepared)
+	prepared.componentPreparation = componentPreparation
 	componentContext := func(name string) (context.Context, error) {
 		resource := bindings[name]
 		networkOwner := adapter.NetworkManager(s.network)
@@ -310,7 +315,13 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 		resource.scope.Add(func() error { snapshot.Release(); return nil })
 		service.MustRegister[adapter.CertificateStore](ctx, snapshot)
 		ctx = adapter.ContextWithRuntimePreparation(ctx)
-		ctx = certificate.ContextWithRuntimeStorageBinding(ctx, func(info os.FileInfo) error { return prepared.bindCertificateStorage(name, info) })
+		ctx = certificate.ContextWithRuntimeStorageBinding(ctx, func(info os.FileInfo) error {
+			prepared := componentPreparation.Load()
+			if prepared == nil {
+				return errors.New("runtime certificate storage binding closed")
+			}
+			return prepared.bindCertificateStorage(name, info)
+		})
 		// Only Tailscale physical-child registration consumes the whole graph.
 		// Other components must not each retain a private full-config copy.
 		if config.endpoint != nil && config.endpoint.Type == C.TypeTailscale {
@@ -333,6 +344,10 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 		ctx = adapter.ContextWithRuntimeEffectRegistration(ctx, func(effect adapter.RuntimeStagedEffect) error {
 			if effect == nil {
 				return errors.New("nil runtime effect")
+			}
+			prepared := componentPreparation.Load()
+			if prepared == nil {
+				return errors.New("runtime effect registration closed")
 			}
 			prepared.effectAccess.Lock()
 			defer prepared.effectAccess.Unlock()
@@ -358,6 +373,10 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 					return errors.New("invalid post-bind conflict identity")
 				}
 				seen[key] = true
+			}
+			prepared := componentPreparation.Load()
+			if prepared == nil {
+				return errors.New("runtime effect registration closed")
 			}
 			prepared.effectAccess.Lock()
 			defer prepared.effectAccess.Unlock()

@@ -510,6 +510,9 @@ func TestRuntimePostPublicationPanicReleasesConstructionWithoutAborting(t *testi
 	if candidate.rootSnapshot != nil || len(candidate.construction) != 0 {
 		t.Fatal("post-publication panic retained construction leases")
 	}
+	if candidate.componentPreparation == nil || candidate.componentPreparation.Load() != nil {
+		t.Fatal("post-publication panic retained the candidate in component contexts")
+	}
 	for _, resource := range candidate.created {
 		select {
 		case <-resource.owner.Retiring():

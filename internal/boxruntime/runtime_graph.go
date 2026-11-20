@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"sync"
+	"sync/atomic"
 
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/adapter/certificate"
@@ -124,6 +125,7 @@ type preparedRuntimeGraph struct {
 	tunRestorationError      error
 	certificateManager       *certificate.Manager
 	stagedProviders          []adapter.RuntimeStagedEffect
+	componentPreparation     *atomic.Pointer[preparedRuntimeGraph]
 	effectAccess             sync.Mutex
 	effectRegistrationClosed bool
 	inlineEffects            []adapter.RuntimeStagedEffect
@@ -151,6 +153,9 @@ type preparedRuntimeGraph struct {
 }
 
 func (g *preparedRuntimeGraph) releaseConstruction() {
+	if g.componentPreparation != nil {
+		g.componentPreparation.Store(nil)
+	}
 	if g.rootSnapshot != nil {
 		g.rootSnapshot.Release()
 		g.rootSnapshot = nil
