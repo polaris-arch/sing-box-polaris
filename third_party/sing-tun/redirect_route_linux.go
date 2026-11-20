@@ -254,12 +254,17 @@ func (r *autoRedirect) reconcileRedirectRoutesWith(redirectInterfaces []control.
 	return nil
 }
 
-// Linux fills an omitted IPv6 metric with IP6_RT_PRIO_USER (1024).
-// Only runtime nexthop health bits are ignored; configured selectors remain
-// compared. A same-slot mismatch must not discard the ownership receipt.
+// Linux reports IPv6 local routes with global scope and fills an omitted
+// metric with IP6_RT_PRIO_USER (1024). Match the kernel selectors for both
+// readback and deletion; other configured selectors still distinguish routes.
 func normalizeRedirectReceipt(receipt netlink.Route) netlink.Route {
-	if receipt.Dst != nil && receipt.Dst.IP.To4() == nil && receipt.Priority == 0 {
-		receipt.Priority = 1024
+	if receipt.Dst != nil && receipt.Dst.IP.To4() == nil {
+		if receipt.Priority == 0 {
+			receipt.Priority = 1024
+		}
+		if receipt.Type == unix.RTN_LOCAL && receipt.Scope == netlink.SCOPE_HOST {
+			receipt.Scope = netlink.SCOPE_UNIVERSE
+		}
 	}
 	return receipt
 }

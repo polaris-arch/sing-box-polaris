@@ -106,6 +106,7 @@ func TestRedirectIPv6KernelDefaultsAndDynamicFlagsRetainOwnership(t *testing.T) 
 	owned.Priority = 0 // receipt predating explicit metric normalization
 	live := owned
 	live.Priority = 1024
+	live.Scope = netlink.SCOPE_UNIVERSE
 	live.Flags = unix.RTNH_F_LINKDOWN
 	r.redirectOwnedRoutes.routes = []netlink.Route{owned}
 	iface := control.Interface{Index: 7, Addresses: []netip.Prefix{netip.MustParsePrefix("2001:db8::1/64")}}
@@ -121,6 +122,7 @@ func TestRedirectUnexplainedLiveSelectorChangePreservesAllDebt(t *testing.T) {
 	owned := newRedirectRoute(1001, redirectRouteKey{linkIndex: 7, family: unix.AF_INET6})
 	other := newRedirectRoute(1001, redirectRouteKey{linkIndex: 8, family: unix.AF_INET6})
 	live := owned
+	live.Scope = netlink.SCOPE_UNIVERSE
 	live.Priority = 999
 	r.redirectOwnedRoutes.routes = []netlink.Route{other, owned}
 	mutate := func(*netlink.Route) error { t.Fatal("mutated ambiguous ownership"); return nil }
@@ -130,16 +132,17 @@ func TestRedirectUnexplainedLiveSelectorChangePreservesAllDebt(t *testing.T) {
 	}
 }
 
-func TestRedirectLegacyIPv6RemovalUsesExactNormalizedMetric(t *testing.T) {
+func TestRedirectLegacyIPv6RemovalUsesKernelRouteSelectors(t *testing.T) {
 	r := &autoRedirect{redirectRouteTableIndex: 1001, enableIPv6: true}
 	receipt := newRedirectRoute(1001, redirectRouteKey{linkIndex: 7, family: unix.AF_INET6})
 	live := receipt
+	live.Scope = netlink.SCOPE_UNIVERSE
 	receipt.Priority = 0
 	r.redirectOwnedRoutes.routes = []netlink.Route{receipt}
 	removed := 0
 	err := r.reconcileRedirectRoutesWith(nil, func() ([]netlink.Route, error) { return []netlink.Route{live}, nil }, func(*netlink.Route) error { t.Fatal("unexpected add"); return nil }, func(route *netlink.Route) error {
 		removed++
-		if route.Priority != 1024 {
+		if route.Priority != 1024 || route.Scope != netlink.SCOPE_UNIVERSE {
 			t.Fatal("imprecise IPv6 delete")
 		}
 		return nil
