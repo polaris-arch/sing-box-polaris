@@ -237,11 +237,12 @@ func (h *Outbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 	}
 	err = func() error {
 		defer leave()
-		startErr := h.client.Start()
-		if startErr == nil {
-			h.logger.Info("NaiveProxy started, version: ", h.client.Version())
+		// Standalone callers can borrow Engine immediately after Start.
+		start := h.client.Start
+		if h.runtime.source != nil {
+			start = h.client.StartOnDemand
 		}
-		return startErr
+		return start()
 	}()
 	if err != nil {
 		return errors.Join(err, h.runtime.close())

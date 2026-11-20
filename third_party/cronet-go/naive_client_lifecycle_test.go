@@ -3,6 +3,7 @@ package cronet
 import (
 	"context"
 	"errors"
+	"net"
 	"sync"
 	"testing"
 	"time"
@@ -26,6 +27,30 @@ func awaitLifecycle(t *testing.T, done <-chan struct{}) {
 	case <-done:
 	case <-time.After(time.Second):
 		t.Fatal("lifecycle did not finish")
+	}
+}
+
+func TestNaiveDormantClientControlsAndClose(t *testing.T) {
+	c := lifecycleTestClient(clientStateCreated)
+	if err := c.StartOnDemand(); err != nil {
+		t.Fatal(err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	dest := M.ParseSocksaddrHostPort("127.0.0.1", 443)
+	if _, err := c.DialEarly(ctx, dest); !errors.Is(err, context.Canceled) {
+		t.Fatalf("canceled first dial: %v", err)
+	}
+	c.CloseAllConnections()
+	if state := clientState(c.state.Load()); state != clientStateDormant {
+		t.Fatalf("cold client state = %v, want dormant", state)
+	}
+	if err := c.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.DialEarly(context.Background(), dest); !errors.Is(err, net.ErrClosed) {
+		t.Fatalf("dial after cold close: %v", err)
 	}
 }
 
