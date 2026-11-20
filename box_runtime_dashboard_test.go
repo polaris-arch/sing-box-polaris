@@ -187,13 +187,22 @@ func TestRuntimeDashboardServiceChangesStillRequireRestart(t *testing.T) {
 	if !apiIngress {
 		t.Fatal("secret change lacks API ingress replacement impact")
 	}
-	for _, change := range [][2]string{{`"/initial"`, `"/other"`}, {`"http://127.0.0.1/initial.zip"`, `"http://127.0.0.1/other.zip"`}, {`"1h0m0s"`, `"2h0m0s"`}, {`"detour":"select"`, `"detour":"a"`}} {
-		t.Run(change[0], func(t *testing.T) {
-			candidate := strings.Replace(string(content), change[0], change[1], 1)
+	for _, change := range []struct {
+		label, before, after string
+		policy               RuntimeClientImpactPolicyVersion
+	}{
+		{"path", `"/initial"`, `"/other"`, RuntimeClientImpactPolicyExplicit},
+		{"URL", `"http://127.0.0.1/initial.zip"`, `"http://127.0.0.1/other.zip"`, RuntimeClientImpactPolicyExplicit},
+		{"interval", `"1h0m0s"`, `"2h0m0s"`, RuntimeClientImpactPolicyExplicit},
+		{"detour and client options", `"detour":"select"`, `"detour":"a","connect_timeout":"5s"`, RuntimeClientImpactPolicyExplicit},
+		{"legacy detour", `"detour":"select"`, `"detour":"a"`, RuntimeClientImpactPolicyLegacy},
+	} {
+		t.Run(change.label, func(t *testing.T) {
+			candidate := strings.Replace(string(content), change.before, change.after, 1)
 			if candidate == string(content) {
 				t.Fatalf("test change did not occur: %s", content)
 			}
-			plan, err := instance.planRuntimeConfig(context.Background(), "actor-a", f.identity(), []byte(candidate))
+			plan, err := instance.PlanRuntimeConfigWithClientImpactPolicy(context.Background(), "actor-a", f.identity(), []byte(candidate), nil, change.policy)
 			if err != nil || plan.Applicable || len(plan.Errors) == 0 || plan.Errors[0].Code != "RESTART_REQUIRED" {
 				t.Fatalf("service structure admitted: %+v %v", plan, err)
 			}
