@@ -3,6 +3,7 @@ package tun
 import (
 	"context"
 	"errors"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -490,7 +491,7 @@ func (d *runtimeNativeDeviceFixture) Close() error {
 func runtimeNativeOwnerFixture(bridge *runtimeNativeBridgeFixture) *Inbound {
 	var owner *Inbound
 	owner = runtimeTunFixture(func(physical *runtimeTunPhysical) error {
-		device, err := owner.openRuntimeNativeInterface(&nativeTun.Options{MTU: 1500}, option.TunPlatformOptions{})
+		device, err := owner.runtime.openNativeInterface(bridge, &nativeTun.Options{MTU: 1500}, option.TunPlatformOptions{})
 		if err != nil {
 			return err
 		}
@@ -500,6 +501,42 @@ func runtimeNativeOwnerFixture(bridge *runtimeNativeBridgeFixture) *Inbound {
 	owner.platformInterface = bridge
 	owner.tag = "tun-in"
 	return owner
+}
+
+func TestColdStartRetainsRegisteredNativeTun(t *testing.T) {
+	for _, test := range []struct {
+		name     string
+		failOpen bool
+		publish  bool
+		want     []string
+	}{
+		{"running", false, true, []string{"prepare", "duplicate", "close-duplicate", "retire"}},
+		{"failed stack", false, false, []string{"prepare", "duplicate", "close-duplicate", "abort"}},
+		{"failed duplicate", true, false, []string{"prepare", "abort"}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			bridge := &runtimeNativeBridgeFixture{failOpen: test.failOpen}
+			// An unsupported hot-update configuration has no runtime graph.
+			cold := &Inbound{platformInterface: bridge}
+			scope := adapter.NewScope(context.Background(), log.NewNOPFactory().Logger())
+			device, err := cold.openInterface(&nativeTun.Options{MTU: 1500}, scope)
+			if (err != nil) != test.failOpen || (device == nil) != test.failOpen {
+				t.Fatalf("unexpected open result: device=%v err=%v", device, err)
+			}
+			if len(bridge.sessions) != 1 || bridge.sessions[0].previous != nil || cold.coldNative.nativeReceipt.Published() {
+				t.Fatal("cold open did not retain one unpublished original session")
+			}
+			if test.publish {
+				cold.coldNative.nativeReceipt.Publish()
+			}
+			if err := scope.Close(); err != nil {
+				t.Fatal(err)
+			}
+			if !slices.Equal(bridge.events, test.want) {
+				t.Fatalf("native custody: got %v, want %v", bridge.events, test.want)
+			}
+		})
+	}
 }
 
 func publishRuntimeNativeFixture(t *testing.T, owner *Inbound) {

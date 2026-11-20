@@ -132,7 +132,7 @@ func (t *Inbound) RuntimeCloseAndWait() error {
 			r.closeErr = nil
 		}
 		if r.closeErr == nil && (operation == nil || !tls.IsRuntimeCleanupIncomplete(operation.err)) {
-			r.closeErr = t.finishRuntimeNative()
+			r.closeErr = r.finishNative()
 		}
 		if operation != nil && tls.IsRuntimeCleanupIncomplete(operation.err) {
 			r.closeErr = tls.NewRuntimeCleanupError(errors.Join(r.closeErr, operation.err))
@@ -369,22 +369,60 @@ func (t *Inbound) bindRuntimeNativePrevious(previous *Inbound) error {
 	return nil
 }
 
-func (t *Inbound) openRuntimeNativeInterface(options *tun.Options, platformOptions option.TunPlatformOptions) (tun.Tun, error) {
-	r := t.runtime
+func (t *Inbound) openInterface(options *tun.Options, scope *adapter.Scope) (device tun.Tun, err error) {
+	var coldNative *runtimeTunState
+	scope.Add(func() error {
+		if coldNative != nil && coldNative.nativeReceipt != nil {
+			coldNative.nativeReceipt.Suspend()
+		}
+		if device != nil {
+			if t.stackShutdown != nil {
+				if err := t.stackShutdown.WaitDetached(context.Background()); err != nil {
+					return err
+				}
+			}
+			if err := device.Close(); err != nil {
+				return err
+			}
+		}
+		if coldNative != nil {
+			return coldNative.finishNative()
+		}
+		return nil
+	})
+	platform := t.platformInterface
+	if platform == nil || !platform.UsePlatformInterface() {
+		return tun.New(*options)
+	}
+	if t.runtimePhysical != nil && t.runtimePhysical.nativeOwner != nil {
+		owner := t.runtimePhysical.nativeOwner
+		return owner.runtime.openNativeInterface(owner.platformInterface, options, t.platformOptions)
+	}
+	if bridge, ok := platform.(adapter.RuntimeTunPlatform); ok && bridge.RuntimeTunVersion() == 1 {
+		// A Box outside the hot-update inventory still needs to retain the
+		// registered bridge's original session before installing settings.
+		coldNative = &runtimeTunState{}
+		t.coldNative = coldNative
+		return coldNative.openNativeInterface(platform, options, t.platformOptions)
+	}
+	return platform.OpenInterface(options, t.platformOptions)
+}
+
+func (r *runtimeTunState) openNativeInterface(platformInterface adapter.PlatformInterface, options *tun.Options, platformOptions option.TunPlatformOptions) (tun.Tun, error) {
 	r.mu.Lock()
 	native, previous, finalized := r.native, r.nativePrevious, r.nativeFinalized
 	r.mu.Unlock()
 	if finalized {
 		return nil, errors.New("native TUN owner already finalized")
 	}
-	platform, ok := t.platformInterface.(adapter.RuntimeTunPlatform)
+	platform, ok := platformInterface.(adapter.RuntimeTunPlatform)
 	if native == nil && (!ok || platform.RuntimeTunVersion() != 1) {
 		if previous != nil {
 			return nil, errors.New("native TUN original bridge lost during replacement")
 		}
 		// Only genuinely old bindings can use this path; registered libbox
 		// bridges reject legacy OpenTun, including after quarantine.
-		return t.platformInterface.OpenInterface(options, platformOptions)
+		return platformInterface.OpenInterface(options, platformOptions)
 	}
 	if native == nil {
 		receipt, err := adapter.NewRuntimeTunReceipt()
@@ -414,8 +452,7 @@ func (t *Inbound) openRuntimeNativeInterface(options *tun.Options, platformOptio
 	return native.OpenInterface(options)
 }
 
-func (t *Inbound) finishRuntimeNative() error {
-	r := t.runtime
+func (r *runtimeTunState) finishNative() error {
 	r.mu.Lock()
 	native, receipt := r.native, r.nativeReceipt
 	if native == nil {
@@ -449,5 +486,5 @@ func (t *Inbound) RuntimeAbortNative(ctx context.Context) error {
 	if err := t.RuntimeValidate(); err != nil {
 		return err
 	}
-	return t.runtime.runPhysical(ctx, t.finishRuntimeNative)
+	return t.runtime.runPhysical(ctx, t.runtime.finishNative)
 }

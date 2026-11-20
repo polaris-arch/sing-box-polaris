@@ -40,6 +40,7 @@ func RegisterInbound(registry *inbound.Registry) {
 type Inbound struct {
 	runtime                 *runtimeTunState
 	runtimePhysical         *runtimeTunPhysical
+	coldNative              *runtimeTunState
 	tag                     string
 	ctx                     context.Context
 	router                  adapter.Router
@@ -462,7 +463,6 @@ func (t *Inbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 				}
 			}
 		}
-		var tunInterface tun.Tun
 		monitor := taskmonitor.New(t.logger, C.StartTimeout)
 		tunOptions := t.tunOptions
 		if t.autoRedirect == nil && !(runtime.GOOS == "android" && t.platformInterface != nil) {
@@ -486,28 +486,12 @@ func (t *Inbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 			}
 		}
 		monitor.Start("open interface")
-		if t.platformInterface != nil && t.platformInterface.UsePlatformInterface() {
-			if t.runtimePhysical != nil && t.runtimePhysical.nativeOwner != nil {
-				tunInterface, err = t.runtimePhysical.nativeOwner.openRuntimeNativeInterface(&tunOptions, t.platformOptions)
-			} else {
-				tunInterface, err = t.platformInterface.OpenInterface(&tunOptions, t.platformOptions)
-			}
-		} else {
-			tunInterface, err = tun.New(tunOptions)
-		}
+		tunInterface, err := t.openInterface(&tunOptions, scope)
 		monitor.Finish()
 		t.tunOptions.Name = tunOptions.Name
 		if err != nil {
 			return E.Cause(err, "configure tun interface")
 		}
-		scope.Add(func() error {
-			if t.stackShutdown != nil {
-				if err := t.stackShutdown.WaitDetached(context.Background()); err != nil {
-					return err
-				}
-			}
-			return tunInterface.Close()
-		})
 		t.logger.Trace("creating stack")
 		t.tunIf = tunInterface
 		if t.platformInterface != nil {
@@ -570,6 +554,9 @@ func (t *Inbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 			if err != nil {
 				return E.Cause(err, "auto-redirect")
 			}
+		}
+		if t.coldNative != nil {
+			t.coldNative.nativeReceipt.Publish()
 		}
 	}
 	return nil
