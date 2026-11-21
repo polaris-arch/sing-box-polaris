@@ -42,9 +42,13 @@ func (m policyMode) String() string {
 	}
 }
 
-func resolvePolicyMode(ctx context.Context, options option.OOMKillerServiceOptions) (uint64, policyMode) {
+func InAppleNetworkExtension(ctx context.Context) bool {
 	platformInterface := service.FromContext[adapter.PlatformInterface](ctx)
-	if C.IsIos && platformInterface != nil && platformInterface.UnderNetworkExtension() {
+	return C.IsIos && platformInterface != nil && platformInterface.UnderNetworkExtension()
+}
+
+func resolvePolicyMode(ctx context.Context, options option.OOMKillerServiceOptions) (uint64, policyMode) {
+	if InAppleNetworkExtension(ctx) {
 		return DefaultAppleNetworkExtensionMemoryLimit, policyModeNetworkExtension
 	}
 	if options.MemoryLimitOverride > 0 {

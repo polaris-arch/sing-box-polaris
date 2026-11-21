@@ -40,7 +40,7 @@ func (s *naiveClientSlot) newIncarnation() (*naiveClientIncarnation, error) {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		if s.current == instance {
-			s.retireIdleLocked()
+			s.retireIdleLocked(false)
 		}
 	}
 	client, err := cronet.NewNaiveClient(options)
@@ -53,11 +53,11 @@ func (s *naiveClientSlot) newIncarnation() (*naiveClientIncarnation, error) {
 	return instance, nil
 }
 
-func (s *naiveClientSlot) retireIdleLocked() <-chan struct{} {
+func (s *naiveClientSlot) retireIdleLocked(explicit bool) <-chan struct{} {
 	if s.retiring != nil {
 		return s.retiring
 	}
-	if s.keep || s.pinned || s.closed || s.closeErr != nil || s.borrowers != 0 ||
+	if (s.keep && !explicit) || s.pinned || s.closed || s.closeErr != nil || s.borrowers != 0 ||
 		s.current == nil || !s.current.client.TrySealIdle() {
 		return nil
 	}
@@ -85,7 +85,7 @@ func (s *naiveClientSlot) setKeep(keep bool) {
 	s.keep = keep
 	var done <-chan struct{}
 	if !keep {
-		done = s.retireIdleLocked()
+		done = s.retireIdleLocked(false)
 	}
 	s.mu.Unlock()
 	if done != nil {
@@ -95,7 +95,8 @@ func (s *naiveClientSlot) setKeep(keep bool) {
 
 func (s *naiveClientSlot) closeIdle() {
 	s.mu.Lock()
-	done := s.retireIdleLocked()
+	// Pause and memory reclamation can release even a referenced idle client.
+	done := s.retireIdleLocked(true)
 	s.mu.Unlock()
 	if done != nil {
 		<-done
@@ -154,7 +155,7 @@ func (s *naiveClientSlot) release() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.borrowers--
-	s.retireIdleLocked()
+	s.retireIdleLocked(false)
 }
 
 func (s *naiveClientSlot) DialContext(ctx context.Context, _ string, destination M.Socksaddr) (net.Conn, error) {

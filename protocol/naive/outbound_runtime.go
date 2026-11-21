@@ -27,16 +27,18 @@ import (
 
 // Independent URLTest groups and management requests share the native startup
 // budget even when each group limits its own workers.
-var probeClients = semaphore.NewWeighted(10)
+const probeClientLimit = 10
+
+var probeClients = semaphore.NewWeighted(probeClientLimit)
 
 func deferColdProbe(ctx context.Context, pressure func() tun.MemoryPressure) bool {
 	return urltest.IsBackgroundProbe(ctx) && pressure != nil && pressure() != tun.MemoryPressureNone
 }
 
-func acquireColdProbe(ctx context.Context) error {
+func acquireColdProbe(ctx context.Context, slots int64) error {
 	queueCtx, cancel := context.WithTimeout(ctx, C.TCPTimeout)
 	defer cancel()
-	if err := probeClients.Acquire(queueCtx, 1); err != nil {
+	if err := probeClients.Acquire(queueCtx, slots); err != nil {
 		return errors.Join(urltest.ErrProbeNotRun, err)
 	}
 	return nil
@@ -101,10 +103,15 @@ func (h *Outbound) WithURLTestDialer(ctx context.Context, test func(context.Cont
 	if deferColdProbe(ctx, pressure) {
 		return 0, urltest.ErrProbeNotRun
 	}
-	if err := acquireColdProbe(ctx); err != nil {
+	slots := int64(1)
+	if oomkiller.InAppleNetworkExtension(h.ctx) {
+		// Serialize transient engines before the extension's next memory sample.
+		slots = probeClientLimit
+	}
+	if err := acquireColdProbe(ctx, slots); err != nil {
 		return 0, err
 	}
-	defer probeClients.Release(1)
+	defer probeClients.Release(slots)
 	warm, err = h.clients.acquire(ctx, false)
 	if err != nil {
 		return 0, err

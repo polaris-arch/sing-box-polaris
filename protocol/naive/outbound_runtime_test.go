@@ -92,13 +92,13 @@ func TestNaiveColdProbePressureAndQueueDeadline(t *testing.T) {
 	if deferColdProbe(background, nil) {
 		t.Fatal("missing pressure monitor blocked a cold probe")
 	}
-	if !probeClients.TryAcquire(10) {
-		t.Fatal("could not fill the cold probe queue")
+	if err := acquireColdProbe(t.Context(), probeClientLimit); err != nil {
+		t.Fatalf("could not reserve the cold probe queue: %v", err)
 	}
-	defer probeClients.Release(10)
+	defer probeClients.Release(probeClientLimit)
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Millisecond)
 	defer cancel()
-	err := acquireColdProbe(ctx)
+	err := acquireColdProbe(ctx, 1)
 	if !errors.Is(err, urltest.ErrProbeNotRun) || !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatalf("queue expiry was not reported as an unattempted probe: %v", err)
 	}
@@ -198,11 +198,25 @@ func TestNaiveOutboundIdleClientRetiresAndReopens(t *testing.T) {
 		t.Fatal(err)
 	}
 	clients.release()
-	h.CloseIdleConnections()
 	if next.client.Version() == "" {
-		t.Fatal("idle cleanup retired a referenced client")
+		t.Fatal("a referenced client did not remain warm after release")
 	}
-	if err = h.runtime.close(); err != nil || next.client.Version() != "" {
+	h.CloseIdleConnections()
+	if next.client.Version() != "" {
+		t.Fatal("explicit idle cleanup retained a referenced idle client")
+	}
+	final, err := clients.acquire(ctx, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if final == next {
+		t.Fatal("ordinary acquisition reused a closed client")
+	}
+	if err = final.client.Start(); err != nil {
+		t.Fatal(err)
+	}
+	clients.release()
+	if err = h.runtime.close(); err != nil || final.client.Version() != "" {
 		t.Fatalf("final stop did not join the replacement: %v", err)
 	}
 	if _, err = clients.acquire(ctx, true); !errors.Is(err, net.ErrClosed) {
