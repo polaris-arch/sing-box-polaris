@@ -402,9 +402,20 @@
 +++ b/naive_client.go
 @@ -41,0 +42 @@
 +	clientStateDormant
-@@ -54,0 +56 @@
+@@ -43,0 +45 @@
++	clientStateSealed
+@@ -52,0 +55,2 @@
++	nativeOperations         int
++	onIdle                   func()
+@@ -54,0 +59 @@
 +	startError               error
-@@ -184 +186,7 @@
+@@ -106,0 +112,3 @@
++
++	// OnIdle may run on a native callback thread and must not block on Close.
++	OnIdle func()
+@@ -180,0 +189 @@
++		onIdle:                   config.OnIdle,
+@@ -184 +193,7 @@
 -func (c *NaiveClient) Start() (startResult error) {
 +// Start starts a new or prepared client without waiting for its first dial.
 +func (c *NaiveClient) Start() error {
@@ -413,7 +424,7 @@
 +
 +// StartOnDemand validates custom roots before the first dial starts the engine.
 +func (c *NaiveClient) StartOnDemand() error {
-@@ -186,11 +194,37 @@
+@@ -186,11 +201,37 @@
 -	if !c.state.CompareAndSwap(uint32(clientStateCreated), uint32(clientStateStarting)) {
 -		state := clientState(c.state.Load())
 -		c.lifecycle.Unlock()
@@ -462,9 +473,9 @@
 +		return errors.New("already started")
 +	default:
 +		return net.ErrClosed
-@@ -197,0 +232 @@
+@@ -197,0 +239 @@
 +}
-@@ -198,0 +234,13 @@
+@@ -198,0 +241,13 @@
 +func (c *NaiveClient) start(onDemand bool) (startResult error) {
 +	c.lifecycle.Lock()
 +	state := clientState(c.state.Load())
@@ -478,13 +489,25 @@
 +		return startStateError(state)
 +	}
 +	c.state.Store(uint32(clientStateStarting))
-@@ -206,0 +255 @@
+@@ -206,0 +262 @@
 +			c.startError = startError
-@@ -382,0 +432,3 @@
+@@ -238 +294 @@
+-		defer c.callbacks.Done()
++		defer c.finishOperation(&c.callbacks)
+@@ -294 +350 @@
+-		defer c.callbacks.Done()
++		defer c.finishOperation(&c.callbacks)
+@@ -382,0 +439,3 @@
 +	if version := c.Version(); version != "" {
 +		c.logger.Info("NaiveProxy started, version: ", version)
 +	}
-@@ -494,5 +546,13 @@
+@@ -465 +524 @@
+-	defer c.pending.Done()
++	defer c.finishOperation(&c.pending)
+@@ -477 +536 @@
+-	defer c.pending.Done()
++	defer c.finishOperation(&c.pending)
+@@ -494,5 +553,13 @@
 -	switch state {
 -	case clientStateRunning:
 -	case clientStateClosed, clientStateClosing:
@@ -503,12 +526,12 @@
 +		state = clientState(c.state.Load())
 +	}
 +	if state < clientStateRunning {
-@@ -501,3 +561 @@
+@@ -501,3 +568 @@
 -			if clientState(c.state.Load()) != clientStateRunning {
 -				return nil, net.ErrClosed
 -			}
 +			state = clientState(c.state.Load())
-@@ -509,0 +568,7 @@
+@@ -509,0 +575,7 @@
 +	if state != clientStateRunning {
 +		// A terminal startup error is published before the closing state.
 +		if c.startError != nil {
@@ -516,11 +539,60 @@
 +		}
 +		return nil, net.ErrClosed
 +	}
-@@ -576 +641 @@
+@@ -513 +585 @@
+-	defer c.pending.Done()
++	defer c.finishOperation(&c.pending)
+@@ -576 +648 @@
 -		case clientStateCreated:
 +		case clientStateCreated, clientStateDormant:
-@@ -655 +719,0 @@
+@@ -588 +660 @@
+-		case clientStateRunning:
++		case clientStateRunning, clientStateSealed:
+@@ -655 +726,0 @@
 -
+--- a/naive_client_lifecycle.go
++++ b/naive_client_lifecycle.go
+@@ -16,0 +17 @@
++	c.nativeOperations++
+@@ -27,0 +29 @@
++	c.nativeOperations++
+@@ -31,0 +34,27 @@
++func (c *NaiveClient) idleLocked() bool {
++	return clientState(c.state.Load()) == clientStateRunning && c.nativeOperations == 0 && len(c.connections) == 0
++}
++
++// TrySealIdle prevents new operations and callbacks on an idle client. The
++// owner must then call Close to join its actual native and physical workers.
++func (c *NaiveClient) TrySealIdle() bool {
++	c.lifecycle.Lock()
++	defer c.lifecycle.Unlock()
++	if !c.idleLocked() {
++		return false
++	}
++	c.state.Store(uint32(clientStateSealed))
++	return true
++}
++
++func (c *NaiveClient) finishOperation(pending *sync.WaitGroup) {
++	defer pending.Done()
++	c.lifecycle.Lock()
++	c.nativeOperations--
++	idle := c.onIdle != nil && c.idleLocked()
++	c.lifecycle.Unlock()
++	if idle {
++		c.onIdle()
++	}
++}
++
+@@ -41,0 +71 @@
++			defer c.activeConnections.Done()
+@@ -43,0 +74 @@
++			idle := c.onIdle != nil && c.idleLocked()
+@@ -47 +78,3 @@
+-			c.activeConnections.Done()
++			if idle {
++				c.onIdle()
++			}
 --- a/naive_client_lifecycle_test.go
 +++ b/naive_client_lifecycle_test.go
 @@ -4,0 +5 @@
@@ -531,10 +603,7 @@
 @@ -11,0 +15,2 @@
 +
 +	mDNS "github.com/miekg/dns"
-@@ -28,0 +34,70 @@
-+	}
-+}
-+
+@@ -31,0 +37,70 @@
 +func TestNaiveDormantClientControlsAndClose(t *testing.T) {
 +	c := lifecycleTestClient(clientStateCreated)
 +	if err := c.StartOnDemand(); err != nil {
@@ -602,3 +671,50 @@
 +					clientState(client.state.Load()), len(client.engines), err)
 +			}
 +		})
++	}
++}
++
+@@ -48,2 +123,2 @@
+-	c.pending.Done()
+-	c.callbacks.Done()
++	c.finishOperation(&c.pending)
++	c.finishOperation(&c.callbacks)
+@@ -58,0 +134,38 @@
++func TestNaiveIdleSealWaitsForNativeWorkAndStreams(t *testing.T) {
++	c := lifecycleTestClient(clientStateRunning)
++	idle := make(chan struct{}, 1)
++	c.onIdle = func() { idle <- struct{}{} }
++	if !c.beginOperation() || !c.beginCallback() {
++		t.Fatal("running admission rejected")
++	}
++	if c.TrySealIdle() {
++		t.Fatal("sealed during native operation")
++	}
++	conn := &BidirectionalConn{done: make(chan struct{})}
++	c.trackConnection(conn)
++	c.finishOperation(&c.pending)
++	if c.TrySealIdle() {
++		t.Fatal("sealed during native callback")
++	}
++	c.finishOperation(&c.callbacks)
++	if c.TrySealIdle() {
++		t.Fatal("sealed with an active stream")
++	}
++	select {
++	case <-idle:
++		t.Fatal("idle signaled before stream termination")
++	default:
++	}
++	conn.onTerminate()
++	awaitLifecycle(t, idle)
++	if !c.TrySealIdle() || c.TrySealIdle() || c.beginOperation() || c.beginCallback() {
++		t.Fatal("idle seal did not close both gates exactly once")
++	}
++	if _, err := c.DialEarly(t.Context(), M.Socksaddr{}); !errors.Is(err, net.ErrClosed) {
++		t.Fatalf("dial after idle seal: %v", err)
++	}
++	if err := c.Close(); err != nil {
++		t.Fatal(err)
++	}
++}
++

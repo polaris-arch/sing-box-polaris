@@ -120,8 +120,8 @@ func TestNaiveAdmissionSealsBeforeJoin(t *testing.T) {
 	go func() { _ = c.doClose(); close(finished) }()
 	// An already admitted callback may still register its worker after seal.
 	c.proxyWaitGroup.Add(1)
-	c.pending.Done()
-	c.callbacks.Done()
+	c.finishOperation(&c.pending)
+	c.finishOperation(&c.callbacks)
 	select {
 	case <-finished:
 		t.Fatal("close returned before admitted worker exited")
@@ -129,6 +129,44 @@ func TestNaiveAdmissionSealsBeforeJoin(t *testing.T) {
 	}
 	c.proxyWaitGroup.Done()
 	awaitLifecycle(t, finished)
+}
+
+func TestNaiveIdleSealWaitsForNativeWorkAndStreams(t *testing.T) {
+	c := lifecycleTestClient(clientStateRunning)
+	idle := make(chan struct{}, 1)
+	c.onIdle = func() { idle <- struct{}{} }
+	if !c.beginOperation() || !c.beginCallback() {
+		t.Fatal("running admission rejected")
+	}
+	if c.TrySealIdle() {
+		t.Fatal("sealed during native operation")
+	}
+	conn := &BidirectionalConn{done: make(chan struct{})}
+	c.trackConnection(conn)
+	c.finishOperation(&c.pending)
+	if c.TrySealIdle() {
+		t.Fatal("sealed during native callback")
+	}
+	c.finishOperation(&c.callbacks)
+	if c.TrySealIdle() {
+		t.Fatal("sealed with an active stream")
+	}
+	select {
+	case <-idle:
+		t.Fatal("idle signaled before stream termination")
+	default:
+	}
+	conn.onTerminate()
+	awaitLifecycle(t, idle)
+	if !c.TrySealIdle() || c.TrySealIdle() || c.beginOperation() || c.beginCallback() {
+		t.Fatal("idle seal did not close both gates exactly once")
+	}
+	if _, err := c.DialEarly(t.Context(), M.Socksaddr{}); !errors.Is(err, net.ErrClosed) {
+		t.Fatalf("dial after idle seal: %v", err)
+	}
+	if err := c.Close(); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestNaiveTerminalRegistrationAndReleaseOnce(t *testing.T) {

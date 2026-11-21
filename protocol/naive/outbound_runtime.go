@@ -89,7 +89,12 @@ func (r *outboundRuntime) close() error { return r.cleanup() }
 // the duration of the request. Keep the owner's dependency edges until native
 // shutdown and any physical dial callbacks have completed.
 func (h *Outbound) WithURLTestDialer(ctx context.Context, test func(context.Context, N.Dialer) (uint16, error)) (delay uint16, resultErr error) {
-	if !h.client.IsDormant() {
+	warm, err := h.clients.acquire(ctx, false)
+	if err != nil {
+		return 0, err
+	}
+	if warm != nil {
+		defer h.clients.release()
 		return test(ctx, h)
 	}
 	pressure := oomkiller.MemoryPressure(h.ctx)
@@ -100,7 +105,12 @@ func (h *Outbound) WithURLTestDialer(ctx context.Context, test func(context.Cont
 		return 0, err
 	}
 	defer probeClients.Release(1)
-	if !h.client.IsDormant() {
+	warm, err = h.clients.acquire(ctx, false)
+	if err != nil {
+		return 0, err
+	}
+	if warm != nil {
+		defer h.clients.release()
 		return test(ctx, h)
 	}
 	owner := h.runtime
@@ -139,7 +149,7 @@ func (h *Outbound) WithURLTestDialer(ctx context.Context, test func(context.Cont
 			resultErr = errors.Join(resultErr, closeErr)
 		}
 	}()
-	options := h.clientOptions
+	options := h.clients.options
 	options.InsecureConcurrency = 1
 	client, err := cronet.NewNaiveClient(probe.guardClientOptions(options))
 	if err != nil {

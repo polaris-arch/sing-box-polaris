@@ -1075,9 +1075,27 @@
       "after": {
         "path": "naive_client.go",
         "mode": "100644",
-        "bytes": 20608,
-        "sha256": "52ef4ba53080349ebb6b8f754d9b4dd8bca0b4e49abc38e1a834c6a8c88f222c",
-        "gitBlob": "4903acf6e5d3090266ab6ff78558dc59f6fdfe00"
+        "bytes": 20909,
+        "sha256": "ab0bb38eb8cc7adc74ecd76154698f37533d0a19f64226bcc4de94176efadd55",
+        "gitBlob": "f60d13a229488b0e42dc1e852686035b6b16eac2"
+      }
+    },
+    {
+      "path": "naive_client_lifecycle.go",
+      "operation": "modify",
+      "before": {
+        "path": "naive_client_lifecycle.go",
+        "mode": "100644",
+        "bytes": 1753,
+        "sha256": "b2f42e65dca8ce811c5d3874fd4971cd9fde9496fad7c079a45b9ab60080341b",
+        "gitBlob": "fc78a58286bdc3b4d44d2b1d6992a3baaa2be3a8"
+      },
+      "after": {
+        "path": "naive_client_lifecycle.go",
+        "mode": "100644",
+        "bytes": 2605,
+        "sha256": "b92203d2bbfdea2cb64d319d7cca2be7c785de52f275fed2af0e145f90e8b507",
+        "gitBlob": "a983898f55c4ab995b5868a7b77fc5b0d8bc1036"
       }
     },
     {
@@ -1093,14 +1111,14 @@
       "after": {
         "path": "naive_client_lifecycle_test.go",
         "mode": "100644",
-        "bytes": 9126,
-        "sha256": "7f60554de39fe5e1194dd369a114c31cc1ce9e55e87d251bde94871410baedb8",
-        "gitBlob": "1de1237ddfad3653901dc994e89b1337034fde4c"
+        "bytes": 10253,
+        "sha256": "f535b5c2155a1d6e50946aa8e2575da79e4c161722fb8363655f521b45336738",
+        "gitBlob": "ff102150a71025a8a1214a5e52a3435d3cad0e90"
       }
     }
   ],
   "patch": "release/dependency-sources/cronet-go-windows-native-observation.patch",
-  "patchSHA256": "94d2af2240c08ad1b3a83cbbdd0b35b4a2d0825523590f49e45e9d873bc3cd36",
+  "patchSHA256": "0dd38041cea2b36d3ab8306b38ecfb294348856ccdfe5a56e25f7e8b80038c65",
   "historicalMaterials": {
     "release/dependency-sources/cronet-go-replacement.json": {
       "bytes": 54745,
@@ -1112,6 +1130,6 @@
     }
   },
   "nativeBinaryValidated": false,
-  "scope": "P2 source base to Windows retained-object and loaded-module observation plus Naive demand startup and probe lifecycle. Historical receipts and native binary validation are outside this source proof.",
+  "scope": "P2 source base to Windows retained-object and loaded-module observation plus Naive demand startup, idle retirement, and probe lifecycle. Historical receipts and native binary validation are outside this source proof.",
   "patchContextLines": 0
 }

@@ -42,6 +42,7 @@ const (
 	clientStateDormant
 	clientStateStarting
 	clientStateRunning
+	clientStateSealed
 	clientStateClosing
 	clientStateClosed
 )
@@ -51,6 +52,8 @@ type NaiveClient struct {
 	lifecycle                sync.Mutex
 	pending                  sync.WaitGroup
 	callbacks                sync.WaitGroup
+	nativeOperations         int
+	onIdle                   func()
 	closed                   chan struct{}
 	closeError               error
 	startError               error
@@ -106,6 +109,9 @@ type NaiveClientOptions struct {
 	QUIC                     bool
 	QUICCongestionControl    QUICCongestionControl
 	QUICSessionReceiveWindow uint64
+
+	// OnIdle may run on a native callback thread and must not block on Close.
+	OnIdle func()
 }
 
 func NewNaiveClient(config NaiveClientOptions) (*NaiveClient, error) {
@@ -180,6 +186,7 @@ func NewNaiveClient(config NaiveClientOptions) (*NaiveClient, error) {
 		started:                  make(chan struct{}),
 		closed:                   make(chan struct{}),
 		connections:              make(map[*BidirectionalConn]struct{}),
+		onIdle:                   config.OnIdle,
 	}, nil
 }
 
@@ -284,7 +291,7 @@ func (c *NaiveClient) start(onDemand bool) (startResult error) {
 		if !c.beginCallback() {
 			return NetErrorConnectionFailed.Code()
 		}
-		defer c.callbacks.Done()
+		defer c.finishOperation(&c.callbacks)
 		if address == dnsServerAddress.AddrString() && port == dnsServerAddress.Port {
 			fd, conn, err := createSocketPair()
 			if err != nil {
@@ -340,7 +347,7 @@ func (c *NaiveClient) start(onDemand bool) (startResult error) {
 		if !c.beginCallback() {
 			return NetErrorConnectionFailed.Code(), "", 0, nil
 		}
-		defer c.callbacks.Done()
+		defer c.finishOperation(&c.callbacks)
 		if address == dnsServerAddress.AddrString() && port == dnsServerAddress.Port {
 			fd, conn, err := createPacketSocketPair(c.testForceUDPLoopback)
 			if err != nil {
@@ -514,7 +521,7 @@ func (c *NaiveClient) Version() string {
 	if !c.beginOperation() {
 		return ""
 	}
-	defer c.pending.Done()
+	defer c.finishOperation(&c.pending)
 	return c.engines[0].Version()
 }
 
@@ -526,7 +533,7 @@ func (c *NaiveClient) closeAllConnections(closeConnections func(Engine)) {
 	if !c.beginOperation() {
 		return
 	}
-	defer c.pending.Done()
+	defer c.finishOperation(&c.pending)
 	for _, engine := range c.engines {
 		closeConnections(engine)
 	}
@@ -575,7 +582,7 @@ func (c *NaiveClient) dialEarly(ctx context.Context, destination M.Socksaddr,
 	if !c.beginOperation() {
 		return nil, net.ErrClosed
 	}
-	defer c.pending.Done()
+	defer c.finishOperation(&c.pending)
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -650,7 +657,7 @@ func (c *NaiveClient) Close() error {
 			c.lifecycle.Unlock()
 			<-c.started
 			continue
-		case clientStateRunning:
+		case clientStateRunning, clientStateSealed:
 			c.state.Store(uint32(clientStateClosing))
 			c.lifecycle.Unlock()
 			return c.doClose()

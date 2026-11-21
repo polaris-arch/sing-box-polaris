@@ -18,6 +18,7 @@ import (
 	"github.com/sagernet/sing-tun"
 	M "github.com/sagernet/sing/common/metadata"
 	N "github.com/sagernet/sing/common/network"
+	"github.com/sagernet/sing/common/uot"
 
 	mDNS "github.com/miekg/dns"
 )
@@ -30,6 +31,8 @@ func (c naiveOutboundTestCloser) Close() error {
 	}
 	return nil
 }
+
+func (c naiveOutboundTestCloser) RuntimeCloseAndWait() error { return c.Close() }
 
 type naiveOutboundTestDialer struct {
 	dial func(context.Context) (net.Conn, error)
@@ -107,7 +110,11 @@ func TestNaiveOutboundSealedReceiverAndClientAccessor(t *testing.T) {
 	}
 	owner.Seal()
 	client := &cronet.NaiveClient{}
-	h := &Outbound{runtime: &outboundRuntime{source: owner}, client: client}
+	clients := &naiveClientSlot{
+		options: cronet.NaiveClientOptions{Context: t.Context()},
+		current: &naiveClientIncarnation{client: client},
+	}
+	h := &Outbound{runtime: &outboundRuntime{source: owner}, clients: clients}
 	if _, err := h.DialContext(context.Background(), "tcp", M.Socksaddr{}); err == nil {
 		t.Fatal("sealed receiver dispatched")
 	}
@@ -117,8 +124,126 @@ func TestNaiveOutboundSealedReceiverAndClientAccessor(t *testing.T) {
 	if h.Client() != nil {
 		t.Fatal("native client escaped runtime owner")
 	}
-	if (&Outbound{client: client}).Client() != client {
+	if (&Outbound{clients: clients}).Client() != client || !clients.pinned {
 		t.Fatal("standalone accessor changed")
+	}
+}
+
+func testWarmNaiveOutbound(t *testing.T) (*Outbound, *naiveClientIncarnation) {
+	t.Helper()
+	ctx := t.Context()
+	owner := newOutboundRuntime(ctx)
+	clients := &naiveClientSlot{
+		owner: owner,
+		options: cronet.NaiveClientOptions{
+			Context:       ctx,
+			ServerAddress: M.ParseSocksaddrHostPort("127.0.0.1", 443),
+		},
+		keep: true,
+	}
+	owner.client = clients
+	first, err := clients.newIncarnation()
+	if err != nil {
+		t.Skipf("Cronet library unavailable: %v", err)
+	}
+	clients.current = first
+	t.Cleanup(func() { _ = owner.close() })
+	if err = first.client.Start(); err != nil {
+		t.Fatal(err)
+	}
+	return &Outbound{runtime: owner, clients: clients, uotClient: &uot.Client{Dialer: clients}}, first
+}
+
+func TestNaiveOutboundIdleClientRetiresAndReopens(t *testing.T) {
+	h, first := testWarmNaiveOutbound(t)
+	ctx, clients := t.Context(), h.clients
+	var err error
+	if _, err = h.WithURLTestDialer(ctx, func(_ context.Context, probeDialer N.Dialer) (uint16, error) {
+		if probeDialer != h {
+			t.Fatal("warm probe did not borrow the persistent client")
+		}
+		h.SetKeepIdleConnections(false)
+		h.CloseIdleConnections()
+		if first.client.Version() == "" {
+			t.Fatal("reclamation overtook the warm probe")
+		}
+		return 1, nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	h.CloseIdleConnections()
+	if first.client.Version() != "" {
+		t.Fatal("unreferenced engine remained warm after the probe")
+	}
+	h.InterfaceUpdated(ctx)
+	if warm, err := clients.acquire(ctx, false); err != nil || warm != nil {
+		t.Fatalf("idle controls warmed the outbound: %v, %v", warm, err)
+	}
+	h.SetKeepIdleConnections(true)
+	next, err := clients.acquire(ctx, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if next == first || !next.client.IsDormant() {
+		t.Fatal("ordinary acquisition did not create a fresh dormant client")
+	}
+	if err = next.client.Start(); err != nil {
+		t.Fatal(err)
+	}
+	clients.release()
+	h.CloseIdleConnections()
+	if next.client.Version() == "" {
+		t.Fatal("idle cleanup retired a referenced client")
+	}
+	if err = h.runtime.close(); err != nil || next.client.Version() != "" {
+		t.Fatalf("final stop did not join the replacement: %v", err)
+	}
+	if _, err = clients.acquire(ctx, true); !errors.Is(err, net.ErrClosed) {
+		t.Fatalf("final stop allowed a replacement: %v", err)
+	}
+}
+
+func TestNaiveOutboundIdleRetirementKeepsUncertainOwner(t *testing.T) {
+	h, first := testWarmNaiveOutbound(t)
+	entered, release, stopped := make(chan struct{}), make(chan struct{}), make(chan struct{})
+	unblock := sync.OnceFunc(func() { close(release) })
+	defer unblock()
+	want := errors.New("physical cleanup uncertain")
+	if err := first.runtime.boundary.RegisterResource(naiveOutboundTestCloser{close: func() error {
+		close(entered)
+		<-release
+		return want
+	}}); err != nil {
+		t.Fatal(err)
+	}
+	go func() {
+		h.SetKeepIdleConnections(false)
+		close(stopped)
+	}()
+	naiveOutboundWait(t, entered)
+	ctx, cancel := context.WithCancel(t.Context())
+	waiting := make(chan error, 1)
+	go func() {
+		_, err := h.clients.acquire(ctx, true)
+		waiting <- err
+	}()
+	cancel()
+	if err := <-waiting; !errors.Is(err, context.Canceled) {
+		t.Fatalf("canceled waiter acquired a replacement: %v", err)
+	}
+	unblock()
+	naiveOutboundWait(t, stopped)
+	dest := M.ParseSocksaddrHostPort("127.0.0.1", 443)
+	for _, network := range []string{N.NetworkTCP, N.NetworkUDP} {
+		if _, err := h.DialContext(t.Context(), network, dest); !errors.Is(err, want) {
+			t.Fatalf("%s dial bypassed an unproven shutdown: %v", network, err)
+		}
+	}
+	if _, err := h.ListenPacket(t.Context(), dest); !errors.Is(err, want) {
+		t.Fatalf("UoT packet dial bypassed an unproven shutdown: %v", err)
+	}
+	if h.clients.current != first || !errors.Is(h.runtime.close(), want) {
+		t.Fatal("uncertain owner was discarded or final stop lost the failure")
 	}
 }
 
