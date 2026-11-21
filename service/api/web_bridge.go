@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/sagernet/cors"
+	"github.com/sagernet/sing-box/daemon"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
 
@@ -70,7 +71,7 @@ func (b *webBridge) ServeHTTP(writer http.ResponseWriter, request *http.Request)
 func (b *webBridge) serveWeb(writer http.ResponseWriter, request *http.Request) {
 	isTextFormat := strings.HasPrefix(request.Header.Get("Content-Type"), contentTypeGRPCWebText)
 	webContentType := contentTypeGRPCWeb
-	grpcRequest := request.Clone(request.Context())
+	grpcRequest := request.Clone(daemon.ContextWithBoundedConnectionEvents(request.Context()))
 	if isTextFormat {
 		webContentType = contentTypeGRPCWebText
 		grpcRequest.Body = &bodyReadCloser{

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"maps"
 	"net"
 	"os"
 	"slices"
@@ -276,11 +277,23 @@ func TestTrafficSampleReconcilesReplacementWithoutChangingConnectionCount(t *tes
 	tracked := manager.RoutedConnection(t.Context(), first, metadata, nil, nil)
 	t.Cleanup(func() { _ = tracked.Close(); _ = firstPeer.Close() })
 	snapshots := make(map[uuid.UUID]connectionSnapshot)
-	initial := service.buildInitialConnectionState(manager, snapshots)
+	var events []*ConnectionEvent
+	emit := func(event *ConnectionEvent) error {
+		events = append(events, event)
+		return nil
+	}
+	if err := service.buildInitialConnectionState(manager, snapshots, emit); err != nil {
+		t.Fatal(err)
+	}
+	initial := events
 	if len(initial) != 1 {
 		t.Fatalf("initial connections: %d", len(initial))
 	}
-	if events := service.buildTrafficUpdates(manager, snapshots); len(events) != 0 {
+	events = nil
+	if err := service.buildTrafficUpdates(manager, snapshots, emit); err != nil {
+		t.Fatal(err)
+	}
+	if len(events) != 0 {
 		t.Fatalf("unchanged sample sent events: %v", events)
 	}
 	_ = tracked.Close()
@@ -288,7 +301,9 @@ func TestTrafficSampleReconcilesReplacementWithoutChangingConnectionCount(t *tes
 	replacement := manager.RoutedConnection(t.Context(), second, metadata, nil, nil)
 	t.Cleanup(func() { _ = replacement.Close(); _ = secondPeer.Close() })
 	// Skip the event stream to exercise recovery of a missed NEW and CLOSED.
-	events := service.buildTrafficUpdates(manager, snapshots)
+	if err := service.buildTrafficUpdates(manager, snapshots, emit); err != nil {
+		t.Fatal(err)
+	}
 	if len(events) != 2 || events[0].Type != ConnectionEventType_CONNECTION_EVENT_NEW ||
 		events[1].Type != ConnectionEventType_CONNECTION_EVENT_CLOSED ||
 		events[1].Id != initial[0].Id || events[1].Connection == nil || len(snapshots) != 1 {
@@ -402,15 +417,91 @@ func TestStreamConnectionSnapshot(t *testing.T) {
 	}
 }
 
-type admissionSnapshotStream struct {
+type admissionSendStream[T any] struct {
 	grpc.ServerStream
 	ctx  context.Context
-	send func(*ConnectionSnapshotChunk) error
+	send func(*T) error
 }
 
-func (s *admissionSnapshotStream) Context() context.Context { return s.ctx }
-func (s *admissionSnapshotStream) Send(chunk *ConnectionSnapshotChunk) error {
+func (s *admissionSendStream[T]) Context() context.Context { return s.ctx }
+func (s *admissionSendStream[T]) Send(chunk *T) error {
 	return s.send(chunk)
+}
+
+func TestSubscribeConnectionsSplitsOnlyWebReset(t *testing.T) {
+	manager := trafficcontrol.NewManager()
+	scope := adapter.NewScope(t.Context(), nil)
+	if err := manager.Start(adapter.StartStateInitialize, scope); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := scope.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	want := make(map[string]bool)
+	wide := strings.Repeat("x", 49*1024)
+	for range 128 {
+		conn := snapshotTestConnection(t, manager, "selector", "outbound")
+		conn.Metadata().Metadata.Domain = wide
+		want[conn.Metadata().ID.String()] = false
+	}
+	service := &StartedService{
+		ctx:           t.Context(),
+		serviceStatus: &ServiceStatus{Status: ServiceStatus_STARTED},
+		instance:      &Instance{ctx: t.Context(), trafficManager: manager},
+	}
+	for _, web := range []bool{false, true} {
+		ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
+		defer cancel()
+		if web {
+			ctx = ContextWithBoundedConnectionEvents(ctx)
+		}
+		got := make(map[string]bool)
+		var frames, bytes int
+		stream := &admissionSendStream[ConnectionEvents]{ctx: ctx, send: func(frame *ConnectionEvents) error {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+			frames++
+			if frame.Reset_ != (frames == 1) {
+				t.Fatalf("web=%t frame=%d reset=%t", web, frames, frame.Reset_)
+			}
+			size := proto.Size(frame)
+			bytes += size
+			if web && size > webConnectionEventFrameLimit {
+				t.Fatalf("oversized Web frame: %d bytes", size)
+			}
+			for _, event := range frame.Events {
+				if _, duplicate := got[event.Id]; duplicate || event.Type != ConnectionEventType_CONNECTION_EVENT_NEW || event.Connection == nil || event.Connection.Id != event.Id {
+					t.Fatalf("unexpected initial event for %s", event.Id)
+				}
+				got[event.Id] = event.Connection.ClosedAt != 0
+			}
+			if len(got) >= len(want) {
+				cancel()
+			}
+			return nil
+		}}
+		if err := service.SubscribeConnections(&SubscribeConnectionsRequest{}, stream); !errors.Is(err, context.Canceled) {
+			t.Fatalf("web=%t frames=%d records=%d unexpected stream result: %v", web, frames, len(got), err)
+		}
+		if !maps.Equal(got, want) || (web != (frames > 1)) || bytes < 6*1024*1024 {
+			t.Fatalf("web=%t frames=%d records=%d bytes=%d", web, frames, len(got), bytes)
+		}
+	}
+}
+
+func TestWebConnectionBatchRejectsOversizedRecord(t *testing.T) {
+	stream := &admissionSendStream[ConnectionEvents]{ctx: t.Context(), send: func(*ConnectionEvents) error {
+		t.Fatal("oversized record should fail before sending")
+		return nil
+	}}
+	batch := connectionEventBatch{server: stream, frame: &ConnectionEvents{Reset_: true}, limit: webConnectionEventFrameLimit}
+	err := batch.add(&ConnectionEvent{Connection: &Connection{Rule: strings.Repeat("x", webConnectionEventFrameLimit)}})
+	if status.Code(err) != codes.ResourceExhausted {
+		t.Fatalf("oversized record returned %v", err)
+	}
 }
 
 func TestStreamConnectionSnapshotStopsOnCancellation(t *testing.T) {
@@ -425,7 +516,7 @@ func TestStreamConnectionSnapshotStopsOnCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	sent := 0
-	stream := &admissionSnapshotStream{ctx: ctx, send: func(chunk *ConnectionSnapshotChunk) error {
+	stream := &admissionSendStream[ConnectionSnapshotChunk]{ctx: ctx, send: func(chunk *ConnectionSnapshotChunk) error {
 		sent++
 		if chunk.Complete {
 			t.Fatal("unexpected completion after cancellation")
@@ -443,7 +534,7 @@ func TestStreamConnectionSnapshotWithoutTracking(t *testing.T) {
 		serviceStatus: &ServiceStatus{Status: ServiceStatus_STARTED},
 		instance:      &Instance{ctx: t.Context()},
 	}
-	stream := &admissionSnapshotStream{ctx: t.Context()}
+	stream := &admissionSendStream[ConnectionSnapshotChunk]{ctx: t.Context()}
 	if err := s.StreamConnectionSnapshot(&emptypb.Empty{}, stream); status.Code(err) != codes.FailedPrecondition {
 		t.Fatalf("missing tracking: %v", err)
 	}
