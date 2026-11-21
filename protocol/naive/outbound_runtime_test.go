@@ -138,6 +138,7 @@ func testWarmNaiveOutbound(t *testing.T) (*Outbound, *naiveClientIncarnation) {
 		options: cronet.NaiveClientOptions{
 			Context:       ctx,
 			ServerAddress: M.ParseSocksaddrHostPort("127.0.0.1", 443),
+			DNSResolver:   func(context.Context, *mDNS.Msg) *mDNS.Msg { return nil },
 		},
 		keep: true,
 	}
