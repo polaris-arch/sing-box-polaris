@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/sagernet/sing-box/adapter"
+	"github.com/sagernet/sing-box/common/urltest"
 	"github.com/sagernet/sing-box/protocol/group"
 	"github.com/sagernet/sing/common"
 	"github.com/sagernet/sing/common/json/badjson"
@@ -82,11 +83,30 @@ func getGroupDelay(server *Server) func(w http.ResponseWriter, r *http.Request) 
 		if urlTestGroup, isURLTestGroup := outboundGroup.(adapter.URLTestGroup); isURLTestGroup {
 			result, err = urlTestGroup.URLTest(ctx)
 		} else {
+			manager := server.outbound
+			history := server.urlTestHistory
+			epoch := history.Epoch()
+			probe, connected, probeErr := urltest.AcquireRuntimeProbeFromContext(server.ctx, ctx, proxy.Tag())
+			if connected {
+				if probeErr != nil {
+					render.Status(r, http.StatusServiceUnavailable)
+					render.JSON(w, r, newError("Probe target or network is not ready"))
+					return
+				}
+				defer probe.Release()
+				outboundGroup, ok = probe.Outbound().(adapter.OutboundGroup)
+				if !ok {
+					render.Status(r, http.StatusNotFound)
+					render.JSON(w, r, ErrNotFound)
+					return
+				}
+				manager, history, epoch, ctx = probe.OutboundManager(), probe.History(), probe.Epoch(), probe.Context()
+			}
 			outbounds := common.FilterNotNil(common.Map(outboundGroup.All(), func(it string) adapter.Outbound {
-				itOutbound, _ := server.outbound.Outbound(it)
+				itOutbound, _ := manager.Outbound(it)
 				return itOutbound
 			}))
-			result = group.URLTestOutbounds(ctx, server.outbound, server.urlTestHistory, server.logger, outbounds, url, 0, true)
+			result = group.URLTestOutboundsEpoch(ctx, manager, history, server.logger, outbounds, url, 0, true, epoch)
 		}
 
 		if err != nil {

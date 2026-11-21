@@ -2,6 +2,7 @@ package clashapi
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net"
 	"net/http"
@@ -13,7 +14,9 @@ import (
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/common/urltest"
 	"github.com/sagernet/sing-box/internal/runtimegraph"
+	"github.com/sagernet/sing-box/log"
 	M "github.com/sagernet/sing/common/metadata"
+	N "github.com/sagernet/sing/common/network"
 )
 
 type runtimeProxyOutbound struct {
@@ -29,10 +32,19 @@ func (o *runtimeProxyOutbound) DialContext(ctx context.Context, _ string, _ M.So
 type runtimeProxyManager struct {
 	adapter.OutboundManager
 	actual adapter.Outbound
+	extra  []adapter.Outbound
 }
 
-func (m *runtimeProxyManager) Outbounds() []adapter.Outbound { return []adapter.Outbound{m.actual} }
+func (m *runtimeProxyManager) Outbounds() []adapter.Outbound {
+	return append([]adapter.Outbound{m.actual}, m.extra...)
+}
+
 func (m *runtimeProxyManager) Outbound(tag string) (adapter.Outbound, bool) {
+	for _, outbound := range m.extra {
+		if outbound.Tag() == tag {
+			return outbound, true
+		}
+	}
 	return m.actual, tag == "node"
 }
 
@@ -49,7 +61,8 @@ func (v *runtimeProxyView) Identity() adapter.RuntimeRevision {
 }
 func (v *runtimeProxyView) OutboundManager() adapter.OutboundManager { return v.manager }
 func (v *runtimeProxyView) RuntimeURLTestHistory(tag string) (*urltest.HistoryStorage, adapter.RuntimeResourceID, bool) {
-	return v.history, v.id, tag == "node"
+	_, ok := v.manager.Outbound(tag)
+	return v.history, v.id, ok
 }
 
 func (v *runtimeProxyView) RuntimeURLTestConsumers(tag string) []*urltest.HistoryStorage {
@@ -68,7 +81,7 @@ func runtimeProxyWait(t *testing.T, done <-chan struct{}) {
 	}
 }
 
-func runtimeProxyGraph(t *testing.T, root *urltest.HistoryStorage, store *runtimegraph.Store, revision uint64, actual adapter.Outbound) (*runtimeProxyView, *runtimegraph.ResourceOwner) {
+func runtimeProxyGraph(t *testing.T, root *urltest.HistoryStorage, store *runtimegraph.Store, revision uint64, actual adapter.Outbound, extra ...adapter.Outbound) (*runtimeProxyView, *runtimegraph.ResourceOwner) {
 	t.Helper()
 	history := urltest.NewIncarnationHistory(root)
 	id := adapter.RuntimeResourceID{Incarnation: "proxy-history", Sequence: revision}
@@ -80,7 +93,7 @@ func runtimeProxyGraph(t *testing.T, root *urltest.HistoryStorage, store *runtim
 	if err != nil {
 		t.Fatal(err)
 	}
-	view := &runtimeProxyView{manager: &runtimeProxyManager{actual: actual}, history: history, id: id, revision: revision}
+	view := &runtimeProxyView{manager: &runtimeProxyManager{actual: actual, extra: extra}, history: history, id: id, revision: revision}
 	graph, err := runtimegraph.NewGraph(view, []adapter.RuntimeResourceLease{reservation})
 	if err != nil {
 		t.Fatal(err)
@@ -287,5 +300,73 @@ func TestProxyDelayQueueExpiryPreservesHistory(t *testing.T) {
 	getProxyDelay(server)(recorder, httptest.NewRequest(http.MethodGet, "/delay?timeout=30000", nil).WithContext(ctx))
 	if got := history.LoadURLTestHistory("node"); recorder.Code != http.StatusGatewayTimeout || got == nil || got.Delay != 10 {
 		t.Fatalf("queue expiry changed previous history: status=%d, history=%v", recorder.Code, got)
+	}
+}
+
+type runtimeDelaySelector struct{ adapter.OutboundGroup }
+
+func (*runtimeDelaySelector) Tag() string   { return "selector" }
+func (*runtimeDelaySelector) All() []string { return []string{"node"} }
+
+type scopedRuntimeProxyOutbound struct {
+	runtimeProxyOutbound
+	test func(context.Context) uint16
+}
+
+func (o *scopedRuntimeProxyOutbound) WithURLTestDialer(ctx context.Context, _ func(context.Context, N.Dialer) (uint16, error)) (uint16, error) {
+	return o.test(ctx), nil
+}
+
+func TestSelectorGroupDelayUsesScopedRuntimeMembers(t *testing.T) {
+	for _, connected := range []bool{false, true} {
+		t.Run(map[bool]string{false: "legacy", true: "runtime"}[connected], func(t *testing.T) {
+			history := urltest.NewHistoryStorage()
+			defer history.Close()
+			selector := &runtimeDelaySelector{}
+			ordinaryDial := func(context.Context) (net.Conn, error) {
+				t.Error("selector group delay bypassed the scoped probe")
+				return nil, errors.New("unexpected ordinary dial")
+			}
+			scoped := &scopedRuntimeProxyOutbound{
+				runtimeProxyOutbound: runtimeProxyOutbound{dial: ordinaryDial},
+				test: func(ctx context.Context) uint16 {
+					_, retained := adapter.RuntimeLeaseFromContext(ctx)
+					if retained != connected || urltest.IsBackgroundProbe(ctx) {
+						t.Errorf("wrong scoped admission: runtime=%t background=%t", retained, urltest.IsBackgroundProbe(ctx))
+					}
+					return 17
+				},
+			}
+			server := &Server{
+				ctx:            t.Context(),
+				outbound:       &runtimeProxyManager{actual: scoped, extra: []adapter.Outbound{selector}},
+				urlTestHistory: history,
+				logger:         log.NewNOPFactory().Logger(),
+			}
+			if connected {
+				store, err := runtimegraph.NewStore("proxy-history")
+				if err != nil {
+					t.Fatal(err)
+				}
+				defer store.Seal()
+				history.BindRuntimeAdmission(store)
+				runtimeProxyGraph(t, history, store, 1, scoped, selector)
+				server.ctx = urltest.ContextWithRuntimeAdmission(server.ctx, store)
+				server.outbound = &runtimeProxyManager{
+					actual: &runtimeProxyOutbound{dial: ordinaryDial},
+					extra:  []adapter.Outbound{&runtimeDelaySelector{}},
+				}
+			}
+
+			recorder := httptest.NewRecorder()
+			groupRouter(server).ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/selector/delay?timeout=1000", nil))
+			var delays map[string]uint16
+			if err := json.Unmarshal(recorder.Body.Bytes(), &delays); recorder.Code != http.StatusOK || err != nil || delays["node"] != 17 {
+				t.Fatalf("selector delay: status=%d body=%s err=%v", recorder.Code, recorder.Body.String(), err)
+			}
+			if got := history.LoadURLTestHistory("node"); got == nil || got.Delay != 17 {
+				t.Fatalf("scoped result was not stored: %v", got)
+			}
+		})
 	}
 }
