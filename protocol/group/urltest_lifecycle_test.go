@@ -11,6 +11,7 @@ import (
 
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/common/urltest"
+	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/log"
 	M "github.com/sagernet/sing/common/metadata"
 	N "github.com/sagernet/sing/common/network"
@@ -46,6 +47,185 @@ func awaitEpochSignal(t *testing.T, signal <-chan struct{}) {
 	case <-signal:
 	case <-time.After(2 * time.Second):
 		t.Fatal("missing barrier signal")
+	}
+}
+
+func TestURLTestDeferredProbePreservesHistoryAndSelection(t *testing.T) {
+	g, history, _ := epochTestGroup(t)
+	g.started = true
+	current := g.outbounds[0]
+	alternate := &epochTestOutbound{tag: "alternate"}
+	g.outbounds = append(g.outbounds, alternate)
+	g.selection.Store(&urlTestSelection{tcp: current, udp: current})
+	history.StoreIfCurrent(history.Epoch(), current.Tag(), &adapter.URLTestHistory{Delay: 100})
+	g.probe = func(ctx context.Context, _ string, dialer N.Dialer) (uint16, error) {
+		if dialer != current {
+			return 1, nil
+		}
+		if urltest.IsBackgroundProbe(ctx) {
+			return 0, errors.Join(urltest.ErrProbeNotRun, context.DeadlineExceeded)
+		}
+		return 0, errors.New("injected network failure")
+	}
+	background := urltest.ContextWithBackgroundProbe(g.ctx)
+	values, err := g.requestCheck(background, true, true)
+	if !errors.Is(err, urltest.ErrProbeNotRun) || values[alternate.Tag()] != 1 {
+		t.Fatalf("deferred pass: %v, %v", values, err)
+	}
+	if got := history.LoadURLTestHistory(current.Tag()); got == nil || got.Delay != 100 || g.selected().tcp != current {
+		t.Fatalf("deferred probe changed its history or selection: %v, %v", got, g.selected().tcp)
+	}
+	if _, err := g.URLTest(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if history.LoadURLTestHistory(current.Tag()) != nil || g.selected().tcp != alternate {
+		t.Fatal("real network failure did not update history and selection")
+	}
+}
+
+func TestURLTestCoalescedExplicitProbeKeepsItsOrigin(t *testing.T) {
+	g, _, _ := epochTestGroup(t)
+	origins := make(chan bool, 2)
+	release := make(chan struct{})
+	var releaseOnce sync.Once
+	unblock := func() { releaseOnce.Do(func() { close(release) }) }
+	t.Cleanup(unblock)
+	var calls atomic.Int32
+	g.probe = func(ctx context.Context, _ string, _ N.Dialer) (uint16, error) {
+		origins <- urltest.IsBackgroundProbe(ctx)
+		if calls.Add(1) == 1 {
+			<-release
+			return 0, urltest.ErrProbeNotRun
+		}
+		return 1, nil
+	}
+	nextOrigin := func() bool {
+		select {
+		case background := <-origins:
+			return background
+		case <-time.After(2 * time.Second):
+			t.Fatal("missing test probe")
+			return false
+		}
+	}
+	g.PostStart()
+	if !nextOrigin() {
+		t.Fatal("startup probe was not marked as background")
+	}
+	if _, err := g.URLTest(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	_, _ = g.requestCheck(urltest.ContextWithBackgroundProbe(g.ctx), true, false)
+	unblock()
+	if nextOrigin() {
+		t.Fatal("coalesced explicit probe lost its origin")
+	}
+}
+
+func TestNestedURLTestPropagatesBackgroundDeferral(t *testing.T) {
+	for _, state := range []struct {
+		name    string
+		started bool
+		running bool
+	}{
+		{name: "pressure", started: true},
+		{name: "running", started: true, running: true},
+		{name: "unstarted"},
+	} {
+		t.Run(state.name, func(t *testing.T) {
+			parent, root, _ := epochTestGroup(t)
+			parent.started = true
+			history := urltest.NewIncarnationHistory(root)
+			t.Cleanup(func() { _ = history.Close() })
+			ctx := service.ContextWithPtr(parent.ctx, history)
+			child, err := NewURLTestGroup(ctx, nil, parent.logger, parent.outbounds, "", time.Hour, 1, 2*time.Hour, false)
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { _ = child.Close() })
+			child.started, child.running = state.started, state.running
+			child.probe = func(ctx context.Context, _ string, _ N.Dialer) (uint16, error) {
+				if urltest.IsBackgroundProbe(ctx) {
+					return 0, urltest.ErrProbeNotRun
+				}
+				return 1, nil
+			}
+			tag := parent.outbounds[0].Tag()
+			parent.outbounds = []adapter.Outbound{&URLTest{group: child}}
+			root.StoreIfCurrent(root.Epoch(), tag, &adapter.URLTestHistory{Delay: 7})
+			history.StoreIfCurrent(history.Epoch(), tag, &adapter.URLTestHistory{Delay: 8})
+			if _, err = parent.requestCheck(urltest.ContextWithBackgroundProbe(parent.ctx), true, true); !errors.Is(err, urltest.ErrProbeNotRun) {
+				t.Errorf("nested background result: %v", err)
+			}
+			if got := root.LoadURLTestHistory(tag); got == nil || got.Delay != 7 {
+				t.Errorf("deferred nested probe changed parent history: %v", got)
+			}
+			if state.running || !state.started {
+				_, err = child.URLTest(t.Context())
+				if err != nil || !child.pendingForce || !child.pendingExplicit {
+					t.Fatalf("direct request did not acknowledge and retain its explicit refresh: %v", err)
+				}
+			}
+		})
+	}
+}
+
+type scopedDeadlineOutbound struct {
+	*epochTestOutbound
+	admit func(context.Context)
+	dial  func(context.Context)
+}
+
+func (o *scopedDeadlineOutbound) WithURLTestDialer(ctx context.Context, test func(context.Context, N.Dialer) (uint16, error)) (uint16, error) {
+	o.admit(ctx)
+	return test(ctx, o)
+}
+
+func (o *scopedDeadlineOutbound) DialContext(ctx context.Context, _ string, _ M.Socksaddr) (net.Conn, error) {
+	o.dial(ctx)
+	return nil, errors.New("injected probe dial failure")
+}
+
+func TestScopedURLTestStartsMeasurementDeadlineAfterAdmission(t *testing.T) {
+	for _, callerLimited := range []bool{false, true} {
+		name := map[bool]string{false: "host", true: "explicit"}[callerLimited]
+		t.Run(name, func(t *testing.T) {
+			g, _, _ := epochTestGroup(t)
+			g.started = true
+			caller := g.ctx
+			if callerLimited {
+				var cancel context.CancelFunc
+				caller, cancel = context.WithTimeout(caller, 5*time.Second)
+				defer cancel()
+			}
+			callerDeadline, _ := caller.Deadline()
+			var admittedAt time.Time
+			dialed := false
+			g.outbounds = []adapter.Outbound{&scopedDeadlineOutbound{
+				epochTestOutbound: &epochTestOutbound{tag: "scoped"},
+				admit: func(ctx context.Context) {
+					got, hasDeadline := ctx.Deadline()
+					if hasDeadline != callerLimited || (callerLimited && !got.Equal(callerDeadline)) {
+						t.Errorf("admission deadline = %v, %t, want %v, %t", got, hasDeadline, callerDeadline, callerLimited)
+					}
+					admittedAt = time.Now()
+				},
+				dial: func(ctx context.Context) {
+					dialed = true
+					got, ok := ctx.Deadline()
+					if callerLimited {
+						if !ok || !got.Equal(callerDeadline) {
+							t.Errorf("measurement reset the caller deadline to %v, want %v", got, callerDeadline)
+						}
+					} else if !ok || got.Before(admittedAt.Add(C.TCPTimeout)) || got.After(time.Now().Add(C.TCPTimeout)) {
+						t.Errorf("measurement did not start a new timeout after admission: %v", got)
+					}
+				},
+			}}
+			if _, err := g.URLTest(caller); err != nil || !dialed {
+				t.Fatalf("scoped probe did not reach the measurement: dialed=%t err=%v", dialed, err)
+			}
+		})
 	}
 }
 

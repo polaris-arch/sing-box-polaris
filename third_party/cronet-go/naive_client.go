@@ -42,6 +42,7 @@ const (
 	clientStateDormant
 	clientStateStarting
 	clientStateRunning
+	clientStateSealed
 	clientStateClosing
 	clientStateClosed
 )
@@ -51,6 +52,10 @@ type NaiveClient struct {
 	lifecycle                sync.Mutex
 	pending                  sync.WaitGroup
 	callbacks                sync.WaitGroup
+	nativeOperations         int
+	onIdle                   func()
+	reserveEngines           func(context.Context, int) (func(int), error)
+	releaseEngines           func(int)
 	closed                   chan struct{}
 	closeError               error
 	startError               error
@@ -106,6 +111,14 @@ type NaiveClientOptions struct {
 	QUIC                     bool
 	QUICCongestionControl    QUICCongestionControl
 	QUICSessionReceiveWindow uint64
+
+	// OnIdle may run on a native callback thread and must not block on Close.
+	OnIdle func()
+	// ReserveEngines optionally reserves count engine slots atomically. An
+	// error leaves the client retryable. On success, release returns slots
+	// in one or more calls as unused slots or destroyed engines are freed.
+	// Both callbacks must be nonblocking and may run under the lifecycle lock.
+	ReserveEngines func(ctx context.Context, count int) (release func(int), err error)
 }
 
 func NewNaiveClient(config NaiveClientOptions) (*NaiveClient, error) {
@@ -180,25 +193,56 @@ func NewNaiveClient(config NaiveClientOptions) (*NaiveClient, error) {
 		started:                  make(chan struct{}),
 		closed:                   make(chan struct{}),
 		connections:              make(map[*BidirectionalConn]struct{}),
+		onIdle:                   config.OnIdle,
+		reserveEngines:           config.ReserveEngines,
 	}, nil
 }
 
+// Start starts a new or prepared client without waiting for its first dial.
 func (c *NaiveClient) Start() error {
-	return c.start(clientStateCreated)
+	return c.start(c.ctx, false)
 }
 
-// StartOnDemand prepares a client to start on its first dial. Custom trust
-// roots still need to pass Cronet's native certificate parser at startup.
-func (c *NaiveClient) StartOnDemand() error {
-	if c.trustedRootCertificates != "" {
-		return c.Start()
-	}
+// StartOnDemand validates custom roots before the first dial starts the engine.
+func (c *NaiveClient) StartOnDemand(ctx context.Context) error {
 	c.lifecycle.Lock()
 	defer c.lifecycle.Unlock()
-	if !c.state.CompareAndSwap(uint32(clientStateCreated), uint32(clientStateDormant)) {
-		return startStateError(clientState(c.state.Load()))
+	if state := clientState(c.state.Load()); state != clientStateCreated {
+		return startStateError(state)
 	}
+	if c.trustedRootCertificates != "" {
+		var release func(int)
+		if c.reserveEngines != nil {
+			var err error
+			release, err = c.reserveEngines(ctx, 1)
+			if err != nil {
+				return err
+			}
+		}
+		valid := c.validateTrustedRoots()
+		if release != nil {
+			release(1)
+		}
+		if !valid {
+			c.startError = E.New("failed to set trusted CA certificates")
+			c.state.Store(uint32(clientStateClosed))
+			close(c.started)
+			close(c.closed)
+			return c.startError
+		}
+	}
+	c.state.Store(uint32(clientStateDormant))
 	return nil
+}
+
+func (c *NaiveClient) validateTrustedRoots() bool {
+	// An unstarted engine owns the verifier. Create and destroy it on
+	// the same OS thread, as required by Cronet's thread checker.
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+	engine := NewEngine()
+	defer engine.Destroy()
+	return engine.SetTrustedRootCertificates(c.trustedRootCertificates)
 }
 
 func (c *NaiveClient) IsDormant() bool {
@@ -216,18 +260,31 @@ func startStateError(state clientState) error {
 	}
 }
 
-func (c *NaiveClient) start(expected clientState) (startResult error) {
+func (c *NaiveClient) start(ctx context.Context, onDemand bool) (startResult error) {
 	c.lifecycle.Lock()
-	if !c.state.CompareAndSwap(uint32(expected), uint32(clientStateStarting)) {
-		state := clientState(c.state.Load())
+	state := clientState(c.state.Load())
+	if onDemand && state != clientStateDormant {
+		// The first dial owns startup. Other dials wait on started.
 		c.lifecycle.Unlock()
-		if expected == clientStateDormant {
-			// The first dial owns startup. Other dials wait on started.
-			return nil
-		}
+		return nil
+	}
+	if state != clientStateCreated && state != clientStateDormant {
+		c.lifecycle.Unlock()
 		return startStateError(state)
 	}
-
+	engineCount := 1
+	if c.concurrency > 1 && !c.singleEngine {
+		engineCount = c.concurrency
+	}
+	if c.reserveEngines != nil {
+		release, err := c.reserveEngines(ctx, engineCount)
+		if err != nil {
+			c.lifecycle.Unlock()
+			return err
+		}
+		c.releaseEngines = release
+	}
+	c.state.Store(uint32(clientStateStarting))
 	c.lifecycle.Unlock()
 
 	var startError error
@@ -235,6 +292,9 @@ func (c *NaiveClient) start(expected clientState) (startResult error) {
 
 	defer func() {
 		if startError != nil {
+			if c.releaseEngines != nil && len(engines) < engineCount {
+				c.releaseEngines(engineCount - len(engines))
+			}
 			c.lifecycle.Lock()
 			c.startError = startError
 			c.state.Store(uint32(clientStateClosing))
@@ -268,7 +328,7 @@ func (c *NaiveClient) start(expected clientState) (startResult error) {
 		if !c.beginCallback() {
 			return NetErrorConnectionFailed.Code()
 		}
-		defer c.callbacks.Done()
+		defer c.finishOperation(&c.callbacks)
 		if address == dnsServerAddress.AddrString() && port == dnsServerAddress.Port {
 			fd, conn, err := createSocketPair()
 			if err != nil {
@@ -324,7 +384,7 @@ func (c *NaiveClient) start(expected clientState) (startResult error) {
 		if !c.beginCallback() {
 			return NetErrorConnectionFailed.Code(), "", 0, nil
 		}
-		defer c.callbacks.Done()
+		defer c.finishOperation(&c.callbacks)
 		if address == dnsServerAddress.AddrString() && port == dnsServerAddress.Port {
 			fd, conn, err := createPacketSocketPair(c.testForceUDPLoopback)
 			if err != nil {
@@ -393,10 +453,6 @@ func (c *NaiveClient) start(expected clientState) (startResult error) {
 		return fd, localAddress, localPort, relayCancel
 	})
 
-	engineCount := 1
-	if c.concurrency > 1 && !c.singleEngine {
-		engineCount = c.concurrency
-	}
 	for i := 0; i < engineCount; i++ {
 		var engine Engine
 		engine, startError = c.startEngine(tcpDialer, udpDialer, dnsServerAddress)
@@ -498,7 +554,7 @@ func (c *NaiveClient) Version() string {
 	if !c.beginOperation() {
 		return ""
 	}
-	defer c.pending.Done()
+	defer c.finishOperation(&c.pending)
 	return c.engines[0].Version()
 }
 
@@ -510,7 +566,7 @@ func (c *NaiveClient) closeAllConnections(closeConnections func(Engine)) {
 	if !c.beginOperation() {
 		return
 	}
-	defer c.pending.Done()
+	defer c.finishOperation(&c.pending)
 	for _, engine := range c.engines {
 		closeConnections(engine)
 	}
@@ -534,7 +590,7 @@ func (c *NaiveClient) dialEarly(ctx context.Context, destination M.Socksaddr,
 		if err := c.ctx.Err(); err != nil {
 			return nil, err
 		}
-		if err := c.start(clientStateDormant); err != nil {
+		if err := c.start(ctx, true); err != nil {
 			return nil, err
 		}
 		state = clientState(c.state.Load())
@@ -559,7 +615,7 @@ func (c *NaiveClient) dialEarly(ctx context.Context, destination M.Socksaddr,
 	if !c.beginOperation() {
 		return nil, net.ErrClosed
 	}
-	defer c.pending.Done()
+	defer c.finishOperation(&c.pending)
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -634,7 +690,7 @@ func (c *NaiveClient) Close() error {
 			c.lifecycle.Unlock()
 			<-c.started
 			continue
-		case clientStateRunning:
+		case clientStateRunning, clientStateSealed:
 			c.state.Store(uint32(clientStateClosing))
 			c.lifecycle.Unlock()
 			return c.doClose()
@@ -670,7 +726,7 @@ func (c *NaiveClient) doClose() error {
 	c.activeConnections.Wait()
 	var closeError error
 	for _, engine := range c.engines {
-		closeError = errors.Join(closeError, shutdownNaiveEngine(engine.Shutdown, engine.Destroy))
+		closeError = errors.Join(closeError, shutdownNaiveEngine(engine.Shutdown, engine.Destroy, c.releaseEngines))
 	}
 	c.lifecycle.Lock()
 	c.closeError = closeError

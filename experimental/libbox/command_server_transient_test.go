@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"path/filepath"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/sagernet/sing-box/adapter"
 	boxService "github.com/sagernet/sing-box/adapter/service"
+	"github.com/sagernet/sing-box/daemon"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/service/oomkiller"
 	"github.com/sagernet/sing-box/service/powerreport"
@@ -22,6 +24,7 @@ import (
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -474,5 +477,54 @@ func TestCommandServerRejectedReloadKeepsSharedDiagnostics(t *testing.T) {
 	content, err := os.ReadFile(configSnapshotPath())
 	if err != nil || string(content) != config {
 		t.Fatalf("rejected reload overwrote live configuration snapshot: %v", err)
+	}
+}
+
+func TestReadConnectionEventReset(t *testing.T) {
+	for _, test := range []struct {
+		name     string
+		batched  bool
+		complete bool
+	}{
+		{name: "legacy", complete: true},
+		{name: "batched", batched: true, complete: true},
+		{name: "truncated", batched: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			first := &daemon.ConnectionEvent{Id: "first"}
+			second := &daemon.ConnectionEvent{Id: "second"}
+			reset := &daemon.ConnectionEvents{Reset_: true, Events: []*daemon.ConnectionEvent{first, second}}
+			frames := []*daemon.ConnectionEvents{reset}
+			if test.batched {
+				reset.Events = reset.Events[:1:1]
+				reset.SnapshotComplete = proto.Bool(false)
+				frames = append(frames, &daemon.ConnectionEvents{
+					SnapshotComplete: proto.Bool(false),
+					Events:           []*daemon.ConnectionEvent{second},
+				})
+				if test.complete {
+					frames = append(frames, &daemon.ConnectionEvents{SnapshotComplete: proto.Bool(true)})
+				}
+			}
+			recv := func() (*daemon.ConnectionEvents, error) {
+				if len(frames) == 0 {
+					return nil, io.EOF
+				}
+				frame := frames[0]
+				frames = frames[1:]
+				return frame, nil
+			}
+			frame, err := readConnectionEventReset(recv)
+			if !test.complete {
+				if frame != nil || !errors.Is(err, io.EOF) {
+					t.Fatalf("truncated reset returned frame %v and error %v", frame, err)
+				}
+				return
+			}
+			if err != nil || !frame.Reset_ || frame.SnapshotComplete != nil ||
+				len(frame.Events) != 2 || frame.Events[0] != first || frame.Events[1] != second {
+				t.Fatalf("invalid completed reset, frame %v and error %v", frame, err)
+			}
+		})
 	}
 }

@@ -14,6 +14,7 @@ import (
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/adapter/outbound"
 	"github.com/sagernet/sing-box/common/dialer"
+	"github.com/sagernet/sing-box/common/urltest"
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
@@ -34,11 +35,10 @@ func RegisterOutbound(registry *outbound.Registry) {
 type Outbound struct {
 	runtime *outboundRuntime
 	outbound.Adapter
-	ctx           context.Context
-	logger        logger.ContextLogger
-	client        *cronet.NaiveClient
-	clientOptions cronet.NaiveClientOptions
-	uotClient     *uot.Client
+	ctx       context.Context
+	logger    logger.ContextLogger
+	clients   *naiveClientSlot
+	uotClient *uot.Client
 }
 
 func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextLogger, tag string, options option.NaiveOutboundOptions) (result adapter.Outbound, resultErr error) {
@@ -196,19 +196,21 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 		QUICCongestionControl:    quicCongestionControl,
 		QUICSessionReceiveWindow: options.QUICSessionReceiveWindow.Value(),
 	}
-	client, err := cronet.NewNaiveClient(runtime.guardClientOptions(clientOptions))
+	clients := &naiveClientSlot{owner: runtime, options: clientOptions, keep: true}
+	runtime.client = clients
+	clients.current, err = clients.newIncarnation()
 	if err != nil {
 		return nil, err
 	}
-	runtime.client = client
 	if err = runtime.install(ctx); err != nil {
 		return nil, err
 	}
+	clients.current.runtime.begin = runtime.begin
 	var uotClient *uot.Client
 	uotOptions := common.PtrValueOrDefault(options.UDPOverTCP)
 	if uotOptions.Enabled {
 		uotClient = &uot.Client{
-			Dialer:  &naiveDialer{client},
+			Dialer:  clients,
 			Version: uotOptions.Version,
 		}
 	}
@@ -220,13 +222,12 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 	}
 	constructed = true
 	return &Outbound{
-		runtime:       runtime,
-		Adapter:       outbound.NewAdapterWithDialerOptions(C.TypeNaive, tag, networks, options.DialerOptions),
-		ctx:           ctx,
-		logger:        logger,
-		client:        client,
-		clientOptions: clientOptions,
-		uotClient:     uotClient,
+		runtime:   runtime,
+		Adapter:   outbound.NewAdapterWithDialerOptions(C.TypeNaive, tag, networks, options.DialerOptions),
+		ctx:       ctx,
+		logger:    logger,
+		clients:   clients,
+		uotClient: uotClient,
 	}, nil
 }
 
@@ -240,7 +241,12 @@ func (h *Outbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 	}
 	err = func() error {
 		defer leave()
-		return h.client.StartOnDemand()
+		instance, err := h.clients.acquire(h.ctx, true)
+		if err != nil {
+			return err
+		}
+		defer h.clients.release()
+		return instance.client.StartOnDemand(h.ctx)
 	}()
 	if err != nil {
 		return errors.Join(err, h.runtime.close())
@@ -259,7 +265,7 @@ func (h *Outbound) dialContextOwned(ctx context.Context, network string, destina
 	switch N.NetworkName(network) {
 	case N.NetworkTCP:
 		h.logger.InfoContext(ctx, "outbound connection to ", destination)
-		return h.client.DialEarly(ctx, destination)
+		return h.clients.DialContext(ctx, network, destination)
 	case N.NetworkUDP:
 		if h.uotClient == nil {
 			return nil, E.New("UDP is not supported unless UDP over TCP is enabled")
@@ -288,16 +294,34 @@ func (h *Outbound) InterfaceUpdated(ctx context.Context) {
 		return
 	}
 	defer leave()
-	h.client.CloseAllConnections()
+	h.clients.closeAllConnections()
+}
+
+func (h *Outbound) SetKeepIdleConnections(keep bool) {
+	leave, err := h.runtime.fence.Acquire()
+	if err != nil {
+		return
+	}
+	defer leave()
+	h.clients.setKeep(keep)
+}
+
+func (h *Outbound) CloseIdleConnections() {
+	leave, err := h.runtime.fence.Acquire()
+	if err != nil {
+		return
+	}
+	defer leave()
+	h.clients.closeIdle()
 }
 
 func (h *Outbound) Client() *cronet.NaiveClient {
 	// Native clients expose Engine and unmanaged entry points. Never export one
 	// from a runtime-owned generation. Standalone test access remains compatible.
-	if h.runtime != nil && h.runtime.source != nil {
+	if h.clients == nil || (h.runtime != nil && h.runtime.source != nil) {
 		return nil
 	}
-	return h.client
+	return h.clients.rawClient()
 }
 
 type naiveDialer struct {
@@ -305,5 +329,8 @@ type naiveDialer struct {
 }
 
 func (d *naiveDialer) DialContext(ctx context.Context, network string, destination M.Socksaddr) (net.Conn, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, errors.Join(urltest.ErrProbeNotRun, err)
+	}
 	return d.NaiveClient.DialEarly(ctx, destination)
 }

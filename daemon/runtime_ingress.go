@@ -6,6 +6,14 @@ import (
 	"google.golang.org/grpc"
 )
 
+type boundedConnectionEventsKey struct{}
+
+// ContextWithBoundedConnectionEvents selects incremental reset delivery for
+// Web clients that consume the entire connection event stream.
+func ContextWithBoundedConnectionEvents(ctx context.Context) context.Context {
+	return context.WithValue(ctx, boundedConnectionEventsKey{}, true)
+}
+
 // RuntimeIngress is supplied by the actual local listener owner. It is never
 // populated from metadata, a credential hash, or a request's actor declaration.
 // AfterUnary sees only a successfully authenticated, completed Core operation.

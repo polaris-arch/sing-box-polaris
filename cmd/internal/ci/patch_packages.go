@@ -139,7 +139,7 @@ func selectPatchPackages(root string, changedPaths []string) (patchPlan, error) 
 		if err != nil || module.Module == nil || module.Module.Mod.Path != runner.module {
 			return plan, fmt.Errorf("module identity mismatch: %s", owner)
 		}
-		if owner == "test" && name != "test/wireguard_test.go" {
+		if owner == "test" && name != "test/naive_self_test.go" && name != "test/wireguard_test.go" {
 			return plan, fmt.Errorf("integration test path has no approved test runner: %s", name)
 		}
 		entry := plan.Modules[owner]

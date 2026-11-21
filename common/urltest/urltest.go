@@ -3,6 +3,7 @@ package urltest
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"net"
 	"net/http"
 	"net/url"
@@ -187,12 +188,35 @@ func (s *HistoryStorage) Close() error {
 	return nil
 }
 
+// ErrProbeNotRun reports that no network attempt was made. Keep the last result.
+var ErrProbeNotRun = errors.New("URL test was not run")
+
+type backgroundProbeKey struct{}
+
+func ContextWithBackgroundProbe(ctx context.Context) context.Context {
+	return context.WithValue(ctx, backgroundProbeKey{}, true)
+}
+
+func IsBackgroundProbe(ctx context.Context) bool {
+	background, _ := ctx.Value(backgroundProbeKey{}).(bool)
+	return background
+}
+
+// ScopedDialer admits a dialer before the network measurement starts.
+type ScopedDialer interface {
+	WithURLTestDialer(context.Context, func(context.Context, N.Dialer) (uint16, error)) (uint16, error)
+}
+
 func URLTest(ctx context.Context, link string, detour N.Dialer) (uint16, error) {
-	if scoped, ok := detour.(interface {
-		WithURLTestDialer(context.Context, func(context.Context, N.Dialer) (uint16, error)) (uint16, error)
-	}); ok {
+	if scoped, ok := detour.(ScopedDialer); ok {
 		return scoped.WithURLTestDialer(ctx, func(ctx context.Context, dialer N.Dialer) (uint16, error) {
-			return urlTest(ctx, link, dialer)
+			ctx, cancel := context.WithTimeout(ctx, C.TCPTimeout)
+			defer cancel()
+			delay, err := urlTest(ctx, link, dialer)
+			if ctxErr := ctx.Err(); ctxErr != nil && !errors.Is(err, ErrProbeNotRun) {
+				return 0, ctxErr
+			}
+			return delay, err
 		})
 	}
 	multiplexOutbound, isMultiplexOutbound := common.Cast[adapter.OutboundWithMultiplex](detour)

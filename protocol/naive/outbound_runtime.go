@@ -7,13 +7,18 @@ import (
 	"errors"
 	"net"
 	"os"
+	"sync"
 
 	"github.com/sagernet/cronet-go"
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/adapter/outbound"
 	"github.com/sagernet/sing-box/common/httpclient"
 	"github.com/sagernet/sing-box/common/tls"
+	"github.com/sagernet/sing-box/common/urltest"
+	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/dns"
+	"github.com/sagernet/sing-box/service/oomkiller"
+	"github.com/sagernet/sing-tun"
 	M "github.com/sagernet/sing/common/metadata"
 	N "github.com/sagernet/sing/common/network"
 
@@ -21,9 +26,75 @@ import (
 	"golang.org/x/sync/semaphore"
 )
 
-// Independent URLTest groups and management requests share the native startup
-// budget even when each group limits its own workers.
-var probeClients = semaphore.NewWeighted(10)
+// Probe concurrency is separate from the lifetime budget of physical engines.
+const probeClientLimit = 10
+
+var probeClients = semaphore.NewWeighted(probeClientLimit)
+
+// Runtime generations and probes coexist in the same process.
+var nativeEngines = nativeEngineBudget{limit: nativeEngineLimit()}
+
+var errNativeEngineCapacity = adapter.ErrOutboundCapacity
+
+type nativeEngineBudget struct {
+	mu    sync.Mutex
+	limit int64
+	used  int64
+}
+
+func nativeEngineLimit() int64 {
+	if C.IsIos {
+		// Leave room for an active engine and one handoff or cold probe.
+		return 2
+	}
+	return probeClientLimit
+}
+
+func reserveNativeEngines(ctx context.Context, count int) (func(int), error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	return nativeEngines.reserve(count, urltest.IsBackgroundProbe(ctx))
+}
+
+func (b *nativeEngineBudget) reserve(count int, keepHandoffSlot bool) (func(int), error) {
+	// A Cronet socket callback may dial through another Naive outbound. Waiting
+	// for capacity there can deadlock the engine that is already holding it.
+	var headroom int64
+	if keepHandoffSlot {
+		headroom = 1
+	}
+	b.mu.Lock()
+	if int64(count) > b.limit-b.used-headroom {
+		b.mu.Unlock()
+		return nil, errNativeEngineCapacity
+	}
+	b.used += int64(count)
+	b.mu.Unlock()
+	return func(released int) {
+		b.mu.Lock()
+		defer b.mu.Unlock()
+		b.used -= int64(released)
+		if b.used < 0 {
+			panic("released more native engines than reserved")
+		}
+	}, nil
+}
+
+type nativeCallbackKey struct{}
+
+func deferColdProbe(ctx context.Context, pressure func() tun.MemoryPressure) bool {
+	return urltest.IsBackgroundProbe(ctx) && pressure != nil && pressure() != tun.MemoryPressureNone
+}
+
+func acquireColdProbe(ctx context.Context, slots int64) error {
+	queueCtx, cancel := context.WithTimeout(ctx, C.TCPTimeout)
+	defer cancel()
+	if err := probeClients.Acquire(queueCtx, slots); err != nil {
+		return errors.Join(urltest.ErrProbeNotRun, err)
+	}
+	return nil
+}
 
 // Each immutable outbound owns its native client, callbacks and physical
 // carriers. The composed Cronet Close is the actual operation/callback/proxy/
@@ -72,14 +143,33 @@ func (r *outboundRuntime) close() error { return r.cleanup() }
 // the duration of the request. Keep the owner's dependency edges until native
 // shutdown and any physical dial callbacks have completed.
 func (h *Outbound) WithURLTestDialer(ctx context.Context, test func(context.Context, N.Dialer) (uint16, error)) (delay uint16, resultErr error) {
-	if !h.client.IsDormant() {
-		return test(ctx, h)
-	}
-	if err := probeClients.Acquire(ctx, 1); err != nil {
+	warm, err := h.clients.acquire(ctx, false)
+	if err != nil {
 		return 0, err
 	}
-	defer probeClients.Release(1)
-	if !h.client.IsDormant() {
+	if warm != nil {
+		defer h.clients.release()
+		return test(ctx, h)
+	}
+	pressure := oomkiller.MemoryPressure(h.ctx)
+	if deferColdProbe(ctx, pressure) {
+		return 0, urltest.ErrProbeNotRun
+	}
+	slots := int64(1)
+	if oomkiller.InAppleNetworkExtension(h.ctx) {
+		// Serialize transient engines before the extension's next memory sample.
+		slots = probeClientLimit
+	}
+	if err := acquireColdProbe(ctx, slots); err != nil {
+		return 0, err
+	}
+	defer probeClients.Release(slots)
+	warm, err = h.clients.acquire(ctx, false)
+	if err != nil {
+		return 0, err
+	}
+	if warm != nil {
+		defer h.clients.release()
 		return test(ctx, h)
 	}
 	owner := h.runtime
@@ -96,7 +186,7 @@ func (h *Outbound) WithURLTestDialer(ctx context.Context, test func(context.Cont
 		return 0, err
 	}
 	defer leave()
-	ctx, cancel := context.WithCancel(ctx)
+	ctx, cancel := context.WithTimeout(ctx, C.TCPTimeout)
 	defer cancel()
 	stop := context.AfterFunc(owner.ctx, cancel)
 	defer stop()
@@ -104,7 +194,10 @@ func (h *Outbound) WithURLTestDialer(ctx context.Context, test func(context.Cont
 		cancel()
 	}
 	if err = ctx.Err(); err != nil {
-		return 0, err
+		return 0, errors.Join(urltest.ErrProbeNotRun, err)
+	}
+	if deferColdProbe(ctx, pressure) {
+		return 0, urltest.ErrProbeNotRun
 	}
 
 	probe := newOutboundRuntime(h.ctx)
@@ -115,14 +208,21 @@ func (h *Outbound) WithURLTestDialer(ctx context.Context, test func(context.Cont
 			resultErr = errors.Join(resultErr, closeErr)
 		}
 	}()
-	options := h.clientOptions
+	options := probe.guardClientOptions(h.clients.options)
 	options.InsecureConcurrency = 1
-	client, err := cronet.NewNaiveClient(probe.guardClientOptions(options))
+	options.ReserveEngines = func(_ context.Context, count int) (func(int), error) {
+		release, err := reserveNativeEngines(ctx, count)
+		if err != nil {
+			return nil, errors.Join(urltest.ErrProbeNotRun, err)
+		}
+		return release, nil
+	}
+	client, err := cronet.NewNaiveClient(options)
 	if err != nil {
 		return 0, err
 	}
 	probe.client = client
-	if err = client.StartOnDemand(); err != nil {
+	if err = client.StartOnDemand(ctx); err != nil {
 		return 0, err
 	}
 	return test(ctx, &naiveDialer{client})
@@ -143,7 +243,7 @@ func (r *outboundRuntime) enter(ctx context.Context) (context.Context, func(), e
 			return nil, nil, err
 		}
 	}
-	return ctx, leave, nil
+	return context.WithValue(ctx, nativeCallbackKey{}, true), leave, nil
 }
 
 func (r *outboundRuntime) guardDNS(resolve func(context.Context, *mDNS.Msg) *mDNS.Msg) func(context.Context, *mDNS.Msg) *mDNS.Msg {
@@ -232,6 +332,7 @@ func (c *outboundJoinedConn) CloseWrite() error {
 // Keep standalone native descriptor transfer and callbacks exactly as supplied.
 // Runtime-owned clients require opaque relay carriers and captured continuations.
 func (r *outboundRuntime) guardClientOptions(options cronet.NaiveClientOptions) cronet.NaiveClientOptions {
+	options.ReserveEngines = reserveNativeEngines
 	if r.source == nil {
 		return options
 	}

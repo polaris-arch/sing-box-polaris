@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/sagernet/sing-box/daemon"
 	E "github.com/sagernet/sing/common/exceptions"
 
 	"github.com/coder/websocket"
@@ -69,7 +70,7 @@ func (b *webBridge) serveWebSocket(writer http.ResponseWriter, request *http.Req
 	}
 	header.Del("Content-Length")
 	response := newWebSocketResponseWriter(ctx, conn)
-	grpcRequest := request.WithContext(ctx)
+	grpcRequest := request.WithContext(daemon.ContextWithBoundedConnectionEvents(ctx))
 	grpcRequest.Method = http.MethodPost
 	grpcRequest.ProtoMajor = 2
 	grpcRequest.ProtoMinor = 0

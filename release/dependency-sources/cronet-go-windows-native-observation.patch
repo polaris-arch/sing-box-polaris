@@ -402,28 +402,85 @@
 +++ b/naive_client.go
 @@ -41,0 +42 @@
 +	clientStateDormant
-@@ -54,0 +56 @@
+@@ -43,0 +45 @@
++	clientStateSealed
+@@ -52,0 +55,4 @@
++	nativeOperations         int
++	onIdle                   func()
++	reserveEngines           func(context.Context, int) (func(int), error)
++	releaseEngines           func(int)
+@@ -54,0 +61 @@
 +	startError               error
-@@ -184 +186,34 @@
+@@ -106,0 +114,8 @@
++
++	// OnIdle may run on a native callback thread and must not block on Close.
++	OnIdle func()
++	// ReserveEngines optionally reserves count engine slots atomically. An
++	// error leaves the client retryable. On success, release returns slots
++	// in one or more calls as unused slots or destroyed engines are freed.
++	// Both callbacks must be nonblocking and may run under the lifecycle lock.
++	ReserveEngines func(ctx context.Context, count int) (release func(int), err error)
+@@ -180,0 +196,2 @@
++		onIdle:                   config.OnIdle,
++		reserveEngines:           config.ReserveEngines,
+@@ -184 +201,7 @@
 -func (c *NaiveClient) Start() (startResult error) {
++// Start starts a new or prepared client without waiting for its first dial.
 +func (c *NaiveClient) Start() error {
-+	return c.start(clientStateCreated)
++	return c.start(c.ctx, false)
 +}
 +
-+// StartOnDemand prepares a client to start on its first dial. Custom trust
-+// roots still need to pass Cronet's native certificate parser at startup.
-+func (c *NaiveClient) StartOnDemand() error {
-+	if c.trustedRootCertificates != "" {
-+		return c.Start()
-+	}
-+	c.lifecycle.Lock()
++// StartOnDemand validates custom roots before the first dial starts the engine.
++func (c *NaiveClient) StartOnDemand(ctx context.Context) error {
+@@ -186,10 +209,23 @@
+-	if !c.state.CompareAndSwap(uint32(clientStateCreated), uint32(clientStateStarting)) {
+-		state := clientState(c.state.Load())
+-		c.lifecycle.Unlock()
+-		switch state {
+-		case clientStateStarting:
+-			return errors.New("start already in progress")
+-		case clientStateRunning:
+-			return errors.New("already started")
+-		default:
+-			return net.ErrClosed
 +	defer c.lifecycle.Unlock()
-+	if !c.state.CompareAndSwap(uint32(clientStateCreated), uint32(clientStateDormant)) {
-+		return startStateError(clientState(c.state.Load()))
++	if state := clientState(c.state.Load()); state != clientStateCreated {
++		return startStateError(state)
 +	}
++	if c.trustedRootCertificates != "" {
++		var release func(int)
++		if c.reserveEngines != nil {
++			var err error
++			release, err = c.reserveEngines(ctx, 1)
++			if err != nil {
++				return err
++			}
++		}
++		valid := c.validateTrustedRoots()
++		if release != nil {
++			release(1)
++		}
++		if !valid {
++			c.startError = E.New("failed to set trusted CA certificates")
++			c.state.Store(uint32(clientStateClosed))
++			close(c.started)
++			close(c.closed)
++			return c.startError
+@@ -197,0 +234,13 @@
++	c.state.Store(uint32(clientStateDormant))
 +	return nil
 +}
 +
++func (c *NaiveClient) validateTrustedRoots() bool {
++	// An unstarted engine owns the verifier. Create and destroy it on
++	// the same OS thread, as required by Cronet's thread checker.
++	runtime.LockOSThread()
++	defer runtime.UnlockOSThread()
++	engine := NewEngine()
++	defer engine.Destroy()
++	return engine.SetTrustedRootCertificates(c.trustedRootCertificates)
++}
+@@ -198,0 +248,40 @@
 +func (c *NaiveClient) IsDormant() bool {
 +	return clientState(c.state.Load()) == clientStateDormant
 +}
@@ -439,30 +496,59 @@
 +	}
 +}
 +
-+func (c *NaiveClient) start(expected clientState) (startResult error) {
-@@ -186 +221 @@
--	if !c.state.CompareAndSwap(uint32(clientStateCreated), uint32(clientStateStarting)) {
-+	if !c.state.CompareAndSwap(uint32(expected), uint32(clientStateStarting)) {
-@@ -189,7 +224,3 @@
--		switch state {
--		case clientStateStarting:
--			return errors.New("start already in progress")
--		case clientStateRunning:
--			return errors.New("already started")
--		default:
--			return net.ErrClosed
-+		if expected == clientStateDormant {
-+			// The first dial owns startup. Other dials wait on started.
-+			return nil
-@@ -196,0 +228 @@
++func (c *NaiveClient) start(ctx context.Context, onDemand bool) (startResult error) {
++	c.lifecycle.Lock()
++	state := clientState(c.state.Load())
++	if onDemand && state != clientStateDormant {
++		// The first dial owns startup. Other dials wait on started.
++		c.lifecycle.Unlock()
++		return nil
++	}
++	if state != clientStateCreated && state != clientStateDormant {
++		c.lifecycle.Unlock()
 +		return startStateError(state)
-@@ -206,0 +239 @@
++	}
++	engineCount := 1
++	if c.concurrency > 1 && !c.singleEngine {
++		engineCount = c.concurrency
++	}
++	if c.reserveEngines != nil {
++		release, err := c.reserveEngines(ctx, engineCount)
++		if err != nil {
++			c.lifecycle.Unlock()
++			return err
++		}
++		c.releaseEngines = release
++	}
++	c.state.Store(uint32(clientStateStarting))
+@@ -205,0 +295,3 @@
++			if c.releaseEngines != nil && len(engines) < engineCount {
++				c.releaseEngines(engineCount - len(engines))
++			}
+@@ -206,0 +299 @@
 +			c.startError = startError
-@@ -382,0 +416,3 @@
+@@ -238 +331 @@
+-		defer c.callbacks.Done()
++		defer c.finishOperation(&c.callbacks)
+@@ -294 +387 @@
+-		defer c.callbacks.Done()
++		defer c.finishOperation(&c.callbacks)
+@@ -363,4 +455,0 @@
+-	engineCount := 1
+-	if c.concurrency > 1 && !c.singleEngine {
+-		engineCount = c.concurrency
+-	}
+@@ -382,0 +472,3 @@
 +	if version := c.Version(); version != "" {
 +		c.logger.Info("NaiveProxy started, version: ", version)
 +	}
-@@ -494,5 +530,13 @@
+@@ -465 +557 @@
+-	defer c.pending.Done()
++	defer c.finishOperation(&c.pending)
+@@ -477 +569 @@
+-	defer c.pending.Done()
++	defer c.finishOperation(&c.pending)
+@@ -494,5 +586,13 @@
 -	switch state {
 -	case clientStateRunning:
 -	case clientStateClosed, clientStateClosing:
@@ -475,18 +561,18 @@
 +		if err := c.ctx.Err(); err != nil {
 +			return nil, err
 +		}
-+		if err := c.start(clientStateDormant); err != nil {
++		if err := c.start(ctx, true); err != nil {
 +			return nil, err
 +		}
 +		state = clientState(c.state.Load())
 +	}
 +	if state < clientStateRunning {
-@@ -501,3 +545 @@
+@@ -501,3 +601 @@
 -			if clientState(c.state.Load()) != clientStateRunning {
 -				return nil, net.ErrClosed
 -			}
 +			state = clientState(c.state.Load())
-@@ -509,0 +552,7 @@
+@@ -509,0 +608,7 @@
 +	if state != clientStateRunning {
 +		// A terminal startup error is published before the closing state.
 +		if c.startError != nil {
@@ -494,19 +580,86 @@
 +		}
 +		return nil, net.ErrClosed
 +	}
-@@ -576 +625 @@
+@@ -513 +618 @@
+-	defer c.pending.Done()
++	defer c.finishOperation(&c.pending)
+@@ -576 +681 @@
 -		case clientStateCreated:
 +		case clientStateCreated, clientStateDormant:
-@@ -655 +703,0 @@
+@@ -588 +693 @@
+-		case clientStateRunning:
++		case clientStateRunning, clientStateSealed:
+@@ -624 +729 @@
+-		closeError = errors.Join(closeError, shutdownNaiveEngine(engine.Shutdown, engine.Destroy))
++		closeError = errors.Join(closeError, shutdownNaiveEngine(engine.Shutdown, engine.Destroy, c.releaseEngines))
+@@ -655 +759,0 @@
 -
+--- a/naive_client_lifecycle.go
++++ b/naive_client_lifecycle.go
+@@ -16,0 +17 @@
++	c.nativeOperations++
+@@ -27,0 +29 @@
++	c.nativeOperations++
+@@ -31,0 +34,27 @@
++func (c *NaiveClient) idleLocked() bool {
++	return clientState(c.state.Load()) == clientStateRunning && c.nativeOperations == 0 && len(c.connections) == 0
++}
++
++// TrySealIdle prevents new operations and callbacks on an idle client. The
++// owner must then call Close to join its actual native and physical workers.
++func (c *NaiveClient) TrySealIdle() bool {
++	c.lifecycle.Lock()
++	defer c.lifecycle.Unlock()
++	if !c.idleLocked() {
++		return false
++	}
++	c.state.Store(uint32(clientStateSealed))
++	return true
++}
++
++func (c *NaiveClient) finishOperation(pending *sync.WaitGroup) {
++	defer pending.Done()
++	c.lifecycle.Lock()
++	c.nativeOperations--
++	idle := c.onIdle != nil && c.idleLocked()
++	c.lifecycle.Unlock()
++	if idle {
++		c.onIdle()
++	}
++}
++
+@@ -41,0 +71 @@
++			defer c.activeConnections.Done()
+@@ -43,0 +74 @@
++			idle := c.onIdle != nil && c.idleLocked()
+@@ -47 +78,3 @@
+-			c.activeConnections.Done()
++			if idle {
++				c.onIdle()
++			}
+@@ -54 +87 @@
+-func shutdownNaiveEngine(shutdown func() Result, destroy func()) error {
++func shutdownNaiveEngine(shutdown func() Result, destroy func(), release func(int)) error {
+@@ -58,0 +92,3 @@
++	if release != nil {
++		release(1)
++	}
 --- a/naive_client_lifecycle_test.go
 +++ b/naive_client_lifecycle_test.go
-@@ -5,0 +6 @@
+@@ -4,0 +5 @@
++	"encoding/pem"
+@@ -5,0 +7,4 @@
 +	"net"
-@@ -31,0 +33,24 @@
++	"net/http/httptest"
++	"runtime"
++	"slices"
+@@ -11,0 +17,2 @@
++
++	mDNS "github.com/miekg/dns"
+@@ -31,0 +39,188 @@
 +func TestNaiveDormantClientControlsAndClose(t *testing.T) {
 +	c := lifecycleTestClient(clientStateCreated)
-+	if err := c.StartOnDemand(); err != nil {
++	if err := c.StartOnDemand(t.Context()); err != nil {
 +		t.Fatal(err)
 +	}
 +
@@ -528,3 +681,225 @@
 +	}
 +}
 +
++func TestNaiveCustomRootsValidateBeforeDormancy(t *testing.T) {
++	if err := checkLibrary(); err != nil {
++		t.Skipf("Cronet library unavailable: %v", err)
++	}
++	server := httptest.NewTLSServer(nil)
++	cert := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: server.Certificate().Raw})
++	server.Close()
++
++	for _, roots := range []struct {
++		name    string
++		pem     string
++		invalid bool
++	}{
++		{name: "valid", pem: string(cert)},
++		{name: "invalid", pem: "invalid certificate", invalid: true},
++	} {
++		t.Run(roots.name, func(t *testing.T) {
++			quotaDenied := errors.New("engine quota denied")
++			deny := true
++			var reserved, released int
++			client, err := NewNaiveClient(NaiveClientOptions{
++				Context:                 t.Context(),
++				ServerAddress:           M.ParseSocksaddrHostPort("127.0.0.1", 443),
++				TrustedRootCertificates: roots.pem,
++				DNSResolver:             func(context.Context, *mDNS.Msg) *mDNS.Msg { return nil },
++				ReserveEngines: func(ctx context.Context, count int) (func(int), error) {
++					if ctx != t.Context() {
++						t.Fatal("trusted root validation used the wrong admission context")
++					}
++					if deny {
++						return nil, quotaDenied
++					}
++					reserved += count
++					return func(count int) { released += count }, nil
++				},
++			})
++			if err != nil {
++				t.Fatal(err)
++			}
++			t.Cleanup(func() {
++				if err := client.Close(); err != nil {
++					t.Error(err)
++				}
++			})
++			if err := client.StartOnDemand(t.Context()); !errors.Is(err, quotaDenied) || clientState(client.state.Load()) != clientStateCreated {
++				t.Fatalf("scratch quota denial must leave the client created: state=%v err=%v", clientState(client.state.Load()), err)
++			}
++			deny = false
++			err = client.StartOnDemand(t.Context())
++			if reserved != 1 || released != 1 {
++				t.Fatalf("scratch engine accounting: reserved=%d released=%d", reserved, released)
++			}
++			if roots.invalid {
++				if err == nil || clientState(client.state.Load()) != clientStateClosed {
++					t.Fatalf("invalid roots did not reject startup and close the client: %v", err)
++				}
++				return
++			}
++			if err != nil || !client.IsDormant() || len(client.engines) != 0 {
++				t.Fatalf("valid roots should leave a dormant client with no engine: state=%v, engines=%d, err=%v",
++					clientState(client.state.Load()), len(client.engines), err)
++			}
++		})
++	}
++}
++
++func TestNaiveEngineReservations(t *testing.T) {
++	if err := checkLibrary(); err != nil {
++		t.Skipf("Cronet library unavailable: %v", err)
++	}
++	for _, tc := range []struct {
++		name     string
++		onDemand bool
++		single   bool
++		roots    string
++	}{
++		{name: "eager"},
++		{name: "on-demand-single-engine", onDemand: true, single: true},
++		{name: "partial-start", roots: "invalid certificate"},
++	} {
++		t.Run(tc.name, func(t *testing.T) {
++			const concurrency = 3
++			engineCount := concurrency
++			if tc.single || runtime.GOOS == "ios" {
++				engineCount = 1
++			}
++			quotaDenied := errors.New("engine quota denied")
++			deny := true
++			var requests, releases []int
++			client, err := NewNaiveClient(NaiveClientOptions{
++				Context:                 t.Context(),
++				ServerAddress:           M.ParseSocksaddrHostPort("127.0.0.1", 443),
++				InsecureConcurrency:     concurrency,
++				TestForceSingleEngine:   tc.single,
++				TrustedRootCertificates: tc.roots,
++				DNSResolver:             func(context.Context, *mDNS.Msg) *mDNS.Msg { return nil },
++				ReserveEngines: func(_ context.Context, count int) (func(int), error) {
++					requests = append(requests, count)
++					if deny {
++						return nil, quotaDenied
++					}
++					return func(count int) { releases = append(releases, count) }, nil
++				},
++			})
++			if err != nil {
++				t.Fatal(err)
++			}
++			t.Cleanup(func() {
++				if err := client.Close(); err != nil {
++					t.Error(err)
++				}
++			})
++
++			wantState := clientStateCreated
++			if tc.onDemand {
++				if err := client.StartOnDemand(t.Context()); err != nil {
++					t.Fatal(err)
++				}
++				wantState = clientStateDormant
++				_, err = client.DialEarly(t.Context(), M.Socksaddr{})
++			} else {
++				err = client.Start()
++			}
++			if !errors.Is(err, quotaDenied) || clientState(client.state.Load()) != wantState || client.proxyCancel != nil || len(releases) != 0 {
++				t.Fatalf("quota denial: state=%v releases=%v err=%v", clientState(client.state.Load()), releases, err)
++			}
++
++			deny = false
++			err = client.Start()
++			if !slices.Equal(requests, []int{engineCount, engineCount}) {
++				t.Fatalf("reservation requests %v, want two batches of %d", requests, engineCount)
++			}
++			var wantReleases []int
++			if tc.roots != "" {
++				if err == nil || clientState(client.state.Load()) != clientStateClosed {
++					t.Fatalf("invalid roots did not abort startup: state=%v err=%v", clientState(client.state.Load()), err)
++				}
++				if engineCount > 1 {
++					wantReleases = append(wantReleases, engineCount-1)
++				}
++				wantReleases = append(wantReleases, 1)
++				if !slices.Equal(releases, wantReleases) {
++					t.Fatalf("partial startup releases %v, want %v", releases, wantReleases)
++				}
++			} else {
++				if err != nil || len(client.engines) != engineCount || len(releases) != 0 {
++					t.Fatalf("startup retry: engines=%d releases=%v err=%v", len(client.engines), releases, err)
++				}
++				for range engineCount {
++					wantReleases = append(wantReleases, 1)
++				}
++			}
++			for range 2 {
++				if err := client.Close(); err != nil {
++					t.Fatal(err)
++				}
++			}
++			if !slices.Equal(releases, wantReleases) {
++				t.Fatalf("close releases %v, want %v", releases, wantReleases)
++			}
++		})
++	}
++}
++
+@@ -48,2 +243,2 @@
+-	c.pending.Done()
+-	c.callbacks.Done()
++	c.finishOperation(&c.pending)
++	c.finishOperation(&c.callbacks)
+@@ -58,0 +254,38 @@
++func TestNaiveIdleSealWaitsForNativeWorkAndStreams(t *testing.T) {
++	c := lifecycleTestClient(clientStateRunning)
++	idle := make(chan struct{}, 1)
++	c.onIdle = func() { idle <- struct{}{} }
++	if !c.beginOperation() || !c.beginCallback() {
++		t.Fatal("running admission rejected")
++	}
++	if c.TrySealIdle() {
++		t.Fatal("sealed during native operation")
++	}
++	conn := &BidirectionalConn{done: make(chan struct{})}
++	c.trackConnection(conn)
++	c.finishOperation(&c.pending)
++	if c.TrySealIdle() {
++		t.Fatal("sealed during native callback")
++	}
++	c.finishOperation(&c.callbacks)
++	if c.TrySealIdle() {
++		t.Fatal("sealed with an active stream")
++	}
++	select {
++	case <-idle:
++		t.Fatal("idle signaled before stream termination")
++	default:
++	}
++	conn.onTerminate()
++	awaitLifecycle(t, idle)
++	if !c.TrySealIdle() || c.TrySealIdle() || c.beginOperation() || c.beginCallback() {
++		t.Fatal("idle seal did not close both gates exactly once")
++	}
++	if _, err := c.DialEarly(t.Context(), M.Socksaddr{}); !errors.Is(err, net.ErrClosed) {
++		t.Fatalf("dial after idle seal: %v", err)
++	}
++	if err := c.Close(); err != nil {
++		t.Fatal(err)
++	}
++}
++
+@@ -120,0 +354 @@
++		released := 0
+@@ -126 +360,6 @@
+-		}, func() { called = true })
++		}, func() { called = true }, func(count int) {
++			if !called {
++				t.Error("released before destroy completed")
++			}
++			released += count
++		})
+@@ -128,0 +368,3 @@
++		}
++		if (success && released != 1) || (!success && released != 0) {
++			t.Fatalf("success=%v released=%d", success, released)

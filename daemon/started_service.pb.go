@@ -1084,8 +1084,10 @@ func (x *ClashModeStatus) GetCurrentMode() string {
 }
 
 type SubscribeConnectionsRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Interval      int64                  `protobuf:"varint,1,opt,name=interval,proto3" json:"interval,omitempty"`
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Interval int64                  `protobuf:"varint,1,opt,name=interval,proto3" json:"interval,omitempty"`
+	// Opt in to bounded native frames and an explicit end to the initial reset.
+	BatchFrames   bool `protobuf:"varint,2,opt,name=batchFrames,proto3" json:"batchFrames,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1125,6 +1127,13 @@ func (x *SubscribeConnectionsRequest) GetInterval() int64 {
 		return x.Interval
 	}
 	return 0
+}
+
+func (x *SubscribeConnectionsRequest) GetBatchFrames() bool {
+	if x != nil {
+		return x.BatchFrames
+	}
+	return false
 }
 
 type ConnectionEvent struct {
@@ -1212,11 +1221,14 @@ func (x *ConnectionEvent) GetClosedAt() int64 {
 }
 
 type ConnectionEvents struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Events        []*ConnectionEvent     `protobuf:"bytes,1,rep,name=events,proto3" json:"events,omitempty"`
-	Reset_        bool                   `protobuf:"varint,2,opt,name=reset,proto3" json:"reset,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Events []*ConnectionEvent     `protobuf:"bytes,1,rep,name=events,proto3" json:"events,omitempty"`
+	Reset_ bool                   `protobuf:"varint,2,opt,name=reset,proto3" json:"reset,omitempty"`
+	// In a batched snapshot, data frames carry false and only the first carries reset.
+	// An empty frame with true commits the snapshot. Deltas and legacy frames omit it.
+	SnapshotComplete *bool `protobuf:"varint,3,opt,name=snapshotComplete,proto3,oneof" json:"snapshotComplete,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *ConnectionEvents) Reset() {
@@ -1259,6 +1271,13 @@ func (x *ConnectionEvents) GetEvents() []*ConnectionEvent {
 func (x *ConnectionEvents) GetReset_() bool {
 	if x != nil {
 		return x.Reset_
+	}
+	return false
+}
+
+func (x *ConnectionEvents) GetSnapshotComplete() bool {
+	if x != nil && x.SnapshotComplete != nil {
+		return *x.SnapshotComplete
 	}
 	return false
 }
@@ -7583,6 +7602,110 @@ func (x *RuleSetStatusResponse) GetRuleSets() []*RuleSetLoadStatus {
 	return nil
 }
 
+type ConnectionSnapshotEntry struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	ChainList     []string               `protobuf:"bytes,2,rep,name=chainList,proto3" json:"chainList,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ConnectionSnapshotEntry) Reset() {
+	*x = ConnectionSnapshotEntry{}
+	mi := &file_daemon_started_service_proto_msgTypes[105]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ConnectionSnapshotEntry) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ConnectionSnapshotEntry) ProtoMessage() {}
+
+func (x *ConnectionSnapshotEntry) ProtoReflect() protoreflect.Message {
+	mi := &file_daemon_started_service_proto_msgTypes[105]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ConnectionSnapshotEntry.ProtoReflect.Descriptor instead.
+func (*ConnectionSnapshotEntry) Descriptor() ([]byte, []int) {
+	return file_daemon_started_service_proto_rawDescGZIP(), []int{105}
+}
+
+func (x *ConnectionSnapshotEntry) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *ConnectionSnapshotEntry) GetChainList() []string {
+	if x != nil {
+		return x.ChainList
+	}
+	return nil
+}
+
+type ConnectionSnapshotChunk struct {
+	state         protoimpl.MessageState     `protogen:"open.v1"`
+	Entries       []*ConnectionSnapshotEntry `protobuf:"bytes,1,rep,name=entries,proto3" json:"entries,omitempty"`
+	Complete      bool                       `protobuf:"varint,2,opt,name=complete,proto3" json:"complete,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ConnectionSnapshotChunk) Reset() {
+	*x = ConnectionSnapshotChunk{}
+	mi := &file_daemon_started_service_proto_msgTypes[106]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ConnectionSnapshotChunk) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ConnectionSnapshotChunk) ProtoMessage() {}
+
+func (x *ConnectionSnapshotChunk) ProtoReflect() protoreflect.Message {
+	mi := &file_daemon_started_service_proto_msgTypes[106]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ConnectionSnapshotChunk.ProtoReflect.Descriptor instead.
+func (*ConnectionSnapshotChunk) Descriptor() ([]byte, []int) {
+	return file_daemon_started_service_proto_rawDescGZIP(), []int{106}
+}
+
+func (x *ConnectionSnapshotChunk) GetEntries() []*ConnectionSnapshotEntry {
+	if x != nil {
+		return x.Entries
+	}
+	return nil
+}
+
+func (x *ConnectionSnapshotChunk) GetComplete() bool {
+	if x != nil {
+		return x.Complete
+	}
+	return false
+}
+
 type Log_Message struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Level         LogLevel               `protobuf:"varint,1,opt,name=level,proto3,enum=daemon.LogLevel" json:"level,omitempty"`
@@ -7593,7 +7716,7 @@ type Log_Message struct {
 
 func (x *Log_Message) Reset() {
 	*x = Log_Message{}
-	mi := &file_daemon_started_service_proto_msgTypes[105]
+	mi := &file_daemon_started_service_proto_msgTypes[107]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7605,7 +7728,7 @@ func (x *Log_Message) String() string {
 func (*Log_Message) ProtoMessage() {}
 
 func (x *Log_Message) ProtoReflect() protoreflect.Message {
-	mi := &file_daemon_started_service_proto_msgTypes[105]
+	mi := &file_daemon_started_service_proto_msgTypes[107]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7704,9 +7827,10 @@ const file_daemon_started_service_proto_rawDesc = "" +
 	"\x04mode\x18\x03 \x01(\tR\x04mode\"O\n" +
 	"\x0fClashModeStatus\x12\x1a\n" +
 	"\bmodeList\x18\x01 \x03(\tR\bmodeList\x12 \n" +
-	"\vcurrentMode\x18\x02 \x01(\tR\vcurrentMode\"9\n" +
+	"\vcurrentMode\x18\x02 \x01(\tR\vcurrentMode\"[\n" +
 	"\x1bSubscribeConnectionsRequest\x12\x1a\n" +
-	"\binterval\x18\x01 \x01(\x03R\binterval\"\xea\x01\n" +
+	"\binterval\x18\x01 \x01(\x03R\binterval\x12 \n" +
+	"\vbatchFrames\x18\x02 \x01(\bR\vbatchFrames\"\xea\x01\n" +
 	"\x0fConnectionEvent\x12/\n" +
 	"\x04type\x18\x01 \x01(\x0e2\x1b.daemon.ConnectionEventTypeR\x04type\x12\x0e\n" +
 	"\x02id\x18\x02 \x01(\tR\x02id\x122\n" +
@@ -7715,10 +7839,12 @@ const file_daemon_started_service_proto_rawDesc = "" +
 	"connection\x12 \n" +
 	"\vuplinkDelta\x18\x04 \x01(\x03R\vuplinkDelta\x12$\n" +
 	"\rdownlinkDelta\x18\x05 \x01(\x03R\rdownlinkDelta\x12\x1a\n" +
-	"\bclosedAt\x18\x06 \x01(\x03R\bclosedAt\"Y\n" +
+	"\bclosedAt\x18\x06 \x01(\x03R\bclosedAt\"\x9f\x01\n" +
 	"\x10ConnectionEvents\x12/\n" +
 	"\x06events\x18\x01 \x03(\v2\x17.daemon.ConnectionEventR\x06events\x12\x14\n" +
-	"\x05reset\x18\x02 \x01(\bR\x05reset\"\x95\x05\n" +
+	"\x05reset\x18\x02 \x01(\bR\x05reset\x12/\n" +
+	"\x10snapshotComplete\x18\x03 \x01(\bH\x00R\x10snapshotComplete\x88\x01\x01B\x13\n" +
+	"\x11_snapshotComplete\"\x95\x05\n" +
 	"\n" +
 	"Connection\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
@@ -8216,7 +8342,13 @@ const file_daemon_started_service_proto_rawDesc = "" +
 	"\x06closed\x18\x06 \x01(\bR\x06closed\"\x91\x01\n" +
 	"\x15RuleSetStatusResponse\x12@\n" +
 	"\x1dinstance_started_at_unix_nano\x18\x01 \x01(\x03R\x19instanceStartedAtUnixNano\x126\n" +
-	"\trule_sets\x18\x02 \x03(\v2\x19.daemon.RuleSetLoadStatusR\bruleSets*U\n" +
+	"\trule_sets\x18\x02 \x03(\v2\x19.daemon.RuleSetLoadStatusR\bruleSets\"G\n" +
+	"\x17ConnectionSnapshotEntry\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1c\n" +
+	"\tchainList\x18\x02 \x03(\tR\tchainList\"p\n" +
+	"\x17ConnectionSnapshotChunk\x129\n" +
+	"\aentries\x18\x01 \x03(\v2\x1f.daemon.ConnectionSnapshotEntryR\aentries\x12\x1a\n" +
+	"\bcomplete\x18\x02 \x01(\bR\bcomplete*U\n" +
 	"\bLogLevel\x12\t\n" +
 	"\x05PANIC\x10\x00\x12\t\n" +
 	"\x05FATAL\x10\x01\x12\t\n" +
@@ -8239,7 +8371,7 @@ const file_daemon_started_service_proto_rawDesc = "" +
 	"\x17USB_BACKEND_LINUX_SYSFS\x10\x01\x12\x17\n" +
 	"\x13USB_BACKEND_DYNAMIC\x10\x02\x12\x1c\n" +
 	"\x18USB_BACKEND_DARWIN_IOKIT\x10\x03\x12\x1f\n" +
-	"\x1bUSB_BACKEND_WINDOWS_VBOXUSB\x10\x042\xac\x1b\n" +
+	"\x1bUSB_BACKEND_WINDOWS_VBOXUSB\x10\x042\x85\x1c\n" +
 	"\x0eStartedService\x12O\n" +
 	"\x10GetRuleSetStatus\x12\x1c.daemon.RuleSetStatusRequest\x1a\x1d.daemon.RuleSetStatusResponse\x127\n" +
 	"\n" +
@@ -8284,7 +8416,8 @@ const file_daemon_started_service_proto_rawDesc = "" +
 	"\x16SubscribeOpenVPNStatus\x12\x16.google.protobuf.Empty\x1a\x1b.daemon.OpenVPNStatusUpdate\"\x000\x01\x12^\n" +
 	"\x1eSubmitOpenVPNChallengeResponse\x12\".daemon.OpenVPNChallengeSubmission\x1a\x16.google.protobuf.Empty\"\x00\x12R\n" +
 	"\x16CancelOpenVPNChallenge\x12\x1e.daemon.OpenVPNChallengeCancel\x1a\x16.google.protobuf.Empty\"\x00\x12O\n" +
-	"\x16SubscribeNotifications\x12\x16.google.protobuf.Empty\x1a\x19.daemon.NotificationEvent\"\x000\x01B%Z#github.com/sagernet/sing-box/daemonb\x06proto3"
+	"\x16SubscribeNotifications\x12\x16.google.protobuf.Empty\x1a\x19.daemon.NotificationEvent\"\x000\x01\x12W\n" +
+	"\x18StreamConnectionSnapshot\x12\x16.google.protobuf.Empty\x1a\x1f.daemon.ConnectionSnapshotChunk\"\x000\x01B%Z#github.com/sagernet/sing-box/daemonb\x06proto3"
 
 var (
 	file_daemon_started_service_proto_rawDescOnce sync.Once
@@ -8299,7 +8432,7 @@ func file_daemon_started_service_proto_rawDescGZIP() []byte {
 }
 
 var file_daemon_started_service_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
-var file_daemon_started_service_proto_msgTypes = make([]protoimpl.MessageInfo, 107)
+var file_daemon_started_service_proto_msgTypes = make([]protoimpl.MessageInfo, 109)
 var file_daemon_started_service_proto_goTypes = []any{
 	(LogLevel)(0),                             // 0: daemon.LogLevel
 	(ConnectionEventType)(0),                  // 1: daemon.ConnectionEventType
@@ -8411,13 +8544,15 @@ var file_daemon_started_service_proto_goTypes = []any{
 	(*RuleSetStatusRequest)(nil),              // 107: daemon.RuleSetStatusRequest
 	(*RuleSetLoadStatus)(nil),                 // 108: daemon.RuleSetLoadStatus
 	(*RuleSetStatusResponse)(nil),             // 109: daemon.RuleSetStatusResponse
-	(*Log_Message)(nil),                       // 110: daemon.Log.Message
-	nil,                                       // 111: daemon.OpenConnectAuthFormResponse.ValuesEntry
-	(*emptypb.Empty)(nil),                     // 112: google.protobuf.Empty
+	(*ConnectionSnapshotEntry)(nil),           // 110: daemon.ConnectionSnapshotEntry
+	(*ConnectionSnapshotChunk)(nil),           // 111: daemon.ConnectionSnapshotChunk
+	(*Log_Message)(nil),                       // 112: daemon.Log.Message
+	nil,                                       // 113: daemon.OpenConnectAuthFormResponse.ValuesEntry
+	(*emptypb.Empty)(nil),                     // 114: google.protobuf.Empty
 }
 var file_daemon_started_service_proto_depIdxs = []int32{
 	4,   // 0: daemon.ServiceStatus.status:type_name -> daemon.ServiceStatus.Type
-	110, // 1: daemon.Log.messages:type_name -> daemon.Log.Message
+	112, // 1: daemon.Log.messages:type_name -> daemon.Log.Message
 	0,   // 2: daemon.DefaultLogLevel.level:type_name -> daemon.LogLevel
 	12,  // 3: daemon.Groups.group:type_name -> daemon.Group
 	13,  // 4: daemon.Group.items:type_name -> daemon.GroupItem
@@ -8470,7 +8605,7 @@ var file_daemon_started_service_proto_depIdxs = []int32{
 	91,  // 51: daemon.OpenConnectAuthChallenge.browser:type_name -> daemon.OpenConnectBrowserRequest
 	89,  // 52: daemon.OpenConnectAuthForm.fields:type_name -> daemon.OpenConnectAuthFormField
 	90,  // 53: daemon.OpenConnectAuthFormField.options:type_name -> daemon.OpenConnectAuthFormChoice
-	111, // 54: daemon.OpenConnectAuthFormResponse.values:type_name -> daemon.OpenConnectAuthFormResponse.ValuesEntry
+	113, // 54: daemon.OpenConnectAuthFormResponse.values:type_name -> daemon.OpenConnectAuthFormResponse.ValuesEntry
 	92,  // 55: daemon.OpenConnectBrowserResult.cookies:type_name -> daemon.OpenConnectBrowserCookie
 	93,  // 56: daemon.OpenConnectBrowserResult.headers:type_name -> daemon.OpenConnectBrowserHeader
 	94,  // 57: daemon.OpenConnectAuthResponseSubmission.form:type_name -> daemon.OpenConnectAuthFormResponse
@@ -8481,98 +8616,101 @@ var file_daemon_started_service_proto_depIdxs = []int32{
 	105, // 62: daemon.NotificationEvent.send:type_name -> daemon.Notification
 	106, // 63: daemon.NotificationEvent.cancel:type_name -> daemon.NotificationCancel
 	108, // 64: daemon.RuleSetStatusResponse.rule_sets:type_name -> daemon.RuleSetLoadStatus
-	0,   // 65: daemon.Log.Message.level:type_name -> daemon.LogLevel
-	107, // 66: daemon.StartedService.GetRuleSetStatus:input_type -> daemon.RuleSetStatusRequest
-	112, // 67: daemon.StartedService.GetVersion:input_type -> google.protobuf.Empty
-	112, // 68: daemon.StartedService.SubscribeServiceStatus:input_type -> google.protobuf.Empty
-	112, // 69: daemon.StartedService.SubscribeLog:input_type -> google.protobuf.Empty
-	112, // 70: daemon.StartedService.GetDefaultLogLevel:input_type -> google.protobuf.Empty
-	112, // 71: daemon.StartedService.ClearLogs:input_type -> google.protobuf.Empty
-	7,   // 72: daemon.StartedService.SubscribeStatus:input_type -> daemon.SubscribeStatusRequest
-	112, // 73: daemon.StartedService.SubscribeGroups:input_type -> google.protobuf.Empty
-	112, // 74: daemon.StartedService.GetClashModeStatus:input_type -> google.protobuf.Empty
-	112, // 75: daemon.StartedService.SubscribeClashMode:input_type -> google.protobuf.Empty
-	17,  // 76: daemon.StartedService.SetClashMode:input_type -> daemon.ClashMode
-	14,  // 77: daemon.StartedService.URLTest:input_type -> daemon.URLTestRequest
-	15,  // 78: daemon.StartedService.SelectOutbound:input_type -> daemon.SelectOutboundRequest
-	16,  // 79: daemon.StartedService.SetGroupExpand:input_type -> daemon.SetGroupExpandRequest
-	19,  // 80: daemon.StartedService.SubscribeConnections:input_type -> daemon.SubscribeConnectionsRequest
-	24,  // 81: daemon.StartedService.CloseConnection:input_type -> daemon.CloseConnectionRequest
-	112, // 82: daemon.StartedService.CloseAllConnections:input_type -> google.protobuf.Empty
-	112, // 83: daemon.StartedService.GetDeprecatedWarnings:input_type -> google.protobuf.Empty
-	112, // 84: daemon.StartedService.GetStartedAt:input_type -> google.protobuf.Empty
-	112, // 85: daemon.StartedService.SubscribeOutbounds:input_type -> google.protobuf.Empty
-	29,  // 86: daemon.StartedService.StartNetworkQualityTest:input_type -> daemon.NetworkQualityTestRequest
-	31,  // 87: daemon.StartedService.StartSTUNTest:input_type -> daemon.STUNTestRequest
-	112, // 88: daemon.StartedService.SubscribeTailscaleStatus:input_type -> google.protobuf.Empty
-	37,  // 89: daemon.StartedService.StartTailscalePing:input_type -> daemon.TailscalePingRequest
-	39,  // 90: daemon.StartedService.SetTailscaleExitNode:input_type -> daemon.SetTailscaleExitNodeRequest
-	40,  // 91: daemon.StartedService.TailscaleLogout:input_type -> daemon.TailscaleLogoutRequest
-	41,  // 92: daemon.StartedService.GetTailscaleCertificate:input_type -> daemon.TailscaleCertificateRequest
-	43,  // 93: daemon.StartedService.StartTailscaleSSHSession:input_type -> daemon.TailscaleSSHClientMessage
-	53,  // 94: daemon.StartedService.SubscribeTaildropInbox:input_type -> daemon.SubscribeTaildropInboxRequest
-	54,  // 95: daemon.StartedService.MarkTaildropInboxRead:input_type -> daemon.MarkTaildropInboxReadRequest
-	58,  // 96: daemon.StartedService.SendTaildropFiles:input_type -> daemon.TaildropSendClientMessage
-	65,  // 97: daemon.StartedService.DownloadTaildropFile:input_type -> daemon.DownloadTaildropFileRequest
-	67,  // 98: daemon.StartedService.DeleteTaildropFile:input_type -> daemon.DeleteTaildropFileRequest
-	68,  // 99: daemon.StartedService.CancelTaildropReceiving:input_type -> daemon.CancelTaildropReceivingRequest
-	69,  // 100: daemon.StartedService.ProvideUSBDevices:input_type -> daemon.USBProviderMessage
-	112, // 101: daemon.StartedService.SubscribeUSBIPServerStatus:input_type -> google.protobuf.Empty
-	112, // 102: daemon.StartedService.SubscribeOpenConnectStatus:input_type -> google.protobuf.Empty
-	96,  // 103: daemon.StartedService.SubmitOpenConnectAuthResponse:input_type -> daemon.OpenConnectAuthResponseSubmission
-	97,  // 104: daemon.StartedService.CancelOpenConnectAuthChallenge:input_type -> daemon.OpenConnectAuthChallengeCancel
-	112, // 105: daemon.StartedService.SubscribeOpenVPNStatus:input_type -> google.protobuf.Empty
-	102, // 106: daemon.StartedService.SubmitOpenVPNChallengeResponse:input_type -> daemon.OpenVPNChallengeSubmission
-	103, // 107: daemon.StartedService.CancelOpenVPNChallenge:input_type -> daemon.OpenVPNChallengeCancel
-	112, // 108: daemon.StartedService.SubscribeNotifications:input_type -> google.protobuf.Empty
-	109, // 109: daemon.StartedService.GetRuleSetStatus:output_type -> daemon.RuleSetStatusResponse
-	5,   // 110: daemon.StartedService.GetVersion:output_type -> daemon.Version
-	6,   // 111: daemon.StartedService.SubscribeServiceStatus:output_type -> daemon.ServiceStatus
-	8,   // 112: daemon.StartedService.SubscribeLog:output_type -> daemon.Log
-	9,   // 113: daemon.StartedService.GetDefaultLogLevel:output_type -> daemon.DefaultLogLevel
-	112, // 114: daemon.StartedService.ClearLogs:output_type -> google.protobuf.Empty
-	10,  // 115: daemon.StartedService.SubscribeStatus:output_type -> daemon.Status
-	11,  // 116: daemon.StartedService.SubscribeGroups:output_type -> daemon.Groups
-	18,  // 117: daemon.StartedService.GetClashModeStatus:output_type -> daemon.ClashModeStatus
-	17,  // 118: daemon.StartedService.SubscribeClashMode:output_type -> daemon.ClashMode
-	112, // 119: daemon.StartedService.SetClashMode:output_type -> google.protobuf.Empty
-	112, // 120: daemon.StartedService.URLTest:output_type -> google.protobuf.Empty
-	112, // 121: daemon.StartedService.SelectOutbound:output_type -> google.protobuf.Empty
-	112, // 122: daemon.StartedService.SetGroupExpand:output_type -> google.protobuf.Empty
-	21,  // 123: daemon.StartedService.SubscribeConnections:output_type -> daemon.ConnectionEvents
-	112, // 124: daemon.StartedService.CloseConnection:output_type -> google.protobuf.Empty
-	112, // 125: daemon.StartedService.CloseAllConnections:output_type -> google.protobuf.Empty
-	25,  // 126: daemon.StartedService.GetDeprecatedWarnings:output_type -> daemon.DeprecatedWarnings
-	27,  // 127: daemon.StartedService.GetStartedAt:output_type -> daemon.StartedAt
-	28,  // 128: daemon.StartedService.SubscribeOutbounds:output_type -> daemon.OutboundList
-	30,  // 129: daemon.StartedService.StartNetworkQualityTest:output_type -> daemon.NetworkQualityTestProgress
-	32,  // 130: daemon.StartedService.StartSTUNTest:output_type -> daemon.STUNTestProgress
-	33,  // 131: daemon.StartedService.SubscribeTailscaleStatus:output_type -> daemon.TailscaleStatusUpdate
-	38,  // 132: daemon.StartedService.StartTailscalePing:output_type -> daemon.TailscalePingResponse
-	112, // 133: daemon.StartedService.SetTailscaleExitNode:output_type -> google.protobuf.Empty
-	112, // 134: daemon.StartedService.TailscaleLogout:output_type -> google.protobuf.Empty
-	42,  // 135: daemon.StartedService.GetTailscaleCertificate:output_type -> daemon.TailscaleCertificate
-	47,  // 136: daemon.StartedService.StartTailscaleSSHSession:output_type -> daemon.TailscaleSSHServerMessage
-	55,  // 137: daemon.StartedService.SubscribeTaildropInbox:output_type -> daemon.TaildropInbox
-	112, // 138: daemon.StartedService.MarkTaildropInboxRead:output_type -> google.protobuf.Empty
-	63,  // 139: daemon.StartedService.SendTaildropFiles:output_type -> daemon.TaildropSendServerMessage
-	66,  // 140: daemon.StartedService.DownloadTaildropFile:output_type -> daemon.DownloadTaildropFileChunk
-	112, // 141: daemon.StartedService.DeleteTaildropFile:output_type -> google.protobuf.Empty
-	112, // 142: daemon.StartedService.CancelTaildropReceiving:output_type -> google.protobuf.Empty
-	70,  // 143: daemon.StartedService.ProvideUSBDevices:output_type -> daemon.USBServerMessage
-	81,  // 144: daemon.StartedService.SubscribeUSBIPServerStatus:output_type -> daemon.USBIPServerStatusUpdate
-	84,  // 145: daemon.StartedService.SubscribeOpenConnectStatus:output_type -> daemon.OpenConnectStatusUpdate
-	112, // 146: daemon.StartedService.SubmitOpenConnectAuthResponse:output_type -> google.protobuf.Empty
-	112, // 147: daemon.StartedService.CancelOpenConnectAuthChallenge:output_type -> google.protobuf.Empty
-	98,  // 148: daemon.StartedService.SubscribeOpenVPNStatus:output_type -> daemon.OpenVPNStatusUpdate
-	112, // 149: daemon.StartedService.SubmitOpenVPNChallengeResponse:output_type -> google.protobuf.Empty
-	112, // 150: daemon.StartedService.CancelOpenVPNChallenge:output_type -> google.protobuf.Empty
-	104, // 151: daemon.StartedService.SubscribeNotifications:output_type -> daemon.NotificationEvent
-	109, // [109:152] is the sub-list for method output_type
-	66,  // [66:109] is the sub-list for method input_type
-	66,  // [66:66] is the sub-list for extension type_name
-	66,  // [66:66] is the sub-list for extension extendee
-	0,   // [0:66] is the sub-list for field type_name
+	110, // 65: daemon.ConnectionSnapshotChunk.entries:type_name -> daemon.ConnectionSnapshotEntry
+	0,   // 66: daemon.Log.Message.level:type_name -> daemon.LogLevel
+	107, // 67: daemon.StartedService.GetRuleSetStatus:input_type -> daemon.RuleSetStatusRequest
+	114, // 68: daemon.StartedService.GetVersion:input_type -> google.protobuf.Empty
+	114, // 69: daemon.StartedService.SubscribeServiceStatus:input_type -> google.protobuf.Empty
+	114, // 70: daemon.StartedService.SubscribeLog:input_type -> google.protobuf.Empty
+	114, // 71: daemon.StartedService.GetDefaultLogLevel:input_type -> google.protobuf.Empty
+	114, // 72: daemon.StartedService.ClearLogs:input_type -> google.protobuf.Empty
+	7,   // 73: daemon.StartedService.SubscribeStatus:input_type -> daemon.SubscribeStatusRequest
+	114, // 74: daemon.StartedService.SubscribeGroups:input_type -> google.protobuf.Empty
+	114, // 75: daemon.StartedService.GetClashModeStatus:input_type -> google.protobuf.Empty
+	114, // 76: daemon.StartedService.SubscribeClashMode:input_type -> google.protobuf.Empty
+	17,  // 77: daemon.StartedService.SetClashMode:input_type -> daemon.ClashMode
+	14,  // 78: daemon.StartedService.URLTest:input_type -> daemon.URLTestRequest
+	15,  // 79: daemon.StartedService.SelectOutbound:input_type -> daemon.SelectOutboundRequest
+	16,  // 80: daemon.StartedService.SetGroupExpand:input_type -> daemon.SetGroupExpandRequest
+	19,  // 81: daemon.StartedService.SubscribeConnections:input_type -> daemon.SubscribeConnectionsRequest
+	24,  // 82: daemon.StartedService.CloseConnection:input_type -> daemon.CloseConnectionRequest
+	114, // 83: daemon.StartedService.CloseAllConnections:input_type -> google.protobuf.Empty
+	114, // 84: daemon.StartedService.GetDeprecatedWarnings:input_type -> google.protobuf.Empty
+	114, // 85: daemon.StartedService.GetStartedAt:input_type -> google.protobuf.Empty
+	114, // 86: daemon.StartedService.SubscribeOutbounds:input_type -> google.protobuf.Empty
+	29,  // 87: daemon.StartedService.StartNetworkQualityTest:input_type -> daemon.NetworkQualityTestRequest
+	31,  // 88: daemon.StartedService.StartSTUNTest:input_type -> daemon.STUNTestRequest
+	114, // 89: daemon.StartedService.SubscribeTailscaleStatus:input_type -> google.protobuf.Empty
+	37,  // 90: daemon.StartedService.StartTailscalePing:input_type -> daemon.TailscalePingRequest
+	39,  // 91: daemon.StartedService.SetTailscaleExitNode:input_type -> daemon.SetTailscaleExitNodeRequest
+	40,  // 92: daemon.StartedService.TailscaleLogout:input_type -> daemon.TailscaleLogoutRequest
+	41,  // 93: daemon.StartedService.GetTailscaleCertificate:input_type -> daemon.TailscaleCertificateRequest
+	43,  // 94: daemon.StartedService.StartTailscaleSSHSession:input_type -> daemon.TailscaleSSHClientMessage
+	53,  // 95: daemon.StartedService.SubscribeTaildropInbox:input_type -> daemon.SubscribeTaildropInboxRequest
+	54,  // 96: daemon.StartedService.MarkTaildropInboxRead:input_type -> daemon.MarkTaildropInboxReadRequest
+	58,  // 97: daemon.StartedService.SendTaildropFiles:input_type -> daemon.TaildropSendClientMessage
+	65,  // 98: daemon.StartedService.DownloadTaildropFile:input_type -> daemon.DownloadTaildropFileRequest
+	67,  // 99: daemon.StartedService.DeleteTaildropFile:input_type -> daemon.DeleteTaildropFileRequest
+	68,  // 100: daemon.StartedService.CancelTaildropReceiving:input_type -> daemon.CancelTaildropReceivingRequest
+	69,  // 101: daemon.StartedService.ProvideUSBDevices:input_type -> daemon.USBProviderMessage
+	114, // 102: daemon.StartedService.SubscribeUSBIPServerStatus:input_type -> google.protobuf.Empty
+	114, // 103: daemon.StartedService.SubscribeOpenConnectStatus:input_type -> google.protobuf.Empty
+	96,  // 104: daemon.StartedService.SubmitOpenConnectAuthResponse:input_type -> daemon.OpenConnectAuthResponseSubmission
+	97,  // 105: daemon.StartedService.CancelOpenConnectAuthChallenge:input_type -> daemon.OpenConnectAuthChallengeCancel
+	114, // 106: daemon.StartedService.SubscribeOpenVPNStatus:input_type -> google.protobuf.Empty
+	102, // 107: daemon.StartedService.SubmitOpenVPNChallengeResponse:input_type -> daemon.OpenVPNChallengeSubmission
+	103, // 108: daemon.StartedService.CancelOpenVPNChallenge:input_type -> daemon.OpenVPNChallengeCancel
+	114, // 109: daemon.StartedService.SubscribeNotifications:input_type -> google.protobuf.Empty
+	114, // 110: daemon.StartedService.StreamConnectionSnapshot:input_type -> google.protobuf.Empty
+	109, // 111: daemon.StartedService.GetRuleSetStatus:output_type -> daemon.RuleSetStatusResponse
+	5,   // 112: daemon.StartedService.GetVersion:output_type -> daemon.Version
+	6,   // 113: daemon.StartedService.SubscribeServiceStatus:output_type -> daemon.ServiceStatus
+	8,   // 114: daemon.StartedService.SubscribeLog:output_type -> daemon.Log
+	9,   // 115: daemon.StartedService.GetDefaultLogLevel:output_type -> daemon.DefaultLogLevel
+	114, // 116: daemon.StartedService.ClearLogs:output_type -> google.protobuf.Empty
+	10,  // 117: daemon.StartedService.SubscribeStatus:output_type -> daemon.Status
+	11,  // 118: daemon.StartedService.SubscribeGroups:output_type -> daemon.Groups
+	18,  // 119: daemon.StartedService.GetClashModeStatus:output_type -> daemon.ClashModeStatus
+	17,  // 120: daemon.StartedService.SubscribeClashMode:output_type -> daemon.ClashMode
+	114, // 121: daemon.StartedService.SetClashMode:output_type -> google.protobuf.Empty
+	114, // 122: daemon.StartedService.URLTest:output_type -> google.protobuf.Empty
+	114, // 123: daemon.StartedService.SelectOutbound:output_type -> google.protobuf.Empty
+	114, // 124: daemon.StartedService.SetGroupExpand:output_type -> google.protobuf.Empty
+	21,  // 125: daemon.StartedService.SubscribeConnections:output_type -> daemon.ConnectionEvents
+	114, // 126: daemon.StartedService.CloseConnection:output_type -> google.protobuf.Empty
+	114, // 127: daemon.StartedService.CloseAllConnections:output_type -> google.protobuf.Empty
+	25,  // 128: daemon.StartedService.GetDeprecatedWarnings:output_type -> daemon.DeprecatedWarnings
+	27,  // 129: daemon.StartedService.GetStartedAt:output_type -> daemon.StartedAt
+	28,  // 130: daemon.StartedService.SubscribeOutbounds:output_type -> daemon.OutboundList
+	30,  // 131: daemon.StartedService.StartNetworkQualityTest:output_type -> daemon.NetworkQualityTestProgress
+	32,  // 132: daemon.StartedService.StartSTUNTest:output_type -> daemon.STUNTestProgress
+	33,  // 133: daemon.StartedService.SubscribeTailscaleStatus:output_type -> daemon.TailscaleStatusUpdate
+	38,  // 134: daemon.StartedService.StartTailscalePing:output_type -> daemon.TailscalePingResponse
+	114, // 135: daemon.StartedService.SetTailscaleExitNode:output_type -> google.protobuf.Empty
+	114, // 136: daemon.StartedService.TailscaleLogout:output_type -> google.protobuf.Empty
+	42,  // 137: daemon.StartedService.GetTailscaleCertificate:output_type -> daemon.TailscaleCertificate
+	47,  // 138: daemon.StartedService.StartTailscaleSSHSession:output_type -> daemon.TailscaleSSHServerMessage
+	55,  // 139: daemon.StartedService.SubscribeTaildropInbox:output_type -> daemon.TaildropInbox
+	114, // 140: daemon.StartedService.MarkTaildropInboxRead:output_type -> google.protobuf.Empty
+	63,  // 141: daemon.StartedService.SendTaildropFiles:output_type -> daemon.TaildropSendServerMessage
+	66,  // 142: daemon.StartedService.DownloadTaildropFile:output_type -> daemon.DownloadTaildropFileChunk
+	114, // 143: daemon.StartedService.DeleteTaildropFile:output_type -> google.protobuf.Empty
+	114, // 144: daemon.StartedService.CancelTaildropReceiving:output_type -> google.protobuf.Empty
+	70,  // 145: daemon.StartedService.ProvideUSBDevices:output_type -> daemon.USBServerMessage
+	81,  // 146: daemon.StartedService.SubscribeUSBIPServerStatus:output_type -> daemon.USBIPServerStatusUpdate
+	84,  // 147: daemon.StartedService.SubscribeOpenConnectStatus:output_type -> daemon.OpenConnectStatusUpdate
+	114, // 148: daemon.StartedService.SubmitOpenConnectAuthResponse:output_type -> google.protobuf.Empty
+	114, // 149: daemon.StartedService.CancelOpenConnectAuthChallenge:output_type -> google.protobuf.Empty
+	98,  // 150: daemon.StartedService.SubscribeOpenVPNStatus:output_type -> daemon.OpenVPNStatusUpdate
+	114, // 151: daemon.StartedService.SubmitOpenVPNChallengeResponse:output_type -> google.protobuf.Empty
+	114, // 152: daemon.StartedService.CancelOpenVPNChallenge:output_type -> google.protobuf.Empty
+	104, // 153: daemon.StartedService.SubscribeNotifications:output_type -> daemon.NotificationEvent
+	111, // 154: daemon.StartedService.StreamConnectionSnapshot:output_type -> daemon.ConnectionSnapshotChunk
+	111, // [111:155] is the sub-list for method output_type
+	67,  // [67:111] is the sub-list for method input_type
+	67,  // [67:67] is the sub-list for extension type_name
+	67,  // [67:67] is the sub-list for extension extendee
+	0,   // [0:67] is the sub-list for field type_name
 }
 
 func init() { file_daemon_started_service_proto_init() }
@@ -8580,6 +8718,7 @@ func file_daemon_started_service_proto_init() {
 	if File_daemon_started_service_proto != nil {
 		return
 	}
+	file_daemon_started_service_proto_msgTypes[16].OneofWrappers = []any{}
 	file_daemon_started_service_proto_msgTypes[38].OneofWrappers = []any{
 		(*TailscaleSSHClientMessage_Start)(nil),
 		(*TailscaleSSHClientMessage_Input)(nil),
@@ -8630,7 +8769,7 @@ func file_daemon_started_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_daemon_started_service_proto_rawDesc), len(file_daemon_started_service_proto_rawDesc)),
 			NumEnums:      5,
-			NumMessages:   107,
+			NumMessages:   109,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

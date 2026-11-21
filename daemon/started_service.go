@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"context"
+	"errors"
 	"net/netip"
 	"os"
 	"runtime"
@@ -32,6 +33,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/encoding/protowire"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -936,7 +939,7 @@ func (s *StartedService) URLTest(ctx context.Context, request *URLTestRequest) (
 				return
 			}
 			delay, err := urltest.URLTest(probe.Context(), "", target)
-			if probe.Context().Err() != nil {
+			if probe.Context().Err() != nil || errors.Is(err, urltest.ErrProbeNotRun) {
 				return
 			}
 			var history *adapter.URLTestHistory
@@ -985,7 +988,7 @@ func (s *StartedService) URLTest(ctx context.Context, request *URLTestRequest) (
 		go func() {
 			defer cancel()
 			t, err := urltest.URLTest(probeCtx, "", target)
-			if probeCtx.Err() != nil {
+			if probeCtx.Err() != nil || errors.Is(err, urltest.ErrProbeNotRun) {
 				return
 			}
 			if err != nil {
@@ -1013,7 +1016,21 @@ func (s *StartedService) SelectOutbound(ctx context.Context, request *SelectOutb
 	if !isSelector {
 		return nil, status.Error(codes.InvalidArgument, "outbound is not a selector: "+request.GroupTag)
 	}
-	if !selector.SelectOutbound(request.OutboundTag) {
+	if err := ctx.Err(); err != nil {
+		return nil, status.FromContextError(err).Err()
+	}
+	var selected bool
+	if contextual, ok := selector.(interface {
+		SelectOutboundContext(context.Context, string) bool
+	}); ok {
+		selected = contextual.SelectOutboundContext(ctx, request.OutboundTag)
+	} else {
+		selected = selector.SelectOutbound(request.OutboundTag)
+	}
+	if !selected {
+		if err := ctx.Err(); err != nil {
+			return nil, status.FromContextError(err).Err()
+		}
 		return nil, status.Error(codes.NotFound, "outbound not found in selector: "+request.OutboundTag)
 	}
 	return &emptypb.Empty{}, nil
@@ -1053,13 +1070,34 @@ func (s *StartedService) SubscribeConnections(request *SubscribeConnectionsReque
 	defer trafficManager.UnSubscribeEvents(subscription)
 
 	connectionSnapshots := make(map[uuid.UUID]connectionSnapshot)
-	initialEvents := s.buildInitialConnectionState(trafficManager, connectionSnapshots)
-	err = server.Send(&ConnectionEvents{
-		Events: initialEvents,
-		Reset_: true,
-	})
-	if err != nil {
+	batch := connectionEventBatch{server: server, frame: &ConnectionEvents{Reset_: true}}
+	web := server.Context().Value(boundedConnectionEventsKey{}) == true
+	batchedNative := request.GetBatchFrames() && !web
+	if batchedNative {
+		batch.frame.SnapshotComplete = proto.Bool(false)
+	}
+	if web || batchedNative {
+		batch.limit = connectionEventFrameLimit
+		batch.size = proto.Size(batch.frame)
+	}
+	if err := s.buildInitialConnectionState(trafficManager, connectionSnapshots, batch.add); err != nil {
 		return err
+	}
+	if err := batch.send(); err != nil {
+		return err
+	}
+	if batchedNative {
+		if err := server.Context().Err(); err != nil {
+			return err
+		}
+		if boxService.closeStarted.Load() || boxService.ctx.Err() != nil {
+			return status.Error(codes.Unavailable, "no active instance")
+		}
+		if err := server.Send(&ConnectionEvents{SnapshotComplete: proto.Bool(true)}); err != nil {
+			return err
+		}
+		batch.frame.SnapshotComplete = nil
+		batch.size = 0
 	}
 
 	interval := time.Duration(request.Interval)
@@ -1078,40 +1116,147 @@ func (s *StartedService) SubscribeConnections(request *SubscribeConnectionsReque
 		case <-done:
 			return nil
 
-		case event := <-subscription:
-			var pendingEvents []*ConnectionEvent
-			if protoEvent := s.applyConnectionEvent(event, connectionSnapshots); protoEvent != nil {
-				pendingEvents = append(pendingEvents, protoEvent)
-			}
-		drain:
-			for {
-				select {
-				case event = <-subscription:
-					if protoEvent := s.applyConnectionEvent(event, connectionSnapshots); protoEvent != nil {
-						pendingEvents = append(pendingEvents, protoEvent)
+		case event, open := <-subscription:
+			// Drain only already queued events before checking the ticker and cancellation.
+			for remaining := len(subscription); open; remaining-- {
+				if protoEvent := s.applyConnectionEvent(event, connectionSnapshots); protoEvent != nil {
+					if err := batch.add(protoEvent); err != nil {
+						return err
 					}
-				default:
-					break drain
 				}
+				if remaining == 0 {
+					break
+				}
+				event, open = <-subscription
 			}
-			if len(pendingEvents) > 0 {
-				err = server.Send(&ConnectionEvents{Events: pendingEvents})
-				if err != nil {
-					return err
-				}
+			if err := batch.send(); err != nil {
+				return err
+			}
+			if !open {
+				return nil
 			}
 
 		case <-ticker.C:
-			protoEvents := s.buildTrafficUpdates(trafficManager, connectionSnapshots)
-			if len(protoEvents) == 0 {
-				continue
+			if err := s.buildTrafficUpdates(trafficManager, connectionSnapshots, batch.add); err != nil {
+				return err
 			}
-			err = server.Send(&ConnectionEvents{Events: protoEvents})
-			if err != nil {
+			if err := batch.send(); err != nil {
 				return err
 			}
 		}
 	}
+}
+
+const connectionEventFrameLimit = 1024 * 1024
+
+type connectionEventBatch struct {
+	server grpc.ServerStreamingServer[ConnectionEvents]
+	frame  *ConnectionEvents
+	size   int
+	limit  int
+}
+
+func (b *connectionEventBatch) add(event *ConnectionEvent) error {
+	if b.limit > 0 {
+		if err := b.server.Context().Err(); err != nil {
+			return err
+		}
+		size := protowire.SizeTag(1) + protowire.SizeBytes(proto.Size(event))
+		if size > b.limit {
+			return status.Error(codes.ResourceExhausted, "connection event exceeds stream frame limit")
+		}
+		if size > b.limit-b.size {
+			if err := b.send(); err != nil {
+				return err
+			}
+			if size > b.limit-b.size {
+				return status.Error(codes.ResourceExhausted, "connection event exceeds stream frame limit")
+			}
+		}
+		b.size += size
+	}
+	b.frame.Events = append(b.frame.Events, event)
+	return nil
+}
+
+func (b *connectionEventBatch) send() error {
+	if len(b.frame.Events) == 0 && !b.frame.Reset_ {
+		return nil
+	}
+	if err := b.server.Send(b.frame); err != nil {
+		return err
+	}
+	b.frame = &ConnectionEvents{SnapshotComplete: b.frame.SnapshotComplete}
+	b.size = proto.Size(b.frame)
+	return nil
+}
+
+const (
+	connectionSnapshotChunkLimit = 256 * 1024
+	connectionSnapshotTotalLimit = 4 * 1024 * 1024
+)
+
+func (s *StartedService) StreamConnectionSnapshot(_ *emptypb.Empty, stream grpc.ServerStreamingServer[ConnectionSnapshotChunk]) error {
+	ctx := stream.Context()
+	boxService, err := s.startedInstance(ctx)
+	if err != nil {
+		return err
+	}
+	trafficManager := boxService.trafficManager
+	if trafficManager == nil {
+		return status.Error(codes.FailedPrecondition, "connection tracking not available")
+	}
+	checkActive := func() error {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if boxService.closeStarted.Load() || boxService.ctx.Err() != nil {
+			return status.Error(codes.Unavailable, "no active instance")
+		}
+		return nil
+	}
+	send := func(chunk *ConnectionSnapshotChunk) error {
+		if err := checkActive(); err != nil {
+			return err
+		}
+		return stream.Send(chunk)
+	}
+
+	chunk := &ConnectionSnapshotChunk{}
+	var chunkSize, totalSize int
+	var rangeErr error
+	trafficManager.RangeConnections(func(metadata *trafficcontrol.TrackerMetadata) bool {
+		if rangeErr = checkActive(); rangeErr != nil {
+			return false
+		}
+		entry := &ConnectionSnapshotEntry{Id: metadata.ID.String(), ChainList: metadata.Chain}
+		// Field 1 encodes each entry as a length-delimited message. Complete is omitted on data frames.
+		entrySize := protowire.SizeTag(1) + protowire.SizeBytes(proto.Size(entry))
+		if entrySize > connectionSnapshotChunkLimit || entrySize > connectionSnapshotTotalLimit-totalSize {
+			rangeErr = status.Error(codes.ResourceExhausted, "connection snapshot exceeds size limit")
+			return false
+		}
+		if entrySize > connectionSnapshotChunkLimit-chunkSize {
+			if rangeErr = send(chunk); rangeErr != nil {
+				return false
+			}
+			chunk = &ConnectionSnapshotChunk{}
+			chunkSize = 0
+		}
+		chunk.Entries = append(chunk.Entries, entry)
+		chunkSize += entrySize
+		totalSize += entrySize
+		return true
+	})
+	if rangeErr != nil {
+		return rangeErr
+	}
+	if len(chunk.Entries) > 0 {
+		if err := send(chunk); err != nil {
+			return err
+		}
+	}
+	return send(&ConnectionSnapshotChunk{Complete: true})
 }
 
 type connectionSnapshot struct {
@@ -1120,32 +1265,32 @@ type connectionSnapshot struct {
 	hadTraffic bool
 }
 
-func (s *StartedService) buildInitialConnectionState(manager *trafficcontrol.Manager, snapshots map[uuid.UUID]connectionSnapshot) []*ConnectionEvent {
-	var events []*ConnectionEvent
-
-	for _, metadata := range manager.Connections() {
-		events = append(events, &ConnectionEvent{
-			Type:       ConnectionEventType_CONNECTION_EVENT_NEW,
-			Id:         metadata.ID.String(),
-			Connection: buildConnectionProto(metadata),
-		})
-		snapshots[metadata.ID] = connectionSnapshot{
-			uplink:   metadata.Upload.Load(),
-			downlink: metadata.Download.Load(),
+func (s *StartedService) buildInitialConnectionState(manager *trafficcontrol.Manager, snapshots map[uuid.UUID]connectionSnapshot, emit func(*ConnectionEvent) error) error {
+	for metadata := range manager.RangeConnections {
+		if err := emit(newTrackedConnectionEvent(metadata, snapshots)); err != nil {
+			return err
 		}
 	}
 
 	for _, metadata := range manager.ClosedConnections() {
 		conn := buildConnectionProto(metadata)
 		conn.ClosedAt = metadata.ClosedAt.UnixMilli()
-		events = append(events, &ConnectionEvent{
+		if err := emit(&ConnectionEvent{
 			Type:       ConnectionEventType_CONNECTION_EVENT_NEW,
-			Id:         metadata.ID.String(),
+			Id:         conn.Id,
 			Connection: conn,
-		})
+		}); err != nil {
+			return err
+		}
 	}
 
-	return events
+	return nil
+}
+
+func newTrackedConnectionEvent(metadata *trafficcontrol.TrackerMetadata, snapshots map[uuid.UUID]connectionSnapshot) *ConnectionEvent {
+	conn := buildConnectionProto(metadata)
+	snapshots[metadata.ID] = connectionSnapshot{uplink: conn.UplinkTotal, downlink: conn.DownlinkTotal}
+	return &ConnectionEvent{Type: ConnectionEventType_CONNECTION_EVENT_NEW, Id: conn.Id, Connection: conn}
 }
 
 func (s *StartedService) applyConnectionEvent(event trafficcontrol.ConnectionEvent, snapshots map[uuid.UUID]connectionSnapshot) *ConnectionEvent {
@@ -1154,15 +1299,7 @@ func (s *StartedService) applyConnectionEvent(event trafficcontrol.ConnectionEve
 		if _, exists := snapshots[event.ID]; exists {
 			return nil
 		}
-		snapshots[event.ID] = connectionSnapshot{
-			uplink:   event.Metadata.Upload.Load(),
-			downlink: event.Metadata.Download.Load(),
-		}
-		return &ConnectionEvent{
-			Type:       ConnectionEventType_CONNECTION_EVENT_NEW,
-			Id:         event.ID.String(),
-			Connection: buildConnectionProto(event.Metadata),
-		}
+		return newTrackedConnectionEvent(event.Metadata, snapshots)
 	case trafficcontrol.ConnectionEventClosed:
 		delete(snapshots, event.ID)
 		protoEvent := &ConnectionEvent{
@@ -1188,77 +1325,47 @@ func (s *StartedService) applyConnectionEvent(event trafficcontrol.ConnectionEve
 	}
 }
 
-func (s *StartedService) buildTrafficUpdates(manager *trafficcontrol.Manager, snapshots map[uuid.UUID]connectionSnapshot) []*ConnectionEvent {
+func (s *StartedService) buildTrafficUpdates(manager *trafficcontrol.Manager, snapshots map[uuid.UUID]connectionSnapshot, emit func(*ConnectionEvent) error) error {
 	activeConnections := manager.Connections()
 	previousCount := len(snapshots)
 	matched := 0
-	var events []*ConnectionEvent
 
 	for _, metadata := range activeConnections {
-		currentUpload := metadata.Upload.Load()
-		currentDownload := metadata.Download.Load()
 		snapshot, exists := snapshots[metadata.ID]
 		if !exists {
-			snapshots[metadata.ID] = connectionSnapshot{
-				uplink:   currentUpload,
-				downlink: currentDownload,
+			if err := emit(newTrackedConnectionEvent(metadata, snapshots)); err != nil {
+				return err
 			}
-			events = append(events, &ConnectionEvent{
-				Type:       ConnectionEventType_CONNECTION_EVENT_NEW,
-				Id:         metadata.ID.String(),
-				Connection: buildConnectionProto(metadata),
-			})
 			continue
 		}
 		matched++
+		currentUpload := metadata.Upload.Load()
+		currentDownload := metadata.Download.Load()
 		uplinkDelta := currentUpload - snapshot.uplink
 		downlinkDelta := currentDownload - snapshot.downlink
 		if uplinkDelta < 0 || downlinkDelta < 0 {
-			if snapshot.hadTraffic {
-				events = append(events, &ConnectionEvent{
-					Type:          ConnectionEventType_CONNECTION_EVENT_UPDATE,
-					Id:            metadata.ID.String(),
-					UplinkDelta:   0,
-					DownlinkDelta: 0,
-				})
-			}
-			snapshot.uplink = currentUpload
-			snapshot.downlink = currentDownload
-			snapshot.hadTraffic = false
-			snapshots[metadata.ID] = snapshot
-			continue
+			uplinkDelta, downlinkDelta = 0, 0
 		}
-		if uplinkDelta > 0 || downlinkDelta > 0 {
-			snapshot.uplink = currentUpload
-			snapshot.downlink = currentDownload
-			snapshot.hadTraffic = true
-			snapshots[metadata.ID] = snapshot
-			events = append(events, &ConnectionEvent{
+		next := connectionSnapshot{uplink: currentUpload, downlink: currentDownload, hadTraffic: uplinkDelta > 0 || downlinkDelta > 0}
+		if next != snapshot {
+			snapshots[metadata.ID] = next
+		}
+		if next.hadTraffic || snapshot.hadTraffic {
+			if err := emit(&ConnectionEvent{
 				Type:          ConnectionEventType_CONNECTION_EVENT_UPDATE,
 				Id:            metadata.ID.String(),
 				UplinkDelta:   uplinkDelta,
 				DownlinkDelta: downlinkDelta,
-			})
-			continue
-		}
-		if snapshot.hadTraffic {
-			snapshot.uplink = currentUpload
-			snapshot.downlink = currentDownload
-			snapshot.hadTraffic = false
-			snapshots[metadata.ID] = snapshot
-			events = append(events, &ConnectionEvent{
-				Type:          ConnectionEventType_CONNECTION_EVENT_UPDATE,
-				Id:            metadata.ID.String(),
-				UplinkDelta:   0,
-				DownlinkDelta: 0,
-			})
+			}); err != nil {
+				return err
+			}
 		}
 	}
 
 	// A matching sample has no missed close to reconcile. Build the index only
 	// for the recovery path, using the same sample used for traffic deltas.
 	if matched == previousCount {
-		return events
+		return nil
 	}
 	activeIndex := make(map[uuid.UUID]struct{}, len(activeConnections))
 	for _, metadata := range activeConnections {
@@ -1284,16 +1391,18 @@ func (s *StartedService) buildTrafficUpdates(manager *trafficcontrol.Manager, sn
 			conn = buildConnectionProto(metadata)
 			conn.ClosedAt = closedAt.UnixMilli()
 		}
-		events = append(events, &ConnectionEvent{
+		if err := emit(&ConnectionEvent{
 			Type:       ConnectionEventType_CONNECTION_EVENT_CLOSED,
 			Id:         id.String(),
 			ClosedAt:   closedAt.UnixMilli(),
 			Connection: conn,
-		})
+		}); err != nil {
+			return err
+		}
 		delete(snapshots, id)
 	}
 
-	return events
+	return nil
 }
 
 func buildConnectionProto(metadata *trafficcontrol.TrackerMetadata) *Connection {

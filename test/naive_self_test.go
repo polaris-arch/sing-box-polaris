@@ -3,8 +3,10 @@
 package main
 
 import (
+	"encoding/json"
 	"net/netip"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -206,8 +208,9 @@ func TestNaiveSelfECH(t *testing.T) {
 	naiveOut, ok := instance.Outbound().Outbound("naive-out")
 	require.True(t, ok)
 	naiveOutbound := naiveOut.(*naive.Outbound)
+	require.NoError(t, naiveOutbound.Client().Start())
 
-	netLogPath := "/tmp/naive_ech_netlog.json"
+	netLogPath := filepath.Join(t.TempDir(), "naive_ech_netlog.json")
 	require.True(t, naiveOutbound.Client().Engine().StartNetLogToFile(netLogPath, true))
 	defer naiveOutbound.Client().Engine().StopNetLog()
 
@@ -314,8 +317,9 @@ func TestNaiveSelfInsecureConcurrency(t *testing.T) {
 	naiveOut, ok := instance.Outbound().Outbound("naive-out")
 	require.True(t, ok)
 	naiveOutbound := naiveOut.(*naive.Outbound)
+	require.NoError(t, naiveOutbound.Client().Start())
 
-	netLogPath := "/tmp/naive_concurrency_netlog.json"
+	netLogPath := filepath.Join(t.TempDir(), "naive_concurrency_netlog.json")
 	require.True(t, naiveOutbound.Client().Engine().StartNetLogToFile(netLogPath, true))
 	defer naiveOutbound.Client().Engine().StopNetLog()
 
@@ -330,11 +334,21 @@ func TestNaiveSelfInsecureConcurrency(t *testing.T) {
 	// Verify NetLog contains multiple independent HTTP/2 sessions
 	logContent, err := os.ReadFile(netLogPath)
 	require.NoError(t, err)
-	logStr := string(logContent)
-
-	// Count HTTP2_SESSION_INITIALIZED events to verify connection pool isolation
-	// NetLog stores event types as numeric IDs, HTTP2_SESSION_INITIALIZED = 249
-	sessionCount := strings.Count(logStr, `"type":249`)
+	var netLog struct {
+		Constants struct {
+			LogEventTypes map[string]int
+		}
+		Events []struct{ Type int }
+	}
+	require.NoError(t, json.Unmarshal(logContent, &netLog))
+	eventType, ok := netLog.Constants.LogEventTypes["HTTP2_SESSION_INITIALIZED"]
+	require.True(t, ok, "NetLog must declare HTTP2_SESSION_INITIALIZED")
+	sessionCount := 0
+	for _, event := range netLog.Events {
+		if event.Type == eventType {
+			sessionCount++
+		}
+	}
 	require.GreaterOrEqual(t, sessionCount, 3,
 		"Expected at least 3 HTTP/2 sessions with insecure_concurrency=3. NetLog: %s", netLogPath)
 }
@@ -430,13 +444,14 @@ func TestNaiveSelfQUIC(t *testing.T) {
 
 func TestNaiveSelfQUICCongestionControl(t *testing.T) {
 	testCases := []struct {
-		name              string
-		congestionControl string
+		name     string
+		inbound  string
+		outbound string
 	}{
-		{"BBR", "bbr"},
-		{"BBR2", "bbr2"},
-		{"Cubic", "cubic"},
-		{"Reno", "reno"},
+		{"BBR", "bbr", "bbr"},
+		{"BBR2", "bbr", "bbr2"}, // BBRv2 is an outbound-only option.
+		{"Cubic", "cubic", "cubic"},
+		{"Reno", "reno", "reno"},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -470,7 +485,7 @@ func TestNaiveSelfQUICCongestionControl(t *testing.T) {
 								},
 							},
 							Network:               network.NetworkUDP,
-							QUICCongestionControl: tc.congestionControl,
+							QUICCongestionControl: tc.inbound,
 							InboundTLSOptionsContainer: option.InboundTLSOptionsContainer{
 								TLS: &option.InboundTLSOptions{
 									Enabled:         true,
@@ -497,7 +512,7 @@ func TestNaiveSelfQUICCongestionControl(t *testing.T) {
 							Username:              "sekai",
 							Password:              "password",
 							QUIC:                  true,
-							QUICCongestionControl: tc.congestionControl,
+							QUICCongestionControl: tc.outbound,
 							OutboundTLSOptionsContainer: option.OutboundTLSOptionsContainer{
 								TLS: &option.OutboundTLSOptions{
 									Enabled:     true,

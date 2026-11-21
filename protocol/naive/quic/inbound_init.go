@@ -2,6 +2,7 @@ package quic
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"time"
@@ -92,15 +93,28 @@ func init() {
 			},
 		}
 
+		done := make(chan struct{})
+		var closeErr error
 		go func() {
+			defer close(done)
 			sErr := h3Server.ServeListener(quicListener)
+			// No new connection handlers can enter after ServeListener returns.
+			closeErr = h3Server.Close()
 			udpConn.Close()
-			if sErr != nil && !E.IsClosedOrCanceled(sErr) {
+			if sErr != nil && !errors.Is(sErr, http.ErrServerClosed) && !E.IsClosedOrCanceled(sErr) {
 				logger.Error("http3 server closed: ", sErr)
 			}
 		}()
 
-		return quicListener, nil
+		return http3CloseFunc(func() error {
+			listenerErr := quicListener.Close()
+			<-done
+			return errors.Join(listenerErr, closeErr)
+		}), nil
 	}
 	naive.WrapError = qtls.WrapError
 }
+
+type http3CloseFunc func() error
+
+func (close http3CloseFunc) Close() error { return close() }

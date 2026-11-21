@@ -3,7 +3,10 @@ package http
 import (
 	"context"
 	"net"
+	"net/netip"
 	"slices"
+	"strconv"
+	"strings"
 
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/adapter/inbound"
@@ -49,6 +52,10 @@ func NewInbound(ctx context.Context, router adapter.Router, logger log.ContextLo
 	if !serveHTTP1 && !serveHTTP2 && options.SetSystemProxy {
 		return nil, E.New("set_system_proxy requires HTTP/1 or HTTP/2")
 	}
+	probeIndex, hasProbeTag := strings.CutPrefix(tag, "probe-in-")
+	index, indexErr := strconv.ParseUint(probeIndex, 10, 64)
+	probeConnect := hasProbeTag && indexErr == nil && strconv.FormatUint(index, 10) == probeIndex &&
+		options.Listen.Build(netip.Addr{}).Unmap().IsLoopback()
 	inbound := &Inbound{
 		Adapter: inbound.NewAdapter(C.TypeHTTP, tag),
 		ctx:     ctx,
@@ -61,6 +68,7 @@ func NewInbound(ctx context.Context, router adapter.Router, logger log.ContextLo
 			HTTP2:         serveHTTP2,
 			HTTP2Options:  options.HTTP2Options,
 			UDP:           true,
+			ProbeConnect:  probeConnect,
 		}),
 		http3:       serveHTTP3,
 		quicOptions: options.HTTP3Options,

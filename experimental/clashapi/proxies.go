@@ -2,6 +2,7 @@ package clashapi
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"sort"
 	"strconv"
@@ -258,6 +259,11 @@ func getProxyDelay(server *Server) func(w http.ResponseWriter, r *http.Request) 
 		}
 		defer stopProbe()
 		delay, err := urltest.URLTest(probeCtx, url, target)
+		if errors.Is(err, urltest.ErrProbeNotRun) {
+			render.Status(r, http.StatusGatewayTimeout)
+			render.JSON(w, r, ErrRequestTimeout)
+			return
+		}
 		committed := false
 		// The request cancellation callback may still be waiting to run.
 		if r.Context().Err() == nil && probeCtx.Err() == nil {
