@@ -568,9 +568,18 @@ jobs:
               go work edit -replace "github.com/sagernet/sing-tun=$source_dir/third_party/sing-tun"
               go test -mod=readonly -race -count=1 -timeout=10m -v \
                 -tags "$tags" -ldflags "$ldflags" \
-                -run '^TestWireGuardEndpointDataPlane$/^system=false$' ./test
-            ) | tee "$selection_dir/wireguard-integration-test.log"
+                -run '^TestWireGuardEndpointDataPlane$/^system=false$' ./test |
+                tee "$selection_dir/wireguard-integration-test.log"
+              cronet_module=github.com/sagernet/cronet-go/lib/linux_amd64
+              go mod download "$cronet_module"
+              cronet_dir="$(go list -m -f '{{.Dir}}' "$cronet_module")"
+              test -r "$cronet_dir/libcronet.so"
+              LD_LIBRARY_PATH="$cronet_dir" go test -mod=readonly -race -count=1 -timeout=10m -v \
+                -tags "$tags" -ldflags "$ldflags" -run '^TestNaiveSelf(ECH|InsecureConcurrency|QUIC)?$' ./test |
+                tee "$selection_dir/naive-integration-test.log"
+            )
             grep -Eq '^[[:space:]]*--- PASS: TestWireGuardEndpointDataPlane/system=false ' "$selection_dir/wireguard-integration-test.log"
+            grep -q '^--- PASS: TestNaiveSelfQUIC ' "$selection_dir/naive-integration-test.log"
             printf '%s\n' 'WireGuard integration: userspace raced; kernel TUN variant compiled.' >> "$GITHUB_STEP_SUMMARY"
           fi
           if [ -f "$selection_dir/sing-tun-selected" ]; then

@@ -1327,6 +1327,7 @@ func TestPatchPackagesPartitionActualModuleBoundaries(t *testing.T) {
 	}
 	paths = append(paths, fixtureFile(t, root, "common/tls/client.go", "package fixture\n"))
 	paths = append(paths, fixtureFile(t, root, "third_party/helper/helper.go", "package fixture\n"))
+	paths = append(paths, fixtureFile(t, root, "test/naive_self_test.go", "package fixture\n"))
 	plan, err := selectPatchPackages(root, append(slices.Clone(paths), paths[0], "README.md"))
 	if err != nil {
 		t.Fatal(err)
@@ -1351,8 +1352,8 @@ func TestPatchPackagesPartitionActualModuleBoundaries(t *testing.T) {
 				t.Fatal("SDK must retain the bounded runtime selection")
 			}
 		} else if owner == "test" {
-			if entry.FullValidation || !slices.Equal(entry.Packages, []string{"."}) || !slices.Equal(entry.ChangedPaths, []string{"test/wireguard_test.go"}) {
-				t.Fatalf("integration module lost the WireGuard selection: %+v", entry)
+			if entry.FullValidation || !slices.Equal(entry.Packages, []string{"."}) || !slices.Equal(entry.ChangedPaths, []string{"test/naive_self_test.go", "test/wireguard_test.go"}) {
+				t.Fatalf("integration module lost a supported test: %+v", entry)
 			}
 		} else if !entry.FullValidation || !slices.Equal(entry.Packages, []string{"./..."}) {
 			t.Fatalf("nested module lost full validation: %s", owner)
