@@ -68,6 +68,9 @@ func (g *URLTestGroup) requestCheckEpoch(ctx context.Context, force, wait bool, 
 	}
 	if !g.started || g.running || g.pause.IsDevicePaused() || g.pause.IsNetworkPaused() || !g.history.IsCurrent(epoch) {
 		g.access.Unlock()
+		if expected != nil {
+			return nil, urltest.ErrProbeNotRun
+		}
 		return make(map[string]uint16), nil
 	}
 	workerContext := ctx
@@ -121,7 +124,13 @@ func (g *URLTestGroup) runChecks(caller context.Context, force bool, epoch *urlt
 	defer release()
 	ownership := caller
 	for {
-		ctx, cancel := context.WithCancel(g.ctx)
+		var ctx context.Context
+		var cancel context.CancelFunc
+		if deadline, ok := caller.Deadline(); ok {
+			ctx, cancel = context.WithDeadline(g.ctx, deadline)
+		} else {
+			ctx, cancel = context.WithCancel(g.ctx)
+		}
 		ctx = adapter.ContextWithRuntimeOwnership(ctx, ownership)
 		if urltest.IsBackgroundProbe(caller) {
 			ctx = urltest.ContextWithBackgroundProbe(ctx)

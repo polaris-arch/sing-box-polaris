@@ -499,8 +499,12 @@ func (b *urlTestBatch) test(outbounds []adapter.Outbound, link string, interval 
 			}
 			b.checked[tag] = true
 			b.batch.Go(tag, func() (any, error) {
-				testCtx, cancel := context.WithTimeout(b.ctx, C.TCPTimeout)
-				defer cancel()
+				testCtx := b.ctx
+				if _, scoped := detour.(urltest.ScopedDialer); !scoped {
+					var cancel context.CancelFunc
+					testCtx, cancel = context.WithTimeout(testCtx, C.TCPTimeout)
+					defer cancel()
+				}
 				if !urlTestCanPublish(testCtx) {
 					return nil, nil
 				}
