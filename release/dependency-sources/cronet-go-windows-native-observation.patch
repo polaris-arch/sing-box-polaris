@@ -407,7 +407,7 @@
 @@ -52,0 +55,4 @@
 +	nativeOperations         int
 +	onIdle                   func()
-+	reserveEngines           func(int) (func(int), error)
++	reserveEngines           func(context.Context, int) (func(int), error)
 +	releaseEngines           func(int)
 @@ -54,0 +61 @@
 +	startError               error
@@ -419,7 +419,7 @@
 +	// error leaves the client retryable. On success, release returns slots
 +	// in one or more calls as unused slots or destroyed engines are freed.
 +	// Both callbacks must be nonblocking and may run under the lifecycle lock.
-+	ReserveEngines func(count int) (release func(int), err error)
++	ReserveEngines func(ctx context.Context, count int) (release func(int), err error)
 @@ -180,0 +196,2 @@
 +		onIdle:                   config.OnIdle,
 +		reserveEngines:           config.ReserveEngines,
@@ -427,11 +427,11 @@
 -func (c *NaiveClient) Start() (startResult error) {
 +// Start starts a new or prepared client without waiting for its first dial.
 +func (c *NaiveClient) Start() error {
-+	return c.start(false)
++	return c.start(c.ctx, false)
 +}
 +
 +// StartOnDemand validates custom roots before the first dial starts the engine.
-+func (c *NaiveClient) StartOnDemand() error {
++func (c *NaiveClient) StartOnDemand(ctx context.Context) error {
 @@ -186,10 +209,23 @@
 -	if !c.state.CompareAndSwap(uint32(clientStateCreated), uint32(clientStateStarting)) {
 -		state := clientState(c.state.Load())
@@ -451,7 +451,7 @@
 +		var release func(int)
 +		if c.reserveEngines != nil {
 +			var err error
-+			release, err = c.reserveEngines(1)
++			release, err = c.reserveEngines(ctx, 1)
 +			if err != nil {
 +				return err
 +			}
@@ -496,7 +496,7 @@
 +	}
 +}
 +
-+func (c *NaiveClient) start(onDemand bool) (startResult error) {
++func (c *NaiveClient) start(ctx context.Context, onDemand bool) (startResult error) {
 +	c.lifecycle.Lock()
 +	state := clientState(c.state.Load())
 +	if onDemand && state != clientStateDormant {
@@ -513,7 +513,7 @@
 +		engineCount = c.concurrency
 +	}
 +	if c.reserveEngines != nil {
-+		release, err := c.reserveEngines(engineCount)
++		release, err := c.reserveEngines(ctx, engineCount)
 +		if err != nil {
 +			c.lifecycle.Unlock()
 +			return err
@@ -561,7 +561,7 @@
 +		if err := c.ctx.Err(); err != nil {
 +			return nil, err
 +		}
-+		if err := c.start(true); err != nil {
++		if err := c.start(ctx, true); err != nil {
 +			return nil, err
 +		}
 +		state = clientState(c.state.Load())
@@ -656,10 +656,10 @@
 @@ -11,0 +17,2 @@
 +
 +	mDNS "github.com/miekg/dns"
-@@ -31,0 +39,185 @@
+@@ -31,0 +39,188 @@
 +func TestNaiveDormantClientControlsAndClose(t *testing.T) {
 +	c := lifecycleTestClient(clientStateCreated)
-+	if err := c.StartOnDemand(); err != nil {
++	if err := c.StartOnDemand(t.Context()); err != nil {
 +		t.Fatal(err)
 +	}
 +
@@ -706,7 +706,10 @@
 +				ServerAddress:           M.ParseSocksaddrHostPort("127.0.0.1", 443),
 +				TrustedRootCertificates: roots.pem,
 +				DNSResolver:             func(context.Context, *mDNS.Msg) *mDNS.Msg { return nil },
-+				ReserveEngines: func(count int) (func(int), error) {
++				ReserveEngines: func(ctx context.Context, count int) (func(int), error) {
++					if ctx != t.Context() {
++						t.Fatal("trusted root validation used the wrong admission context")
++					}
 +					if deny {
 +						return nil, quotaDenied
 +					}
@@ -722,11 +725,11 @@
 +					t.Error(err)
 +				}
 +			})
-+			if err := client.StartOnDemand(); !errors.Is(err, quotaDenied) || clientState(client.state.Load()) != clientStateCreated {
++			if err := client.StartOnDemand(t.Context()); !errors.Is(err, quotaDenied) || clientState(client.state.Load()) != clientStateCreated {
 +				t.Fatalf("scratch quota denial must leave the client created: state=%v err=%v", clientState(client.state.Load()), err)
 +			}
 +			deny = false
-+			err = client.StartOnDemand()
++			err = client.StartOnDemand(t.Context())
 +			if reserved != 1 || released != 1 {
 +				t.Fatalf("scratch engine accounting: reserved=%d released=%d", reserved, released)
 +			}
@@ -774,7 +777,7 @@
 +				TestForceSingleEngine:   tc.single,
 +				TrustedRootCertificates: tc.roots,
 +				DNSResolver:             func(context.Context, *mDNS.Msg) *mDNS.Msg { return nil },
-+				ReserveEngines: func(count int) (func(int), error) {
++				ReserveEngines: func(_ context.Context, count int) (func(int), error) {
 +					requests = append(requests, count)
 +					if deny {
 +						return nil, quotaDenied
@@ -793,7 +796,7 @@
 +
 +			wantState := clientStateCreated
 +			if tc.onDemand {
-+				if err := client.StartOnDemand(); err != nil {
++				if err := client.StartOnDemand(t.Context()); err != nil {
 +					t.Fatal(err)
 +				}
 +				wantState = clientStateDormant
@@ -842,12 +845,12 @@
 +	}
 +}
 +
-@@ -48,2 +240,2 @@
+@@ -48,2 +243,2 @@
 -	c.pending.Done()
 -	c.callbacks.Done()
 +	c.finishOperation(&c.pending)
 +	c.finishOperation(&c.callbacks)
-@@ -58,0 +251,38 @@
+@@ -58,0 +254,38 @@
 +func TestNaiveIdleSealWaitsForNativeWorkAndStreams(t *testing.T) {
 +	c := lifecycleTestClient(clientStateRunning)
 +	idle := make(chan struct{}, 1)
@@ -886,9 +889,9 @@
 +	}
 +}
 +
-@@ -120,0 +351 @@
+@@ -120,0 +354 @@
 +		released := 0
-@@ -126 +357,6 @@
+@@ -126 +360,6 @@
 -		}, func() { called = true })
 +		}, func() { called = true }, func(count int) {
 +			if !called {
@@ -896,7 +899,7 @@
 +			}
 +			released += count
 +		})
-@@ -129,0 +366,3 @@
+@@ -128,0 +368,3 @@
++		}
 +		if (success && released != 1) || (!success && released != 0) {
 +			t.Fatalf("success=%v released=%d", success, released)
-+		}

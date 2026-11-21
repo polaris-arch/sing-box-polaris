@@ -38,7 +38,7 @@ func awaitLifecycle(t *testing.T, done <-chan struct{}) {
 
 func TestNaiveDormantClientControlsAndClose(t *testing.T) {
 	c := lifecycleTestClient(clientStateCreated)
-	if err := c.StartOnDemand(); err != nil {
+	if err := c.StartOnDemand(t.Context()); err != nil {
 		t.Fatal(err)
 	}
 
@@ -85,7 +85,10 @@ func TestNaiveCustomRootsValidateBeforeDormancy(t *testing.T) {
 				ServerAddress:           M.ParseSocksaddrHostPort("127.0.0.1", 443),
 				TrustedRootCertificates: roots.pem,
 				DNSResolver:             func(context.Context, *mDNS.Msg) *mDNS.Msg { return nil },
-				ReserveEngines: func(count int) (func(int), error) {
+				ReserveEngines: func(ctx context.Context, count int) (func(int), error) {
+					if ctx != t.Context() {
+						t.Fatal("trusted root validation used the wrong admission context")
+					}
 					if deny {
 						return nil, quotaDenied
 					}
@@ -101,11 +104,11 @@ func TestNaiveCustomRootsValidateBeforeDormancy(t *testing.T) {
 					t.Error(err)
 				}
 			})
-			if err := client.StartOnDemand(); !errors.Is(err, quotaDenied) || clientState(client.state.Load()) != clientStateCreated {
+			if err := client.StartOnDemand(t.Context()); !errors.Is(err, quotaDenied) || clientState(client.state.Load()) != clientStateCreated {
 				t.Fatalf("scratch quota denial must leave the client created: state=%v err=%v", clientState(client.state.Load()), err)
 			}
 			deny = false
-			err = client.StartOnDemand()
+			err = client.StartOnDemand(t.Context())
 			if reserved != 1 || released != 1 {
 				t.Fatalf("scratch engine accounting: reserved=%d released=%d", reserved, released)
 			}
@@ -153,7 +156,7 @@ func TestNaiveEngineReservations(t *testing.T) {
 				TestForceSingleEngine:   tc.single,
 				TrustedRootCertificates: tc.roots,
 				DNSResolver:             func(context.Context, *mDNS.Msg) *mDNS.Msg { return nil },
-				ReserveEngines: func(count int) (func(int), error) {
+				ReserveEngines: func(_ context.Context, count int) (func(int), error) {
 					requests = append(requests, count)
 					if deny {
 						return nil, quotaDenied
@@ -172,7 +175,7 @@ func TestNaiveEngineReservations(t *testing.T) {
 
 			wantState := clientStateCreated
 			if tc.onDemand {
-				if err := client.StartOnDemand(); err != nil {
+				if err := client.StartOnDemand(t.Context()); err != nil {
 					t.Fatal(err)
 				}
 				wantState = clientStateDormant

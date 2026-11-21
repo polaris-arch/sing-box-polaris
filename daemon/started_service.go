@@ -1016,7 +1016,21 @@ func (s *StartedService) SelectOutbound(ctx context.Context, request *SelectOutb
 	if !isSelector {
 		return nil, status.Error(codes.InvalidArgument, "outbound is not a selector: "+request.GroupTag)
 	}
-	if !selector.SelectOutbound(request.OutboundTag) {
+	if err := ctx.Err(); err != nil {
+		return nil, status.FromContextError(err).Err()
+	}
+	var selected bool
+	if contextual, ok := selector.(interface {
+		SelectOutboundContext(context.Context, string) bool
+	}); ok {
+		selected = contextual.SelectOutboundContext(ctx, request.OutboundTag)
+	} else {
+		selected = selector.SelectOutbound(request.OutboundTag)
+	}
+	if !selected {
+		if err := ctx.Err(); err != nil {
+			return nil, status.FromContextError(err).Err()
+		}
 		return nil, status.Error(codes.NotFound, "outbound not found in selector: "+request.OutboundTag)
 	}
 	return &emptypb.Empty{}, nil
@@ -1057,8 +1071,13 @@ func (s *StartedService) SubscribeConnections(request *SubscribeConnectionsReque
 
 	connectionSnapshots := make(map[uuid.UUID]connectionSnapshot)
 	batch := connectionEventBatch{server: server, frame: &ConnectionEvents{Reset_: true}}
-	if server.Context().Value(boundedConnectionEventsKey{}) == true {
-		batch.limit = webConnectionEventFrameLimit
+	web := server.Context().Value(boundedConnectionEventsKey{}) == true
+	batchedNative := request.GetBatchFrames() && !web
+	if batchedNative {
+		batch.frame.SnapshotComplete = proto.Bool(false)
+	}
+	if web || batchedNative {
+		batch.limit = connectionEventFrameLimit
 		batch.size = proto.Size(batch.frame)
 	}
 	if err := s.buildInitialConnectionState(trafficManager, connectionSnapshots, batch.add); err != nil {
@@ -1066,6 +1085,19 @@ func (s *StartedService) SubscribeConnections(request *SubscribeConnectionsReque
 	}
 	if err := batch.send(); err != nil {
 		return err
+	}
+	if batchedNative {
+		if err := server.Context().Err(); err != nil {
+			return err
+		}
+		if boxService.closeStarted.Load() || boxService.ctx.Err() != nil {
+			return status.Error(codes.Unavailable, "no active instance")
+		}
+		if err := server.Send(&ConnectionEvents{SnapshotComplete: proto.Bool(true)}); err != nil {
+			return err
+		}
+		batch.frame.SnapshotComplete = nil
+		batch.size = 0
 	}
 
 	interval := time.Duration(request.Interval)
@@ -1115,7 +1147,7 @@ func (s *StartedService) SubscribeConnections(request *SubscribeConnectionsReque
 	}
 }
 
-const webConnectionEventFrameLimit = 1024 * 1024
+const connectionEventFrameLimit = 1024 * 1024
 
 type connectionEventBatch struct {
 	server grpc.ServerStreamingServer[ConnectionEvents]
@@ -1131,11 +1163,14 @@ func (b *connectionEventBatch) add(event *ConnectionEvent) error {
 		}
 		size := protowire.SizeTag(1) + protowire.SizeBytes(proto.Size(event))
 		if size > b.limit {
-			return status.Error(codes.ResourceExhausted, "connection event exceeds Web stream frame limit")
+			return status.Error(codes.ResourceExhausted, "connection event exceeds stream frame limit")
 		}
 		if size > b.limit-b.size {
 			if err := b.send(); err != nil {
 				return err
+			}
+			if size > b.limit-b.size {
+				return status.Error(codes.ResourceExhausted, "connection event exceeds stream frame limit")
 			}
 		}
 		b.size += size
@@ -1151,8 +1186,8 @@ func (b *connectionEventBatch) send() error {
 	if err := b.server.Send(b.frame); err != nil {
 		return err
 	}
-	b.frame = &ConnectionEvents{}
-	b.size = 0
+	b.frame = &ConnectionEvents{SnapshotComplete: b.frame.SnapshotComplete}
+	b.size = proto.Size(b.frame)
 	return nil
 }
 

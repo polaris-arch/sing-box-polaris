@@ -104,6 +104,105 @@ func TestNaiveColdProbePressureAndQueueDeadline(t *testing.T) {
 	}
 }
 
+func TestNaiveColdProbePreservesForegroundSlot(t *testing.T) {
+	active, _ := testWarmNaiveOutbound(t)
+	cold, _ := testWarmNaiveOutbound(t)
+	cold.CloseIdleConnections()
+	// Model an iOS cap of two on Linux with one warm user and one vacancy.
+	if extra := int(nativeEngineLimit()) - 2; extra > 0 {
+		release, err := reserveNativeEngines(t.Context(), extra)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { release(extra) })
+	}
+	ctx := t.Context()
+	background := urltest.ContextWithBackgroundProbe(ctx)
+	dst := M.ParseSocksaddrHostPort("example.org", 443)
+	if _, err := cold.DialContext(background, N.NetworkTCP, dst); !errors.Is(err, errNativeEngineCapacity) {
+		t.Fatalf("background CONNECT dial borrowed the foreground handoff slot: %v", err)
+	}
+	_, err := cold.WithURLTestDialer(background, func(_ context.Context, dialer N.Dialer) (uint16, error) {
+		return 0, dialer.(*naiveDialer).Start()
+	})
+	if !errors.Is(err, urltest.ErrProbeNotRun) || !errors.Is(err, errNativeEngineCapacity) {
+		t.Fatalf("background probe borrowed the foreground handoff slot: %v", err)
+	}
+	release, err := reserveNativeEngines(ctx, 1)
+	if err != nil {
+		t.Fatalf("foreground could not acquire the handoff slot: %v", err)
+	}
+	release(1)
+	delay, err := cold.WithURLTestDialer(ctx, func(probeCtx context.Context, dialer N.Dialer) (uint16, error) {
+		if _, bounded := probeCtx.Deadline(); !bounded {
+			t.Fatal("manual cold probe is missing a deadline")
+		}
+		if err := dialer.(*naiveDialer).Start(); err != nil {
+			return 0, err
+		}
+		if release, err := reserveNativeEngines(ctx, 1); !errors.Is(err, errNativeEngineCapacity) {
+			if release != nil {
+				release(1)
+			}
+			t.Fatalf("foreground admission exceeded the physical limit: %v", err)
+		}
+		return active.WithURLTestDialer(background, func(_ context.Context, dialer N.Dialer) (uint16, error) {
+			if dialer != active {
+				t.Fatal("warm probe did not reuse the active client at capacity")
+			}
+			return 17, nil
+		})
+	})
+	if delay != 17 || err != nil {
+		t.Fatalf("manual cold probe could not borrow the handoff slot: delay=%d, err=%v", delay, err)
+	}
+	release, err = reserveNativeEngines(ctx, 1)
+	if err != nil {
+		t.Fatalf("completed manual probe retained a physical engine slot: %v", err)
+	}
+	release(1)
+	canceled, cancel := context.WithCancel(ctx)
+	defer cancel()
+	_, err = urltest.URLTest(canceled, "https://example.org", cancelBeforeURLTestDial{cold, cancel})
+	if !errors.Is(err, urltest.ErrProbeNotRun) || !errors.Is(err, context.Canceled) {
+		t.Fatalf("pre-start cancellation was reported as a network attempt: %v", err)
+	}
+	release, err = reserveNativeEngines(ctx, 1)
+	if err != nil {
+		t.Fatalf("canceled probe retained an engine slot: %v", err)
+	}
+	release(1)
+}
+
+type cancelBeforeURLTestDial struct {
+	*Outbound
+	cancel context.CancelFunc
+}
+
+func (d cancelBeforeURLTestDial) WithURLTestDialer(ctx context.Context, test func(context.Context, N.Dialer) (uint16, error)) (uint16, error) {
+	return d.Outbound.WithURLTestDialer(ctx, func(ctx context.Context, dialer N.Dialer) (uint16, error) {
+		d.cancel()
+		return test(ctx, dialer)
+	})
+}
+
+func TestNaiveColdURLTestCancellationAfterNativeDial(t *testing.T) {
+	cold, _ := testWarmNaiveOutbound(t)
+	cold.CloseIdleConnections()
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	var dialed atomic.Bool
+	cold.clients.options.Dialer = naiveOutboundTestDialer{dial: func(context.Context) (net.Conn, error) {
+		dialed.Store(true)
+		cancel()
+		return nil, net.ErrClosed
+	}}
+	_, err := urltest.URLTest(ctx, "https://example.org", cold)
+	if !dialed.Load() || !errors.Is(err, context.Canceled) || errors.Is(err, urltest.ErrProbeNotRun) {
+		t.Fatalf("native dial cancellation classification: dialed=%t error=%v", dialed.Load(), err)
+	}
+}
+
 func TestNaiveOutboundSealedReceiverAndClientAccessor(t *testing.T) {
 	owner, err := runtimegraph.NewResourceOwner(context.Background(), adapter.RuntimeResourceID{Incarnation: "naive", Sequence: 1}, nil, func() error { return nil })
 	if err != nil {
@@ -197,7 +296,7 @@ func TestNaiveOutboundIdleClientRetiresAndReopens(t *testing.T) {
 	}
 	// Use up the physical engine budget while keeping the probe queue available.
 	slots := int(nativeEngineLimit())
-	release, err := reserveNativeEngines(slots)
+	release, err := reserveNativeEngines(ctx, slots)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -266,6 +365,11 @@ func TestNaiveOutboundIdleRetirementKeepsUncertainOwner(t *testing.T) {
 		close(stopped)
 	}()
 	naiveOutboundWait(t, entered)
+	callbackCtx, stopCallback := context.WithTimeout(context.WithValue(t.Context(), nativeCallbackKey{}, true), time.Second)
+	defer stopCallback()
+	if _, err := h.clients.acquire(callbackCtx, true); !errors.Is(err, errNativeEngineCapacity) {
+		t.Fatalf("native detour waited for idle retirement: %v", err)
+	}
 	ctx, cancel := context.WithCancel(t.Context())
 	waiting := make(chan error, 1)
 	go func() {

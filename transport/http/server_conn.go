@@ -6,9 +6,12 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"sync/atomic"
 	"time"
 
+	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/common/badhttp"
+	"github.com/sagernet/sing-box/common/urltest"
 	E "github.com/sagernet/sing/common/exceptions"
 	F "github.com/sagernet/sing/common/format"
 	M "github.com/sagernet/sing/common/metadata"
@@ -102,12 +105,51 @@ func (c *serverConn) serveConnect(ctx context.Context, request *http.Request, so
 	if !destination.IsValid() {
 		return c.reject(request, requestKeepAlive(request), http.StatusBadRequest, nil, E.New("invalid CONNECT target: ", request.URL.Host))
 	}
-	_, err := c.conn.Write([]byte(F.ToString("HTTP/", request.ProtoMajor, ".", request.ProtoMinor, " 200 Connection established\r\n\r\n")))
-	if err != nil {
-		return requestClose, E.Cause(err, "write response")
+	version := F.ToString("HTTP/", request.ProtoMajor, ".", request.ProtoMinor)
+	probeMode := request.Header.Get("X-Polaris-Probe")
+	probe := c.server.probeConnect && (probeMode == "1" || probeMode == "background") &&
+		M.SocksaddrFromNet(c.conn.RemoteAddr()).Addr.Unmap().IsLoopback()
+	if !probe {
+		if _, err := io.WriteString(c.conn, version+connectSuccess); err != nil {
+			return requestClose, E.Cause(err, "write response")
+		}
 	}
-	c.handler.NewConnectionEx(ctx, c.reader.cachedConn(c.conn), source, destination, c.onClose)
+	conn := c.reader.cachedConn(c.conn)
+	if probe {
+		conn = &probeConnectConn{Conn: conn, version: version}
+		if probeMode == "background" {
+			ctx = urltest.ContextWithBackgroundProbe(ctx)
+		}
+	}
+	c.handler.NewConnectionEx(ctx, conn, source, destination, c.onClose)
 	return requestHandedOff, nil
+}
+
+const connectSuccess = " 200 Connection established\r\n\r\n"
+
+type probeConnectConn struct {
+	net.Conn
+	version   string
+	responded atomic.Bool
+}
+
+func (c *probeConnectConn) HandshakeSuccess() error {
+	return c.writeResponse(connectSuccess)
+}
+
+func (c *probeConnectConn) HandshakeFailure(err error) error {
+	if errors.Is(err, adapter.ErrOutboundCapacity) {
+		return c.writeResponse(" 503 Service Unavailable\r\nX-Polaris-Probe-Outcome: budget-busy\r\nConnection: close\r\nContent-Length: 0\r\n\r\n")
+	}
+	return c.writeResponse(" 502 Bad Gateway\r\nConnection: close\r\nContent-Length: 0\r\n\r\n")
+}
+
+func (c *probeConnectConn) writeResponse(response string) error {
+	if !c.responded.CompareAndSwap(false, true) {
+		return nil
+	}
+	_, err := io.WriteString(c.Conn, c.version+response)
+	return err
 }
 
 func (c *serverConn) reject(request *http.Request, keepAlive bool, statusCode int, header http.Header, cause error) (requestResult, error) {

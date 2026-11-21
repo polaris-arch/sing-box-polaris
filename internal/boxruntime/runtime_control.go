@@ -1,13 +1,20 @@
 package boxruntime
 
 import (
+	"context"
 	"math"
 
 	"github.com/sagernet/sing-box/adapter"
 )
 
 func (c *runtimeCoordinator) SelectRuntimeOutbound(expected adapter.RuntimeResourceID, group, selected string) bool {
-	c.controlEffects.Lock()
+	return c.selectRuntimeOutbound(context.Background(), expected, group, selected)
+}
+
+func (c *runtimeCoordinator) selectRuntimeOutbound(ctx context.Context, expected adapter.RuntimeResourceID, group, selected string) bool {
+	if err := c.controlEffects.LockContext(ctx); err != nil {
+		return false
+	}
 	defer c.controlEffects.Unlock()
 	c.access.Lock()
 	if c.stopped || c.active.ControlRevision == math.MaxUint64 {
@@ -29,7 +36,7 @@ func (c *runtimeCoordinator) SelectRuntimeOutbound(expected adapter.RuntimeResou
 	selector, selectable := outbound.(interface {
 		RuntimeSelect(string) (bool, bool, func())
 	})
-	if !exists || !selectable {
+	if !exists || !selectable || ctx.Err() != nil {
 		c.access.Unlock()
 		lease.Release()
 		return false

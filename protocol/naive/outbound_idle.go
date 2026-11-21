@@ -122,6 +122,10 @@ func (s *naiveClientSlot) acquire(ctx context.Context, create bool) (*naiveClien
 		}
 		if done := s.retiring; done != nil {
 			s.mu.Unlock()
+			if ctx.Value(nativeCallbackKey{}) != nil {
+				// A synchronous detour must yield while a worker joins native I/O.
+				return nil, errNativeEngineCapacity
+			}
 			select {
 			case <-ctx.Done():
 				return nil, ctx.Err()
@@ -138,7 +142,7 @@ func (s *naiveClientSlot) acquire(ctx context.Context, create bool) (*naiveClien
 			var err error
 			instance, err = s.newIncarnation()
 			if err == nil {
-				err = instance.client.StartOnDemand()
+				err = instance.client.StartOnDemand(ctx)
 				if err == nil {
 					s.current = instance
 				} else {

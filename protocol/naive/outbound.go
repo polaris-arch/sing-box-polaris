@@ -14,6 +14,7 @@ import (
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/adapter/outbound"
 	"github.com/sagernet/sing-box/common/dialer"
+	"github.com/sagernet/sing-box/common/urltest"
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
@@ -245,7 +246,7 @@ func (h *Outbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 			return err
 		}
 		defer h.clients.release()
-		return instance.client.StartOnDemand()
+		return instance.client.StartOnDemand(h.ctx)
 	}()
 	if err != nil {
 		return errors.Join(err, h.runtime.close())
@@ -328,5 +329,8 @@ type naiveDialer struct {
 }
 
 func (d *naiveDialer) DialContext(ctx context.Context, network string, destination M.Socksaddr) (net.Conn, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, errors.Join(urltest.ErrProbeNotRun, err)
+	}
 	return d.NaiveClient.DialEarly(ctx, destination)
 }

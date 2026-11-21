@@ -54,7 +54,7 @@ type NaiveClient struct {
 	callbacks                sync.WaitGroup
 	nativeOperations         int
 	onIdle                   func()
-	reserveEngines           func(int) (func(int), error)
+	reserveEngines           func(context.Context, int) (func(int), error)
 	releaseEngines           func(int)
 	closed                   chan struct{}
 	closeError               error
@@ -118,7 +118,7 @@ type NaiveClientOptions struct {
 	// error leaves the client retryable. On success, release returns slots
 	// in one or more calls as unused slots or destroyed engines are freed.
 	// Both callbacks must be nonblocking and may run under the lifecycle lock.
-	ReserveEngines func(count int) (release func(int), err error)
+	ReserveEngines func(ctx context.Context, count int) (release func(int), err error)
 }
 
 func NewNaiveClient(config NaiveClientOptions) (*NaiveClient, error) {
@@ -200,11 +200,11 @@ func NewNaiveClient(config NaiveClientOptions) (*NaiveClient, error) {
 
 // Start starts a new or prepared client without waiting for its first dial.
 func (c *NaiveClient) Start() error {
-	return c.start(false)
+	return c.start(c.ctx, false)
 }
 
 // StartOnDemand validates custom roots before the first dial starts the engine.
-func (c *NaiveClient) StartOnDemand() error {
+func (c *NaiveClient) StartOnDemand(ctx context.Context) error {
 	c.lifecycle.Lock()
 	defer c.lifecycle.Unlock()
 	if state := clientState(c.state.Load()); state != clientStateCreated {
@@ -214,7 +214,7 @@ func (c *NaiveClient) StartOnDemand() error {
 		var release func(int)
 		if c.reserveEngines != nil {
 			var err error
-			release, err = c.reserveEngines(1)
+			release, err = c.reserveEngines(ctx, 1)
 			if err != nil {
 				return err
 			}
@@ -260,7 +260,7 @@ func startStateError(state clientState) error {
 	}
 }
 
-func (c *NaiveClient) start(onDemand bool) (startResult error) {
+func (c *NaiveClient) start(ctx context.Context, onDemand bool) (startResult error) {
 	c.lifecycle.Lock()
 	state := clientState(c.state.Load())
 	if onDemand && state != clientStateDormant {
@@ -277,7 +277,7 @@ func (c *NaiveClient) start(onDemand bool) (startResult error) {
 		engineCount = c.concurrency
 	}
 	if c.reserveEngines != nil {
-		release, err := c.reserveEngines(engineCount)
+		release, err := c.reserveEngines(ctx, engineCount)
 		if err != nil {
 			c.lifecycle.Unlock()
 			return err
@@ -590,7 +590,7 @@ func (c *NaiveClient) dialEarly(ctx context.Context, destination M.Socksaddr,
 		if err := c.ctx.Err(); err != nil {
 			return nil, err
 		}
-		if err := c.start(true); err != nil {
+		if err := c.start(ctx, true); err != nil {
 			return nil, err
 		}
 		state = clientState(c.state.Load())

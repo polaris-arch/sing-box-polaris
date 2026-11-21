@@ -2,6 +2,7 @@ package adapter
 
 import (
 	"context"
+	"errors"
 	"net/netip"
 
 	"github.com/sagernet/sing-box/log"
@@ -9,6 +10,9 @@ import (
 	"github.com/sagernet/sing-tun"
 	N "github.com/sagernet/sing/common/network"
 )
+
+// ErrOutboundCapacity means an outbound could not allocate local resources to start a dial.
+var ErrOutboundCapacity = errors.New("outbound engine capacity exhausted")
 
 // Note: for proxy protocols, outbound creates early connections by default.
 

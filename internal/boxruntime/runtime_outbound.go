@@ -170,6 +170,10 @@ func (s *runtimeSelector) SelectOutbound(tag string) bool {
 	return s.manager.coordinator.SelectRuntimeOutbound(s.id, s.tag, tag)
 }
 
+func (s *runtimeSelector) SelectOutboundContext(ctx context.Context, tag string) bool {
+	return s.manager.coordinator.selectRuntimeOutbound(ctx, s.id, s.tag, tag)
+}
+
 type runtimeURLTest struct{ *runtimeOutboundGroup }
 
 func (g *runtimeURLTest) URLTest(ctx context.Context) (map[string]uint16, error) {

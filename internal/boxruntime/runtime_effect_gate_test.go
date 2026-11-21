@@ -32,6 +32,56 @@ func TestRuntimePublicationEffectGateCancellationDoesNotConsumeOwnership(t *test
 	gate.Unlock()
 }
 
+type waitingSelectorContext struct {
+	context.Context
+	waiting func()
+}
+
+func (c waitingSelectorContext) Done() <-chan struct{} {
+	c.waiting()
+	return c.Context.Done()
+}
+
+func TestRuntimeSelectorCancellationWhileWaitingForControlEffect(t *testing.T) {
+	f := newRuntimeTestFixture(t, runtimeTestConfig(1080, "example.org"), nil)
+	f.start(t)
+	group, _ := f.box.Outbound().Outbound("select")
+	selector := group.(*runtimeSelector)
+	before := f.identity()
+	initial := selector.Selected("tcp").Tag()
+
+	f.box.runtime.controlEffects.Lock()
+	unlock := sync.OnceFunc(f.box.runtime.controlEffects.Unlock)
+	t.Cleanup(unlock)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	waiting := make(chan struct{})
+	result := make(chan bool, 1)
+	go func() {
+		result <- selector.SelectOutboundContext(waitingSelectorContext{
+			Context: ctx,
+			waiting: sync.OnceFunc(func() { close(waiting) }),
+		}, "b")
+	}()
+	runtimeTestWait(t, waiting, "selection waiting for prior control effect")
+	cancel()
+	select {
+	case accepted := <-result:
+		if accepted {
+			t.Fatal("canceled selection was accepted")
+		}
+	case <-runtimeTestContext(t).Done():
+		t.Fatal("canceled selection remained queued behind the prior control effect")
+	}
+	unlock()
+	if selected := selector.Selected("tcp").Tag(); selected != initial || f.identity() != before {
+		t.Fatalf("canceled request changed selector or revision: selected=%s, identity=%+v", selected, f.identity())
+	}
+	if !selector.SelectOutboundContext(runtimeTestContext(t), "b") || selector.Selected("tcp").Tag() != "b" {
+		t.Fatal("live selector operation could not follow canceled request")
+	}
+}
+
 func TestRuntimeApplyWaitingForControlEffectCancelsWithoutPublication(t *testing.T) {
 	barrier := newRuntimeTestBarrier()
 	count := 0

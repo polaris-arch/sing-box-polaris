@@ -444,13 +444,14 @@ func TestNaiveSelfQUIC(t *testing.T) {
 
 func TestNaiveSelfQUICCongestionControl(t *testing.T) {
 	testCases := []struct {
-		name              string
-		congestionControl string
+		name     string
+		inbound  string
+		outbound string
 	}{
-		{"BBR", "bbr"},
-		{"BBR2", "bbr2"},
-		{"Cubic", "cubic"},
-		{"Reno", "reno"},
+		{"BBR", "bbr", "bbr"},
+		{"BBR2", "bbr", "bbr2"}, // BBRv2 is an outbound-only option.
+		{"Cubic", "cubic", "cubic"},
+		{"Reno", "reno", "reno"},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -484,7 +485,7 @@ func TestNaiveSelfQUICCongestionControl(t *testing.T) {
 								},
 							},
 							Network:               network.NetworkUDP,
-							QUICCongestionControl: tc.congestionControl,
+							QUICCongestionControl: tc.inbound,
 							InboundTLSOptionsContainer: option.InboundTLSOptionsContainer{
 								TLS: &option.InboundTLSOptions{
 									Enabled:         true,
@@ -511,7 +512,7 @@ func TestNaiveSelfQUICCongestionControl(t *testing.T) {
 							Username:              "sekai",
 							Password:              "password",
 							QUIC:                  true,
-							QUICCongestionControl: tc.congestionControl,
+							QUICCongestionControl: tc.outbound,
 							OutboundTLSOptionsContainer: option.OutboundTLSOptionsContainer{
 								TLS: &option.OutboundTLSOptions{
 									Enabled:     true,

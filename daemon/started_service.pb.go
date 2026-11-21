@@ -1084,8 +1084,10 @@ func (x *ClashModeStatus) GetCurrentMode() string {
 }
 
 type SubscribeConnectionsRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Interval      int64                  `protobuf:"varint,1,opt,name=interval,proto3" json:"interval,omitempty"`
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Interval int64                  `protobuf:"varint,1,opt,name=interval,proto3" json:"interval,omitempty"`
+	// Opt in to bounded native frames and an explicit end to the initial reset.
+	BatchFrames   bool `protobuf:"varint,2,opt,name=batchFrames,proto3" json:"batchFrames,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1125,6 +1127,13 @@ func (x *SubscribeConnectionsRequest) GetInterval() int64 {
 		return x.Interval
 	}
 	return 0
+}
+
+func (x *SubscribeConnectionsRequest) GetBatchFrames() bool {
+	if x != nil {
+		return x.BatchFrames
+	}
+	return false
 }
 
 type ConnectionEvent struct {
@@ -1212,11 +1221,14 @@ func (x *ConnectionEvent) GetClosedAt() int64 {
 }
 
 type ConnectionEvents struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Events        []*ConnectionEvent     `protobuf:"bytes,1,rep,name=events,proto3" json:"events,omitempty"`
-	Reset_        bool                   `protobuf:"varint,2,opt,name=reset,proto3" json:"reset,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Events []*ConnectionEvent     `protobuf:"bytes,1,rep,name=events,proto3" json:"events,omitempty"`
+	Reset_ bool                   `protobuf:"varint,2,opt,name=reset,proto3" json:"reset,omitempty"`
+	// In a batched snapshot, data frames carry false and only the first carries reset.
+	// An empty frame with true commits the snapshot. Deltas and legacy frames omit it.
+	SnapshotComplete *bool `protobuf:"varint,3,opt,name=snapshotComplete,proto3,oneof" json:"snapshotComplete,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *ConnectionEvents) Reset() {
@@ -1259,6 +1271,13 @@ func (x *ConnectionEvents) GetEvents() []*ConnectionEvent {
 func (x *ConnectionEvents) GetReset_() bool {
 	if x != nil {
 		return x.Reset_
+	}
+	return false
+}
+
+func (x *ConnectionEvents) GetSnapshotComplete() bool {
+	if x != nil && x.SnapshotComplete != nil {
+		return *x.SnapshotComplete
 	}
 	return false
 }
@@ -7808,9 +7827,10 @@ const file_daemon_started_service_proto_rawDesc = "" +
 	"\x04mode\x18\x03 \x01(\tR\x04mode\"O\n" +
 	"\x0fClashModeStatus\x12\x1a\n" +
 	"\bmodeList\x18\x01 \x03(\tR\bmodeList\x12 \n" +
-	"\vcurrentMode\x18\x02 \x01(\tR\vcurrentMode\"9\n" +
+	"\vcurrentMode\x18\x02 \x01(\tR\vcurrentMode\"[\n" +
 	"\x1bSubscribeConnectionsRequest\x12\x1a\n" +
-	"\binterval\x18\x01 \x01(\x03R\binterval\"\xea\x01\n" +
+	"\binterval\x18\x01 \x01(\x03R\binterval\x12 \n" +
+	"\vbatchFrames\x18\x02 \x01(\bR\vbatchFrames\"\xea\x01\n" +
 	"\x0fConnectionEvent\x12/\n" +
 	"\x04type\x18\x01 \x01(\x0e2\x1b.daemon.ConnectionEventTypeR\x04type\x12\x0e\n" +
 	"\x02id\x18\x02 \x01(\tR\x02id\x122\n" +
@@ -7819,10 +7839,12 @@ const file_daemon_started_service_proto_rawDesc = "" +
 	"connection\x12 \n" +
 	"\vuplinkDelta\x18\x04 \x01(\x03R\vuplinkDelta\x12$\n" +
 	"\rdownlinkDelta\x18\x05 \x01(\x03R\rdownlinkDelta\x12\x1a\n" +
-	"\bclosedAt\x18\x06 \x01(\x03R\bclosedAt\"Y\n" +
+	"\bclosedAt\x18\x06 \x01(\x03R\bclosedAt\"\x9f\x01\n" +
 	"\x10ConnectionEvents\x12/\n" +
 	"\x06events\x18\x01 \x03(\v2\x17.daemon.ConnectionEventR\x06events\x12\x14\n" +
-	"\x05reset\x18\x02 \x01(\bR\x05reset\"\x95\x05\n" +
+	"\x05reset\x18\x02 \x01(\bR\x05reset\x12/\n" +
+	"\x10snapshotComplete\x18\x03 \x01(\bH\x00R\x10snapshotComplete\x88\x01\x01B\x13\n" +
+	"\x11_snapshotComplete\"\x95\x05\n" +
 	"\n" +
 	"Connection\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
@@ -8696,6 +8718,7 @@ func file_daemon_started_service_proto_init() {
 	if File_daemon_started_service_proto != nil {
 		return
 	}
+	file_daemon_started_service_proto_msgTypes[16].OneofWrappers = []any{}
 	file_daemon_started_service_proto_msgTypes[38].OneofWrappers = []any{
 		(*TailscaleSSHClientMessage_Start)(nil),
 		(*TailscaleSSHClientMessage_Input)(nil),

@@ -213,8 +213,8 @@ func URLTest(ctx context.Context, link string, detour N.Dialer) (uint16, error) 
 			ctx, cancel := context.WithTimeout(ctx, C.TCPTimeout)
 			defer cancel()
 			delay, err := urlTest(ctx, link, dialer)
-			if ctx.Err() != nil {
-				return 0, ctx.Err()
+			if ctxErr := ctx.Err(); ctxErr != nil && !errors.Is(err, ErrProbeNotRun) {
+				return 0, ctxErr
 			}
 			return delay, err
 		})

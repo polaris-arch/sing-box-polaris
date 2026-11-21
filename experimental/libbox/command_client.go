@@ -19,6 +19,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -545,24 +546,68 @@ func (c *CommandClient) handleClashModeStream(client daemon.StartedServiceClient
 }
 
 func (c *CommandClient) handleConnectionsStream(client daemon.StartedServiceClient, ctx context.Context) {
-	interval := c.options.StatusInterval
-
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	stream, err := client.SubscribeConnections(ctx, &daemon.SubscribeConnectionsRequest{
-		Interval: interval,
+		Interval:    c.options.StatusInterval,
+		BatchFrames: true,
 	})
 	if err != nil {
 		c.handler.Disconnected(E.Cause(err, "subscribe connections").Error())
 		return
 	}
 
+	reset, err := readConnectionEventReset(stream.Recv)
+	if err != nil {
+		c.handler.Disconnected(E.Cause(err, "connections stream recv").Error())
+		return
+	}
+	c.handler.WriteConnectionEvents(connectionEventsFromGRPC(reset))
+
 	for {
 		events, err := stream.Recv()
+		if err == nil && events.SnapshotComplete != nil {
+			err = status.Error(codes.DataLoss, "unexpected connection snapshot frame")
+		}
 		if err != nil {
 			c.handler.Disconnected(E.Cause(err, "connections stream recv").Error())
 			return
 		}
 		libboxEvents := connectionEventsFromGRPC(events)
 		c.handler.WriteConnectionEvents(libboxEvents)
+	}
+}
+
+func readConnectionEventReset(recv func() (*daemon.ConnectionEvents, error)) (*daemon.ConnectionEvents, error) {
+	reset, err := recv()
+	if err != nil || reset.SnapshotComplete == nil {
+		return reset, err
+	}
+	if !reset.Reset_ || reset.GetSnapshotComplete() {
+		return nil, status.Error(codes.DataLoss, "invalid connection snapshot start")
+	}
+	const maxSnapshotBytes = 64 * 1024 * 1024
+	size := proto.Size(reset)
+	for {
+		frame, err := recv()
+		if err != nil {
+			return nil, err
+		}
+		if frame.SnapshotComplete == nil || frame.Reset_ {
+			return nil, status.Error(codes.DataLoss, "invalid connection snapshot continuation")
+		}
+		if frame.GetSnapshotComplete() && len(frame.Events) == 0 {
+			reset.SnapshotComplete = nil
+			return reset, nil
+		}
+		if frame.GetSnapshotComplete() || len(frame.Events) == 0 {
+			return nil, status.Error(codes.DataLoss, "invalid connection snapshot data")
+		}
+		size += proto.Size(frame)
+		if size > maxSnapshotBytes {
+			return nil, status.Error(codes.ResourceExhausted, "connection snapshot exceeds its byte limit")
+		}
+		reset.Events = append(reset.Events, frame.Events...)
 	}
 }
 
