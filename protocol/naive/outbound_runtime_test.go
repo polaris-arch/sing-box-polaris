@@ -15,6 +15,7 @@ import (
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/common/urltest"
 	"github.com/sagernet/sing-box/internal/runtimegraph"
+	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-tun"
 	M "github.com/sagernet/sing/common/metadata"
 	N "github.com/sagernet/sing/common/network"
@@ -152,7 +153,12 @@ func testWarmNaiveOutbound(t *testing.T) (*Outbound, *naiveClientIncarnation) {
 	if err = first.client.Start(); err != nil {
 		t.Fatal(err)
 	}
-	return &Outbound{runtime: owner, clients: clients, uotClient: &uot.Client{Dialer: clients}}, first
+	return &Outbound{
+		runtime:   owner,
+		logger:    log.NewNOPFactory().Logger(),
+		clients:   clients,
+		uotClient: &uot.Client{Dialer: clients},
+	}, first
 }
 
 func TestNaiveOutboundIdleClientRetiresAndReopens(t *testing.T) {
