@@ -3,6 +3,7 @@ package urltest
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"net"
 	"net/http"
 	"net/url"
@@ -185,6 +186,20 @@ func (s *HistoryStorage) Close() error {
 	s.access.Unlock()
 	epoch.cancel()
 	return nil
+}
+
+// ErrProbeNotRun reports that no network attempt was made. Keep the last result.
+var ErrProbeNotRun = errors.New("URL test was not run")
+
+type backgroundProbeKey struct{}
+
+func ContextWithBackgroundProbe(ctx context.Context) context.Context {
+	return context.WithValue(ctx, backgroundProbeKey{}, true)
+}
+
+func IsBackgroundProbe(ctx context.Context) bool {
+	background, _ := ctx.Value(backgroundProbeKey{}).(bool)
+	return background
 }
 
 func URLTest(ctx context.Context, link string, detour N.Dialer) (uint16, error) {

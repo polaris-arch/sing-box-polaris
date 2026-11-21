@@ -13,7 +13,9 @@ import (
 
 	"github.com/sagernet/cronet-go"
 	"github.com/sagernet/sing-box/adapter"
+	"github.com/sagernet/sing-box/common/urltest"
 	"github.com/sagernet/sing-box/internal/runtimegraph"
+	"github.com/sagernet/sing-tun"
 	M "github.com/sagernet/sing/common/metadata"
 	N "github.com/sagernet/sing/common/network"
 
@@ -72,6 +74,29 @@ func naiveOutboundWait(t *testing.T, ch <-chan struct{}) {
 	case <-ch:
 	case <-time.After(5 * time.Second):
 		t.Fatal("completion barrier did not finish")
+	}
+}
+
+func TestNaiveColdProbePressureAndQueueDeadline(t *testing.T) {
+	background := urltest.ContextWithBackgroundProbe(t.Context())
+	for _, level := range []tun.MemoryPressure{tun.MemoryPressureNone, tun.MemoryPressureWarning, tun.MemoryPressureCritical} {
+		pressure := func() tun.MemoryPressure { return level }
+		if deferColdProbe(t.Context(), pressure) || deferColdProbe(background, pressure) != (level != tun.MemoryPressureNone) {
+			t.Fatalf("unexpected cold probe admission at pressure %d", level)
+		}
+	}
+	if deferColdProbe(background, nil) {
+		t.Fatal("missing pressure monitor blocked a cold probe")
+	}
+	if !probeClients.TryAcquire(10) {
+		t.Fatal("could not fill the cold probe queue")
+	}
+	defer probeClients.Release(10)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Millisecond)
+	defer cancel()
+	err := acquireColdProbe(ctx)
+	if !errors.Is(err, urltest.ErrProbeNotRun) || !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("queue expiry was not reported as an unattempted probe: %v", err)
 	}
 }
 

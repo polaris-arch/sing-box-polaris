@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"context"
+	"errors"
 	"net/netip"
 	"os"
 	"runtime"
@@ -938,7 +939,7 @@ func (s *StartedService) URLTest(ctx context.Context, request *URLTestRequest) (
 				return
 			}
 			delay, err := urltest.URLTest(probe.Context(), "", target)
-			if probe.Context().Err() != nil {
+			if probe.Context().Err() != nil || errors.Is(err, urltest.ErrProbeNotRun) {
 				return
 			}
 			var history *adapter.URLTestHistory
@@ -987,7 +988,7 @@ func (s *StartedService) URLTest(ctx context.Context, request *URLTestRequest) (
 		go func() {
 			defer cancel()
 			t, err := urltest.URLTest(probeCtx, "", target)
-			if probeCtx.Err() != nil {
+			if probeCtx.Err() != nil || errors.Is(err, urltest.ErrProbeNotRun) {
 				return
 			}
 			if err != nil {

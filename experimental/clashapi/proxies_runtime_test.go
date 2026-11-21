@@ -270,3 +270,22 @@ func TestProxyDelayCanceledRequestPreservesHistoryBeforeCancellationCallback(t *
 		})
 	}
 }
+
+func TestProxyDelayQueueExpiryPreservesHistory(t *testing.T) {
+	history := urltest.NewHistoryStorage()
+	defer history.Close()
+	outbound := &runtimeProxyOutbound{dial: func(ctx context.Context) (net.Conn, error) {
+		if urltest.IsBackgroundProbe(ctx) {
+			t.Error("manual Clash probe was marked as background")
+		}
+		return nil, errors.Join(urltest.ErrProbeNotRun, context.DeadlineExceeded)
+	}}
+	server := &Server{ctx: t.Context(), outbound: &runtimeProxyManager{actual: outbound}, urlTestHistory: history}
+	history.StoreIfCurrent(history.Epoch(), "node", &adapter.URLTestHistory{Delay: 10})
+	ctx := context.WithValue(t.Context(), CtxKeyProxy, outbound)
+	recorder := httptest.NewRecorder()
+	getProxyDelay(server)(recorder, httptest.NewRequest(http.MethodGet, "/delay?timeout=30000", nil).WithContext(ctx))
+	if got := history.LoadURLTestHistory("node"); recorder.Code != http.StatusGatewayTimeout || got == nil || got.Delay != 10 {
+		t.Fatalf("queue expiry changed previous history: status=%d, history=%v", recorder.Code, got)
+	}
+}

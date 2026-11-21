@@ -49,6 +49,108 @@ func awaitEpochSignal(t *testing.T, signal <-chan struct{}) {
 	}
 }
 
+func TestURLTestDeferredProbePreservesHistoryAndSelection(t *testing.T) {
+	g, history, _ := epochTestGroup(t)
+	g.started = true
+	current := g.outbounds[0]
+	alternate := &epochTestOutbound{tag: "alternate"}
+	g.outbounds = append(g.outbounds, alternate)
+	g.selection.Store(&urlTestSelection{tcp: current, udp: current})
+	history.StoreIfCurrent(history.Epoch(), current.Tag(), &adapter.URLTestHistory{Delay: 100})
+	g.probe = func(ctx context.Context, _ string, dialer N.Dialer) (uint16, error) {
+		if dialer != current {
+			return 1, nil
+		}
+		if urltest.IsBackgroundProbe(ctx) {
+			return 0, errors.Join(urltest.ErrProbeNotRun, context.DeadlineExceeded)
+		}
+		return 0, errors.New("injected network failure")
+	}
+	background := urltest.ContextWithBackgroundProbe(g.ctx)
+	values, err := g.requestCheck(background, true, true)
+	if !errors.Is(err, urltest.ErrProbeNotRun) || values[alternate.Tag()] != 1 {
+		t.Fatalf("deferred pass: %v, %v", values, err)
+	}
+	if got := history.LoadURLTestHistory(current.Tag()); got == nil || got.Delay != 100 || g.selected().tcp != current {
+		t.Fatalf("deferred probe changed its history or selection: %v, %v", got, g.selected().tcp)
+	}
+	if _, err := g.URLTest(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if history.LoadURLTestHistory(current.Tag()) != nil || g.selected().tcp != alternate {
+		t.Fatal("real network failure did not update history and selection")
+	}
+}
+
+func TestURLTestCoalescedExplicitProbeKeepsItsOrigin(t *testing.T) {
+	g, _, _ := epochTestGroup(t)
+	origins := make(chan bool, 2)
+	release := make(chan struct{})
+	var releaseOnce sync.Once
+	unblock := func() { releaseOnce.Do(func() { close(release) }) }
+	t.Cleanup(unblock)
+	var calls atomic.Int32
+	g.probe = func(ctx context.Context, _ string, _ N.Dialer) (uint16, error) {
+		origins <- urltest.IsBackgroundProbe(ctx)
+		if calls.Add(1) == 1 {
+			<-release
+			return 0, urltest.ErrProbeNotRun
+		}
+		return 1, nil
+	}
+	nextOrigin := func() bool {
+		select {
+		case background := <-origins:
+			return background
+		case <-time.After(2 * time.Second):
+			t.Fatal("missing test probe")
+			return false
+		}
+	}
+	g.PostStart()
+	if !nextOrigin() {
+		t.Fatal("startup probe was not marked as background")
+	}
+	if _, err := g.URLTest(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	_, _ = g.requestCheck(urltest.ContextWithBackgroundProbe(g.ctx), true, false)
+	unblock()
+	if nextOrigin() {
+		t.Fatal("coalesced explicit probe lost its origin")
+	}
+}
+
+func TestNestedURLTestPropagatesBackgroundDeferral(t *testing.T) {
+	parent, root, _ := epochTestGroup(t)
+	parent.started = true
+	history := urltest.NewIncarnationHistory(root)
+	t.Cleanup(func() { _ = history.Close() })
+	ctx := service.ContextWithPtr(parent.ctx, history)
+	child, err := NewURLTestGroup(ctx, nil, parent.logger, parent.outbounds, "", time.Hour, 1, 2*time.Hour, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = child.Close() })
+	child.started = true
+	child.probe = func(ctx context.Context, _ string, _ N.Dialer) (uint16, error) {
+		if urltest.IsBackgroundProbe(ctx) {
+			return 0, urltest.ErrProbeNotRun
+		}
+		return 1, nil
+	}
+	tag := parent.outbounds[0].Tag()
+	parent.outbounds = []adapter.Outbound{&URLTest{group: child}}
+	root.StoreIfCurrent(root.Epoch(), tag, &adapter.URLTestHistory{Delay: 7})
+	history.StoreIfCurrent(history.Epoch(), tag, &adapter.URLTestHistory{Delay: 8})
+	if _, err = parent.requestCheck(urltest.ContextWithBackgroundProbe(parent.ctx), true, true); !errors.Is(err, urltest.ErrProbeNotRun) {
+		t.Fatalf("nested background result: %v", err)
+	}
+	if got := root.LoadURLTestHistory(tag); got == nil || got.Delay != 7 {
+		t.Fatalf("deferred nested probe changed parent history: %v", got)
+	}
+}
+
 func TestURLTestActualProbeDrainAndCoalescedEpoch(t *testing.T) {
 	g, history, _ := epochTestGroup(t)
 	firstEntered, firstRelease := make(chan struct{}), make(chan struct{})

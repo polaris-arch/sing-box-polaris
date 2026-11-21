@@ -13,7 +13,11 @@ import (
 	"github.com/sagernet/sing-box/adapter/outbound"
 	"github.com/sagernet/sing-box/common/httpclient"
 	"github.com/sagernet/sing-box/common/tls"
+	"github.com/sagernet/sing-box/common/urltest"
+	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/dns"
+	"github.com/sagernet/sing-box/service/oomkiller"
+	"github.com/sagernet/sing-tun"
 	M "github.com/sagernet/sing/common/metadata"
 	N "github.com/sagernet/sing/common/network"
 
@@ -24,6 +28,19 @@ import (
 // Independent URLTest groups and management requests share the native startup
 // budget even when each group limits its own workers.
 var probeClients = semaphore.NewWeighted(10)
+
+func deferColdProbe(ctx context.Context, pressure func() tun.MemoryPressure) bool {
+	return urltest.IsBackgroundProbe(ctx) && pressure != nil && pressure() != tun.MemoryPressureNone
+}
+
+func acquireColdProbe(ctx context.Context) error {
+	queueCtx, cancel := context.WithTimeout(ctx, C.TCPTimeout)
+	defer cancel()
+	if err := probeClients.Acquire(queueCtx, 1); err != nil {
+		return errors.Join(urltest.ErrProbeNotRun, err)
+	}
+	return nil
+}
 
 // Each immutable outbound owns its native client, callbacks and physical
 // carriers. The composed Cronet Close is the actual operation/callback/proxy/
@@ -75,7 +92,11 @@ func (h *Outbound) WithURLTestDialer(ctx context.Context, test func(context.Cont
 	if !h.client.IsDormant() {
 		return test(ctx, h)
 	}
-	if err := probeClients.Acquire(ctx, 1); err != nil {
+	pressure := oomkiller.MemoryPressure(h.ctx)
+	if deferColdProbe(ctx, pressure) {
+		return 0, urltest.ErrProbeNotRun
+	}
+	if err := acquireColdProbe(ctx); err != nil {
 		return 0, err
 	}
 	defer probeClients.Release(1)
@@ -104,7 +125,10 @@ func (h *Outbound) WithURLTestDialer(ctx context.Context, test func(context.Cont
 		cancel()
 	}
 	if err = ctx.Err(); err != nil {
-		return 0, err
+		return 0, errors.Join(urltest.ErrProbeNotRun, err)
+	}
+	if deferColdProbe(ctx, pressure) {
+		return 0, urltest.ErrProbeNotRun
 	}
 
 	probe := newOutboundRuntime(h.ctx)

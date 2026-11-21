@@ -56,8 +56,11 @@ func (g *URLTestGroup) requestCheckEpoch(ctx context.Context, force, wait bool, 
 		return nil, urltest.ErrStaleHistory
 	}
 	required := g.pendingForce
+	explicit := !urltest.IsBackgroundProbe(ctx)
 	if force {
 		g.pendingForce = true
+		// A subsequent wake or interface event must not demote an explicit request.
+		g.pendingExplicit = g.pendingExplicit || explicit
 	}
 	epoch := expected
 	if epoch == nil {
@@ -70,6 +73,9 @@ func (g *URLTestGroup) requestCheckEpoch(ctx context.Context, force, wait bool, 
 	workerContext := ctx
 	if required {
 		workerContext = adapter.ContextWithRuntimeOwnership(g.ctx, ctx)
+		if !explicit && !g.pendingExplicit {
+			workerContext = urltest.ContextWithBackgroundProbe(workerContext)
+		}
 	}
 	// External manual probes transfer their live graph/receiver continuation
 	// before the worker is published. Internal ticker/startup work is already
@@ -91,6 +97,7 @@ func (g *URLTestGroup) requestCheckEpoch(ctx context.Context, force, wait bool, 
 	}
 	force = force || g.pendingForce
 	g.pendingForce = false
+	g.pendingExplicit = false
 	g.running = true
 	g.workers.Add(1)
 	result := make(chan groupCheckResult, 1)
@@ -116,6 +123,9 @@ func (g *URLTestGroup) runChecks(caller context.Context, force bool, epoch *urlt
 	for {
 		ctx, cancel := context.WithCancel(g.ctx)
 		ctx = adapter.ContextWithRuntimeOwnership(ctx, ownership)
+		if urltest.IsBackgroundProbe(caller) {
+			ctx = urltest.ContextWithBackgroundProbe(ctx)
+		}
 		passCaller := caller
 		ctx = context.WithValue(ctx, urlTestCallerGuardKey{}, func() bool { return urlTestCanPublish(passCaller) })
 		stop := context.AfterFunc(caller, cancel)
@@ -128,9 +138,9 @@ func (g *URLTestGroup) runChecks(caller context.Context, force bool, epoch *urlt
 			cancel()
 		}
 		g.access.Unlock()
-		values := urlTestOutbounds(ctx, g.outbound, g.history, g.logger, g.outbounds, g.link, g.interval, force, epoch, g)
+		values, deferred := urlTestOutbounds(ctx, g.outbound, g.history, g.logger, g.outbounds, g.link, g.interval, force, epoch, g)
 		current := urlTestCanPublish(ctx)
-		if current {
+		if current && !deferred {
 			g.performUpdateCheckEpochContext(ctx, epoch)
 		}
 		current = urlTestCanPublish(ctx)
@@ -143,7 +153,11 @@ func (g *URLTestGroup) runChecks(caller context.Context, force bool, epoch *urlt
 			values = make(map[string]uint16)
 		}
 		if result != nil {
-			result <- groupCheckResult{values: values}
+			var err error
+			if valid && deferred {
+				err = urltest.ErrProbeNotRun
+			}
+			result <- groupCheckResult{values: values, err: err}
 			result = nil
 		}
 		epoch = g.history.Epoch()
@@ -152,9 +166,13 @@ func (g *URLTestGroup) runChecks(caller context.Context, force bool, epoch *urlt
 			g.access.Unlock()
 			return
 		}
-		g.pendingForce = false
-		g.access.Unlock()
 		caller = g.ctx
+		if !g.pendingExplicit {
+			caller = urltest.ContextWithBackgroundProbe(caller)
+		}
+		g.pendingForce = false
+		g.pendingExplicit = false
+		g.access.Unlock()
 		force = true
 	}
 }
@@ -185,7 +203,7 @@ func (g *URLTestGroup) pauseChanged(event int) {
 		cancel()
 	}
 	if !paused && (event == pause.EventDeviceWake || event == pause.EventNetworkWake) {
-		_, _ = g.requestCheck(g.ctx, true, false)
+		_, _ = g.requestCheck(urltest.ContextWithBackgroundProbe(g.ctx), true, false)
 	}
 }
 
@@ -198,7 +216,7 @@ func (g *URLTestGroup) PostStart() {
 	g.started = true
 	g.lastActive.Store(time.Now())
 	g.access.Unlock()
-	_, _ = g.requestCheck(g.ctx, false, false)
+	_, _ = g.requestCheck(urltest.ContextWithBackgroundProbe(g.ctx), false, false)
 }
 
 func (g *URLTestGroup) Touch() {
@@ -232,6 +250,7 @@ func (g *URLTestGroup) Close() error {
 	}
 	g.closed = true
 	g.pendingForce = false
+	g.pendingExplicit = false
 	if g.ticker != nil {
 		g.ticker.Stop()
 		g.ticker = nil
