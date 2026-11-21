@@ -6,6 +6,8 @@ import (
 	"errors"
 	"net"
 	"net/http/httptest"
+	"runtime"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -75,11 +77,21 @@ func TestNaiveCustomRootsValidateBeforeDormancy(t *testing.T) {
 		{name: "invalid", pem: "invalid certificate", invalid: true},
 	} {
 		t.Run(roots.name, func(t *testing.T) {
+			quotaDenied := errors.New("engine quota denied")
+			deny := true
+			var reserved, released int
 			client, err := NewNaiveClient(NaiveClientOptions{
 				Context:                 t.Context(),
 				ServerAddress:           M.ParseSocksaddrHostPort("127.0.0.1", 443),
 				TrustedRootCertificates: roots.pem,
 				DNSResolver:             func(context.Context, *mDNS.Msg) *mDNS.Msg { return nil },
+				ReserveEngines: func(count int) (func(int), error) {
+					if deny {
+						return nil, quotaDenied
+					}
+					reserved += count
+					return func(count int) { released += count }, nil
+				},
 			})
 			if err != nil {
 				t.Fatal(err)
@@ -89,7 +101,14 @@ func TestNaiveCustomRootsValidateBeforeDormancy(t *testing.T) {
 					t.Error(err)
 				}
 			})
+			if err := client.StartOnDemand(); !errors.Is(err, quotaDenied) || clientState(client.state.Load()) != clientStateCreated {
+				t.Fatalf("scratch quota denial must leave the client created: state=%v err=%v", clientState(client.state.Load()), err)
+			}
+			deny = false
 			err = client.StartOnDemand()
+			if reserved != 1 || released != 1 {
+				t.Fatalf("scratch engine accounting: reserved=%d released=%d", reserved, released)
+			}
 			if roots.invalid {
 				if err == nil || clientState(client.state.Load()) != clientStateClosed {
 					t.Fatalf("invalid roots did not reject startup and close the client: %v", err)
@@ -99,6 +118,104 @@ func TestNaiveCustomRootsValidateBeforeDormancy(t *testing.T) {
 			if err != nil || !client.IsDormant() || len(client.engines) != 0 {
 				t.Fatalf("valid roots should leave a dormant client with no engine: state=%v, engines=%d, err=%v",
 					clientState(client.state.Load()), len(client.engines), err)
+			}
+		})
+	}
+}
+
+func TestNaiveEngineReservations(t *testing.T) {
+	if err := checkLibrary(); err != nil {
+		t.Skipf("Cronet library unavailable: %v", err)
+	}
+	for _, tc := range []struct {
+		name     string
+		onDemand bool
+		single   bool
+		roots    string
+	}{
+		{name: "eager"},
+		{name: "on-demand-single-engine", onDemand: true, single: true},
+		{name: "partial-start", roots: "invalid certificate"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			const concurrency = 3
+			engineCount := concurrency
+			if tc.single || runtime.GOOS == "ios" {
+				engineCount = 1
+			}
+			quotaDenied := errors.New("engine quota denied")
+			deny := true
+			var requests, releases []int
+			client, err := NewNaiveClient(NaiveClientOptions{
+				Context:                 t.Context(),
+				ServerAddress:           M.ParseSocksaddrHostPort("127.0.0.1", 443),
+				InsecureConcurrency:     concurrency,
+				TestForceSingleEngine:   tc.single,
+				TrustedRootCertificates: tc.roots,
+				DNSResolver:             func(context.Context, *mDNS.Msg) *mDNS.Msg { return nil },
+				ReserveEngines: func(count int) (func(int), error) {
+					requests = append(requests, count)
+					if deny {
+						return nil, quotaDenied
+					}
+					return func(count int) { releases = append(releases, count) }, nil
+				},
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() {
+				if err := client.Close(); err != nil {
+					t.Error(err)
+				}
+			})
+
+			wantState := clientStateCreated
+			if tc.onDemand {
+				if err := client.StartOnDemand(); err != nil {
+					t.Fatal(err)
+				}
+				wantState = clientStateDormant
+				_, err = client.DialEarly(t.Context(), M.Socksaddr{})
+			} else {
+				err = client.Start()
+			}
+			if !errors.Is(err, quotaDenied) || clientState(client.state.Load()) != wantState || client.proxyCancel != nil || len(releases) != 0 {
+				t.Fatalf("quota denial: state=%v releases=%v err=%v", clientState(client.state.Load()), releases, err)
+			}
+
+			deny = false
+			err = client.Start()
+			if !slices.Equal(requests, []int{engineCount, engineCount}) {
+				t.Fatalf("reservation requests %v, want two batches of %d", requests, engineCount)
+			}
+			var wantReleases []int
+			if tc.roots != "" {
+				if err == nil || clientState(client.state.Load()) != clientStateClosed {
+					t.Fatalf("invalid roots did not abort startup: state=%v err=%v", clientState(client.state.Load()), err)
+				}
+				if engineCount > 1 {
+					wantReleases = append(wantReleases, engineCount-1)
+				}
+				wantReleases = append(wantReleases, 1)
+				if !slices.Equal(releases, wantReleases) {
+					t.Fatalf("partial startup releases %v, want %v", releases, wantReleases)
+				}
+			} else {
+				if err != nil || len(client.engines) != engineCount || len(releases) != 0 {
+					t.Fatalf("startup retry: engines=%d releases=%v err=%v", len(client.engines), releases, err)
+				}
+				for range engineCount {
+					wantReleases = append(wantReleases, 1)
+				}
+			}
+			for range 2 {
+				if err := client.Close(); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if !slices.Equal(releases, wantReleases) {
+				t.Fatalf("close releases %v, want %v", releases, wantReleases)
 			}
 		})
 	}
@@ -231,14 +348,23 @@ func TestNaiveRepeatedCloseWaitsForOriginalCompletion(t *testing.T) {
 func TestNaiveShutdownFailureNeverDestroys(t *testing.T) {
 	for _, success := range []bool{false, true} {
 		called := false
+		released := 0
 		err := shutdownNaiveEngine(func() Result {
 			if success {
 				return ResultSuccess
 			}
 			return Result(-1)
-		}, func() { called = true })
+		}, func() { called = true }, func(count int) {
+			if !called {
+				t.Error("released before destroy completed")
+			}
+			released += count
+		})
 		if called != success || (err == nil) != success {
 			t.Fatalf("success=%v destroy=%v error=%v", success, called, err)
+		}
+		if (success && released != 1) || (!success && released != 0) {
+			t.Fatalf("success=%v released=%d", success, released)
 		}
 	}
 }

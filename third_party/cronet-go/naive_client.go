@@ -54,6 +54,8 @@ type NaiveClient struct {
 	callbacks                sync.WaitGroup
 	nativeOperations         int
 	onIdle                   func()
+	reserveEngines           func(int) (func(int), error)
+	releaseEngines           func(int)
 	closed                   chan struct{}
 	closeError               error
 	startError               error
@@ -112,6 +114,11 @@ type NaiveClientOptions struct {
 
 	// OnIdle may run on a native callback thread and must not block on Close.
 	OnIdle func()
+	// ReserveEngines optionally reserves count engine slots atomically. An
+	// error leaves the client retryable. On success, release returns slots
+	// in one or more calls as unused slots or destroyed engines are freed.
+	// Both callbacks must be nonblocking and may run under the lifecycle lock.
+	ReserveEngines func(count int) (release func(int), err error)
 }
 
 func NewNaiveClient(config NaiveClientOptions) (*NaiveClient, error) {
@@ -187,6 +194,7 @@ func NewNaiveClient(config NaiveClientOptions) (*NaiveClient, error) {
 		closed:                   make(chan struct{}),
 		connections:              make(map[*BidirectionalConn]struct{}),
 		onIdle:                   config.OnIdle,
+		reserveEngines:           config.ReserveEngines,
 	}, nil
 }
 
@@ -202,12 +210,26 @@ func (c *NaiveClient) StartOnDemand() error {
 	if state := clientState(c.state.Load()); state != clientStateCreated {
 		return startStateError(state)
 	}
-	if c.trustedRootCertificates != "" && !c.validateTrustedRoots() {
-		c.startError = E.New("failed to set trusted CA certificates")
-		c.state.Store(uint32(clientStateClosed))
-		close(c.started)
-		close(c.closed)
-		return c.startError
+	if c.trustedRootCertificates != "" {
+		var release func(int)
+		if c.reserveEngines != nil {
+			var err error
+			release, err = c.reserveEngines(1)
+			if err != nil {
+				return err
+			}
+		}
+		valid := c.validateTrustedRoots()
+		if release != nil {
+			release(1)
+		}
+		if !valid {
+			c.startError = E.New("failed to set trusted CA certificates")
+			c.state.Store(uint32(clientStateClosed))
+			close(c.started)
+			close(c.closed)
+			return c.startError
+		}
 	}
 	c.state.Store(uint32(clientStateDormant))
 	return nil
@@ -250,6 +272,18 @@ func (c *NaiveClient) start(onDemand bool) (startResult error) {
 		c.lifecycle.Unlock()
 		return startStateError(state)
 	}
+	engineCount := 1
+	if c.concurrency > 1 && !c.singleEngine {
+		engineCount = c.concurrency
+	}
+	if c.reserveEngines != nil {
+		release, err := c.reserveEngines(engineCount)
+		if err != nil {
+			c.lifecycle.Unlock()
+			return err
+		}
+		c.releaseEngines = release
+	}
 	c.state.Store(uint32(clientStateStarting))
 	c.lifecycle.Unlock()
 
@@ -258,6 +292,9 @@ func (c *NaiveClient) start(onDemand bool) (startResult error) {
 
 	defer func() {
 		if startError != nil {
+			if c.releaseEngines != nil && len(engines) < engineCount {
+				c.releaseEngines(engineCount - len(engines))
+			}
 			c.lifecycle.Lock()
 			c.startError = startError
 			c.state.Store(uint32(clientStateClosing))
@@ -416,10 +453,6 @@ func (c *NaiveClient) start(onDemand bool) (startResult error) {
 		return fd, localAddress, localPort, relayCancel
 	})
 
-	engineCount := 1
-	if c.concurrency > 1 && !c.singleEngine {
-		engineCount = c.concurrency
-	}
 	for i := 0; i < engineCount; i++ {
 		var engine Engine
 		engine, startError = c.startEngine(tcpDialer, udpDialer, dnsServerAddress)
@@ -693,7 +726,7 @@ func (c *NaiveClient) doClose() error {
 	c.activeConnections.Wait()
 	var closeError error
 	for _, engine := range c.engines {
-		closeError = errors.Join(closeError, shutdownNaiveEngine(engine.Shutdown, engine.Destroy))
+		closeError = errors.Join(closeError, shutdownNaiveEngine(engine.Shutdown, engine.Destroy, c.releaseEngines))
 	}
 	c.lifecycle.Lock()
 	c.closeError = closeError

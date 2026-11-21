@@ -84,10 +84,13 @@ func (c *NaiveClient) trackConnection(conn *BidirectionalConn) {
 
 // The native Shutdown join is the completion barrier for previously queued
 // stream destruction. Failure retains the engine; callers preserve the error.
-func shutdownNaiveEngine(shutdown func() Result, destroy func()) error {
+func shutdownNaiveEngine(shutdown func() Result, destroy func(), release func(int)) error {
 	if result := shutdown(); result != ResultSuccess {
 		return fmt.Errorf("failed to shut down engine: %d", result)
 	}
 	destroy()
+	if release != nil {
+		release(1)
+	}
 	return nil
 }

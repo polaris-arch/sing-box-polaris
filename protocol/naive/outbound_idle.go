@@ -4,6 +4,7 @@ package naive
 
 import (
 	"context"
+	"errors"
 	"net"
 	"os"
 	"sync"
@@ -137,8 +138,12 @@ func (s *naiveClientSlot) acquire(ctx context.Context, create bool) (*naiveClien
 			var err error
 			instance, err = s.newIncarnation()
 			if err == nil {
-				s.current = instance
 				err = instance.client.StartOnDemand()
+				if err == nil {
+					s.current = instance
+				} else {
+					err = errors.Join(err, instance.runtime.close())
+				}
 			}
 			if err != nil {
 				s.mu.Unlock()

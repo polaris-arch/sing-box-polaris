@@ -25,11 +25,32 @@ import (
 	"golang.org/x/sync/semaphore"
 )
 
-// Independent URLTest groups and management requests share the native startup
-// budget even when each group limits its own workers.
+// Probe concurrency is separate from the lifetime budget of physical engines.
 const probeClientLimit = 10
 
 var probeClients = semaphore.NewWeighted(probeClientLimit)
+
+// Runtime generations and probes coexist in the same process.
+var nativeEngines = semaphore.NewWeighted(nativeEngineLimit())
+
+var errNativeEngineCapacity = errors.New("Naive native engine capacity exhausted")
+
+func nativeEngineLimit() int64 {
+	if C.IsIos {
+		// Leave room for an active engine and one handoff or cold probe.
+		return 2
+	}
+	return probeClientLimit
+}
+
+func reserveNativeEngines(count int) (func(int), error) {
+	// A Cronet socket callback may dial through another Naive outbound. Waiting
+	// for capacity there can deadlock the engine that is already holding it.
+	if !nativeEngines.TryAcquire(int64(count)) {
+		return nil, errNativeEngineCapacity
+	}
+	return func(released int) { nativeEngines.Release(int64(released)) }, nil
+}
 
 func deferColdProbe(ctx context.Context, pressure func() tun.MemoryPressure) bool {
 	return urltest.IsBackgroundProbe(ctx) && pressure != nil && pressure() != tun.MemoryPressureNone
@@ -150,6 +171,11 @@ func (h *Outbound) WithURLTestDialer(ctx context.Context, test func(context.Cont
 
 	probe := newOutboundRuntime(h.ctx)
 	probe.begin = owner.begin
+	defer func() {
+		if errors.Is(resultErr, errNativeEngineCapacity) {
+			resultErr = errors.Join(urltest.ErrProbeNotRun, resultErr)
+		}
+	}()
 	defer func() {
 		if closeErr := probe.close(); closeErr != nil {
 			owner.boundary.RecordClose(closeErr)
@@ -273,6 +299,7 @@ func (c *outboundJoinedConn) CloseWrite() error {
 // Keep standalone native descriptor transfer and callbacks exactly as supplied.
 // Runtime-owned clients require opaque relay carriers and captured continuations.
 func (r *outboundRuntime) guardClientOptions(options cronet.NaiveClientOptions) cronet.NaiveClientOptions {
+	options.ReserveEngines = reserveNativeEngines
 	if r.source == nil {
 		return options
 	}

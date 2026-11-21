@@ -155,6 +155,7 @@ func testWarmNaiveOutbound(t *testing.T) (*Outbound, *naiveClientIncarnation) {
 	}
 	return &Outbound{
 		runtime:   owner,
+		ctx:       ctx,
 		logger:    log.NewNOPFactory().Logger(),
 		clients:   clients,
 		uotClient: &uot.Client{Dialer: clients},
@@ -194,6 +195,29 @@ func TestNaiveOutboundIdleClientRetiresAndReopens(t *testing.T) {
 	if next == first || !next.client.IsDormant() {
 		t.Fatal("ordinary acquisition did not create a fresh dormant client")
 	}
+	// Use up the physical engine budget while keeping the probe queue available.
+	slots := int(nativeEngineLimit())
+	release, err := reserveNativeEngines(slots)
+	if err != nil {
+		t.Fatal(err)
+	}
+	releaseBudget := sync.OnceFunc(func() { release(slots) })
+	defer releaseBudget()
+	destination := M.ParseSocksaddrHostPort("127.0.0.1", 443)
+	_, err = h.WithURLTestDialer(ctx, func(ctx context.Context, dialer N.Dialer) (uint16, error) {
+		_, err := dialer.DialContext(ctx, N.NetworkTCP, destination)
+		return 0, err
+	})
+	if !errors.Is(err, urltest.ErrProbeNotRun) || !errors.Is(err, errNativeEngineCapacity) {
+		t.Fatalf("cold probe bypassed the engine budget: %v", err)
+	}
+	if _, err = clients.DialContext(ctx, N.NetworkTCP, destination); !errors.Is(err, errNativeEngineCapacity) {
+		t.Fatalf("ordinary dial bypassed the engine budget: %v", err)
+	}
+	if !next.client.IsDormant() {
+		t.Fatal("budget exhaustion left the client unable to retry")
+	}
+	releaseBudget()
 	if err = next.client.Start(); err != nil {
 		t.Fatal(err)
 	}
