@@ -22,12 +22,23 @@ import (
 
 func TestTCPTransportRetriesReadErrorOnReusedConn(t *testing.T) {
 	t.Parallel()
+	testTCPTransportRetriesReadErrorOnReusedConn(t, nil)
+}
+
+func TestTCPTransportPreservesReadErrorWhenRetryBlockedByForegroundReserve(t *testing.T) {
+	t.Parallel()
+	testTCPTransportRetriesReadErrorOnReusedConn(t, errors.Join(adapter.ErrOutboundForegroundSlot, adapter.ErrOutboundForegroundSlot))
+}
+
+func testTCPTransportRetriesReadErrorOnReusedConn(t *testing.T, retryErr error) {
+	t.Helper()
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer listener.Close()
 	serverDone := make(chan error, 1)
+	queryWritten := make(chan struct{})
 	go func() {
 		firstConn, acceptErr := listener.Accept()
 		if acceptErr != nil {
@@ -49,9 +60,16 @@ func TestTCPTransportRetriesReadErrorOnReusedConn(t *testing.T) {
 			return
 		}
 		_, readErr = ReadMessage(firstConn)
+		if readErr == nil {
+			<-queryWritten
+		}
 		firstConn.Close()
 		if readErr != nil {
 			serverDone <- readErr
+			return
+		}
+		if retryErr != nil {
+			serverDone <- nil
 			return
 		}
 		secondConn, acceptErr := listener.Accept()
@@ -70,9 +88,13 @@ func TestTCPTransportRetriesReadErrorOnReusedConn(t *testing.T) {
 		serverDone <- WriteMessage(secondConn, secondRequest.Id, secondResponse)
 	}()
 
+	var dials atomic.Int32
 	multiplexer := newQueryMultiplexer(queryMultiplexerOptions{
 		dial: func(ctx context.Context) (net.Conn, error) {
-			return net.Dial("tcp", listener.Addr().String())
+			if dials.Add(1) > 1 && retryErr != nil {
+				return nil, retryErr
+			}
+			return (&net.Dialer{}).DialContext(ctx, "tcp", listener.Addr().String())
 		},
 		write: func(conn net.Conn, message *mDNS.Msg, queryId uint16) error {
 			return WriteMessage(conn, queryId, message)
@@ -96,10 +118,29 @@ func TestTCPTransportRetriesReadErrorOnReusedConn(t *testing.T) {
 	secondMessage := new(mDNS.Msg)
 	secondMessage.SetQuestion("second.example.com.", mDNS.TypeAAAA)
 	ctx, cancel = context.WithTimeout(context.Background(), time.Second)
-	_, err = multiplexer.Exchange(ctx, secondMessage)
+	result := make(chan error, 1)
+	multiplexer.ExchangeAsync(ctx, secondMessage, func(_ *mDNS.Msg, err error) { result <- err })
+	// The server closes the connection after both sides finish the DNS write.
+	close(queryWritten)
+	err = <-result
 	cancel()
-	if err != nil {
+	if retryErr != nil {
+		if !errors.Is(err, io.EOF) || !errors.Is(err, adapter.ErrOutboundForegroundSlot) || adapter.IsOutboundForegroundSlot(err) {
+			t.Fatalf("read error hidden by retry refusal: %v", err)
+		}
+	} else if err != nil {
 		t.Fatal("second query failed: ", err)
+	}
+	if actual := dials.Load(); actual != 2 {
+		t.Fatalf("dials for a successful query and one retry = %d, want 2", actual)
+	}
+	if retryErr != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		_, err = multiplexer.Exchange(ctx, secondMessage)
+		cancel()
+		if err != retryErr {
+			t.Fatalf("cold request inherited the previous read error: %v", err)
+		}
 	}
 	select {
 	case err = <-serverDone:

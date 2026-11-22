@@ -9,6 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/common/urltest"
 	E "github.com/sagernet/sing/common/exceptions"
 
@@ -94,6 +95,8 @@ type pendingQuery struct {
 	stopContext func() bool
 	stopConn    func() bool
 	retryCtx    context.Context
+
+	writeSucceeded atomic.Bool
 }
 
 func newQueryMultiplexer(options queryMultiplexerOptions) *queryMultiplexer {
@@ -497,7 +500,7 @@ func (m *queryMultiplexer) exchangeAsync(ctx context.Context, message *mDNS.Msg,
 				return
 			}
 		}
-		queryId, err := m.register(ctx, connCtx, conn, message, callback, retryReadError && m.options.retryReadError && !created)
+		queryId, pending, err := m.register(ctx, connCtx, conn, message, callback, retryReadError && m.options.retryReadError && !created)
 		if err != nil {
 			m.connection.Release(conn, true)
 			m.closeIdleConnection()
@@ -506,9 +509,12 @@ func (m *queryMultiplexer) exchangeAsync(ctx context.Context, message *mDNS.Msg,
 		}
 		writeErr := m.options.write(conn, message, queryId)
 		if writeErr == nil {
+			if pending.retryCtx != nil {
+				pending.writeSucceeded.Store(true)
+			}
 			return
 		}
-		pending := m.take(queryId)
+		pending = m.take(queryId)
 		m.connection.Invalidate(conn, writeErr)
 		if pending == nil {
 			return
@@ -529,11 +535,11 @@ func (m *queryMultiplexer) dialConn(ctx context.Context) (*multiplexConn, error)
 	return &multiplexConn{Conn: conn}, nil
 }
 
-func (m *queryMultiplexer) register(ctx context.Context, connCtx context.Context, conn *multiplexConn, message *mDNS.Msg, callback func(response *mDNS.Msg, err error), retryReadError bool) (uint16, error) {
+func (m *queryMultiplexer) register(ctx context.Context, connCtx context.Context, conn *multiplexConn, message *mDNS.Msg, callback func(response *mDNS.Msg, err error), retryReadError bool) (uint16, *pendingQuery, error) {
 	m.queryAccess.Lock()
 	defer m.queryAccess.Unlock()
 	if m.workSealed {
-		return 0, net.ErrClosed
+		return 0, nil, net.ErrClosed
 	}
 	start := m.queryId
 	for {
@@ -542,7 +548,7 @@ func (m *queryMultiplexer) register(ctx context.Context, connCtx context.Context
 			break
 		}
 		if m.queryId == start {
-			return 0, E.New("no available query ID")
+			return 0, nil, E.New("no available query ID")
 		}
 	}
 	queryId := m.queryId
@@ -562,7 +568,7 @@ func (m *queryMultiplexer) register(ctx context.Context, connCtx context.Context
 	pending.stopConn, _ = m.afterFuncLocked(connCtx, func() {
 		m.completeConnDone(queryId, connCtx)
 	})
-	return queryId, nil
+	return queryId, pending, nil
 }
 
 func (m *queryMultiplexer) completeConnDone(queryId uint16, connCtx context.Context) {
@@ -573,7 +579,21 @@ func (m *queryMultiplexer) completeConnDone(queryId uint16, connCtx context.Cont
 	connErr := context.Cause(connCtx)
 	_, readFailed := connErr.(*queryMultiplexerReadError)
 	if pending.retryCtx != nil && readFailed {
-		m.dispatch(pending.retryCtx, pending.message, pending.callback, false)
+		callback := pending.callback
+		// The reader is shared. Only attribute its failure to this query
+		// after the query's own write has succeeded.
+		if !errors.Is(connErr, net.ErrClosed) &&
+			!errors.Is(connErr, context.Canceled) && !errors.Is(connErr, context.DeadlineExceeded) &&
+			!adapter.IsOutboundCapacity(connErr) {
+			deliver := callback
+			callback = func(response *mDNS.Msg, err error) {
+				if adapter.IsOutboundForegroundSlot(err) && pending.writeSucceeded.Load() {
+					err = errors.Join(connErr, err)
+				}
+				deliver(response, err)
+			}
+		}
+		m.dispatch(pending.retryCtx, pending.message, callback, false)
 		return
 	}
 	pending.callback(nil, connErr)
