@@ -124,6 +124,16 @@ func (s *Selector) AttachConnection(closer io.Closer) func() {
 	return s.interruptGroup.Add(closer, true)
 }
 
+func (s *Selector) AttachConnectionForSelection(closer io.Closer, selected adapter.Outbound) (func(), bool) {
+	detach := s.AttachConnection(closer)
+	// A switch before registration may already have interrupted the old selection.
+	if s.interruptExternalConnections && s.selected.Load() != selected {
+		detach()
+		return nil, false
+	}
+	return detach, true
+}
+
 func (s *Selector) References() []string {
 	selected := s.selected.Load()
 	if selected == nil {

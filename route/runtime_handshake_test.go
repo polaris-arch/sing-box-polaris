@@ -12,19 +12,24 @@ import (
 	"time"
 
 	"github.com/sagernet/sing-box/adapter"
+	"github.com/sagernet/sing-box/log"
+	"github.com/sagernet/sing-box/option"
+	"github.com/sagernet/sing-box/protocol/group"
 	"github.com/sagernet/sing/common"
+	M "github.com/sagernet/sing/common/metadata"
 	N "github.com/sagernet/sing/common/network"
 	"github.com/sagernet/sing/protocol/socks"
+	"github.com/sagernet/sing/service"
 )
 
 type handshakeWireConn struct {
-	output bytes.Buffer
-	closed atomic.Bool
+	output     bytes.Buffer
+	closeCalls atomic.Int32
 }
 
 func (*handshakeWireConn) Read([]byte) (int, error)      { return 0, io.EOF }
 func (c *handshakeWireConn) Write(p []byte) (int, error) { return c.output.Write(p) }
-func (c *handshakeWireConn) Close() error                { c.closed.Store(true); return nil }
+func (c *handshakeWireConn) Close() error                { c.closeCalls.Add(1); return nil }
 func (*handshakeWireConn) LocalAddr() net.Addr {
 	return &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1), Port: 10000}
 }
@@ -44,12 +49,12 @@ func (c *handshakeConnReporter) HandshakeFailure(err error) error         { retu
 
 type handshakePacketReporter struct {
 	N.PacketConn
-	closed  atomic.Bool
-	success func(net.PacketConn) error
-	failure func(error) error
+	closeCalls atomic.Int32
+	success    func(net.PacketConn) error
+	failure    func(error) error
 }
 
-func (c *handshakePacketReporter) Close() error { c.closed.Store(true); return nil }
+func (c *handshakePacketReporter) Close() error { c.closeCalls.Add(1); return nil }
 func (c *handshakePacketReporter) PacketConnHandshakeSuccess(conn net.PacketConn) error {
 	return c.success(conn)
 }
@@ -276,6 +281,211 @@ func TestRuntimeRouterReportsSOCKSSuccessBeforeApplicationCopy(t *testing.T) {
 	leaf.finish(nil)
 	if graphs, _ := graph.counts(); graphs != 0 || terminals != 1 {
 		t.Fatal("flow finish was not exact-once")
+	}
+}
+
+type routeSelectionTestTracker struct {
+	adapter.ConnectionTracker
+	afterSelection func()
+}
+
+func (t routeSelectionTestTracker) RoutedConnection(_ context.Context, conn net.Conn, _ adapter.InboundContext, _ adapter.Rule, _ adapter.Outbound) net.Conn {
+	t.afterSelection()
+	return conn
+}
+
+func (t routeSelectionTestTracker) RoutedPacketConnection(_ context.Context, conn N.PacketConn, _ adapter.InboundContext, _ adapter.Rule, _ adapter.Outbound) N.PacketConn {
+	t.afterSelection()
+	return conn
+}
+
+type routeSelectionTestOutbound struct {
+	referenceTestOutbound
+	calls int
+}
+
+func (*routeSelectionTestOutbound) Network() []string { return []string{N.NetworkTCP, N.NetworkUDP} }
+
+func (o *routeSelectionTestOutbound) NewConnection(_ context.Context, conn net.Conn, _ adapter.InboundContext, onClose N.CloseHandlerFunc) {
+	o.calls++
+	_ = conn.Close()
+	onClose(nil)
+}
+
+func (o *routeSelectionTestOutbound) NewPacketConnection(_ context.Context, conn N.PacketConn, _ adapter.InboundContext, onClose N.CloseHandlerFunc) {
+	o.calls++
+	_ = conn.Close()
+	onClose(nil)
+}
+
+type routeSelectionTestAdmission func() (adapter.RuntimeLease, error)
+
+func (a routeSelectionTestAdmission) Acquire() (adapter.RuntimeLease, error) { return a() }
+
+type routeSelectionTestInterrupt struct {
+	*group.Selector
+	afterAttach func()
+}
+
+func (s routeSelectionTestInterrupt) AttachConnectionForSelection(closer io.Closer, selected adapter.Outbound) (func(), bool) {
+	detach, current := s.Selector.AttachConnectionForSelection(closer, selected)
+	s.afterAttach()
+	if current && s.Selected(N.NetworkTCP) != selected {
+		detach()
+		return nil, false
+	}
+	return detach, current
+}
+
+func TestRouteSelectorChangesBeforeLeafDispatch(t *testing.T) {
+	for _, network := range []string{N.NetworkTCP, N.NetworkUDP} {
+		for _, mode := range []string{"static", "managed", "non-interrupting", "retained-replacement", "interrupt-during-registration", "late-captured-interrupt"} {
+			t.Run(network+"/"+mode, func(t *testing.T) {
+				ctx := t.Context()
+				newSelector := func(interrupt bool) (*group.Selector, *referenceTestOutbounds, *routeSelectionTestOutbound) {
+					first := &routeSelectionTestOutbound{referenceTestOutbound: referenceTestOutbound{tag: "a"}}
+					second := &routeSelectionTestOutbound{referenceTestOutbound: referenceTestOutbound{tag: "b"}}
+					outbounds := &referenceTestOutbounds{values: []adapter.Outbound{first, second}, defaultTag: "selector"}
+					selectorContext := service.ContextWith[adapter.OutboundManager](ctx, outbounds)
+					outbound, err := group.NewSelector(selectorContext, nil, log.NewNOPFactory().Logger(), "selector", option.SelectorOutboundOptions{
+						Outbounds:                 []string{"a", "b"},
+						InterruptExistConnections: interrupt,
+					})
+					if err != nil {
+						t.Fatal(err)
+					}
+					selector := outbound.(*group.Selector)
+					if err = selector.Start(adapter.StartStateStart, nil); err != nil {
+						t.Fatal(err)
+					}
+					outbounds.values = append(outbounds.values, selector)
+					return selector, outbounds, first
+				}
+				selector, outbounds, first := newSelector(mode != "non-interrupting")
+				var afterAttach, releaseCapturedInterrupt func()
+				var interruptDone chan struct{}
+				if mode == "interrupt-during-registration" {
+					afterAttach = func() {
+						if !selector.SelectOutbound("b") || !selector.SelectOutbound("a") {
+							t.Fatal("could not interrupt registration")
+						}
+					}
+				} else if mode == "late-captured-interrupt" {
+					captured, resume := make(chan struct{}), make(chan struct{})
+					releaseCapturedInterrupt = sync.OnceFunc(func() { close(resume) })
+					defer releaseCapturedInterrupt()
+					interruptDone = make(chan struct{})
+					selector.AttachConnection(socketOriginalCloser(func() error {
+						// Interrupt takes out the entire group before closing its first member.
+						close(captured)
+						<-resume
+						return nil
+					}))
+					afterAttach = func() {
+						go func() {
+							selector.SelectOutbound("b")
+							close(interruptDone)
+						}()
+						managerAwait(t, captured)
+					}
+				}
+				if afterAttach != nil {
+					outbounds.values[len(outbounds.values)-1] = &routeSelectionTestInterrupt{Selector: selector, afterAttach: afterAttach}
+				}
+				leaf := &Router{ctx: ctx, outbound: outbounds, logger: log.NewNOPFactory().Logger()}
+				var router adapter.Router = leaf
+				var active, original adapter.RuntimeLease
+				var graph *referenceTestGraph
+				if mode == "managed" || mode == "retained-replacement" || afterAttach != nil {
+					graph = newReferenceTestGraph(1, outbounds.values, nil)
+					original = handshakeRouterLease{RuntimeLease: graph.acquire(), view: handshakeRouterView{router: leaf}}
+					defer original.Release()
+					active = original
+					router = NewRuntimeRouter(routeSelectionTestAdmission(func() (adapter.RuntimeLease, error) { return active.Fork() }), RuntimeRouterStructure{})
+				}
+				leaf.trackers = []adapter.ConnectionTracker{routeSelectionTestTracker{afterSelection: func() {
+					if mode == "retained-replacement" {
+						replacement, replacementOutbounds, _ := newSelector(true)
+						if !replacement.SelectOutbound("b") {
+							t.Fatal("could not pin replacement selector")
+						}
+						replacementLeaf := &Router{ctx: ctx, outbound: replacementOutbounds, logger: leaf.logger}
+						replacementGraph := newReferenceTestGraph(2, replacementOutbounds.values, nil)
+						active = handshakeRouterLease{RuntimeLease: replacementGraph.acquire(), view: handshakeRouterView{router: replacementLeaf}}
+						t.Cleanup(active.Release)
+					} else if afterAttach == nil && !selector.SelectOutbound("b") {
+						t.Fatal("could not change captured selector")
+					}
+				}}}
+				metadata := adapter.InboundContext{Destination: M.Socksaddr{Fqdn: "example.test", Port: 443}, Domain: "example.test"}
+				var reported, terminal error
+				failures, terminals := 0, 0
+				failure := func(err error) error { reported = err; failures++; return nil }
+				onClose := func(err error) { terminal = err; terminals++ }
+				var closeCalls *atomic.Int32
+				if network == N.NetworkUDP {
+					conn := &handshakePacketReporter{failure: failure}
+					router.RoutePacketConnectionEx(ctx, conn, metadata, onClose)
+					closeCalls = &conn.closeCalls
+				} else {
+					conn := &handshakeConnReporter{failure: failure}
+					router.RouteConnectionEx(ctx, conn, metadata, onClose)
+					closeCalls = &conn.closeCalls
+				}
+				if releaseCapturedInterrupt != nil {
+					releaseCapturedInterrupt()
+					managerAwait(t, interruptDone)
+				}
+				if closeCalls.Load() != 1 || terminals != 1 {
+					t.Fatalf("physical close calls=%d terminal calls=%d leaf calls=%d", closeCalls.Load(), terminals, first.calls)
+				}
+				if mode == "static" || mode == "managed" || afterAttach != nil {
+					if first.calls != 0 || failures != 1 || !errors.Is(reported, net.ErrClosed) || !errors.Is(terminal, net.ErrClosed) {
+						t.Fatalf("stale dispatch=%d handshake=%d/%v terminal=%v", first.calls, failures, reported, terminal)
+					}
+				} else if first.calls != 1 || failures != 0 || terminal != nil {
+					t.Fatalf("captured dispatch=%d handshake=%d terminal=%v", first.calls, failures, terminal)
+				}
+				if graph != nil {
+					if graphRefs, _ := graph.counts(); graphRefs != 1 {
+						t.Fatalf("route retained %d graph references", graphRefs)
+					}
+				}
+			})
+		}
+	}
+}
+
+type routeInterruptTestGroup struct {
+	adapter.OutboundGroup
+	closer io.Closer
+}
+
+func (g *routeInterruptTestGroup) AttachConnection(closer io.Closer) func() {
+	g.closer = closer
+	return func() {}
+}
+
+func TestRouteArmedInterruptCloseCanReenter(t *testing.T) {
+	first, second := new(routeInterruptTestGroup), new(routeInterruptTestGroup)
+	calls := 0
+	closer := socketOriginalCloser(func() error {
+		calls++
+		return second.closer.Close()
+	})
+	onClose, attached := registerInterrupt([]adapter.Outbound{first, second, new(referenceTestOutbound)}, closer, nil)
+	if !attached {
+		t.Fatal("route was rejected before an interrupt")
+	}
+	done := make(chan struct{})
+	go func() {
+		_ = first.closer.Close()
+		close(done)
+	}()
+	managerAwait(t, done)
+	onClose(nil)
+	if calls != 1 {
+		t.Fatalf("physical close calls=%d", calls)
 	}
 }
 
