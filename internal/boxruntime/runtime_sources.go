@@ -50,6 +50,8 @@ func runtimeReadSource(ctx context.Context, path string) ([]byte, error) {
 }
 
 func runtimeSnapshotSources(request context.Context, registry context.Context, options option.Options, trusted map[string]runtimeSourceSnapshot) (option.Options, []runtimeSourceSnapshot, string, []RuntimePlanError) {
+	// Freeze selector ownership before remote download consumers become inline.
+	options = withAppProbeSelectionScope(options)
 	if options.Route == nil {
 		return options, nil, runtimeDigest(nil), nil
 	}

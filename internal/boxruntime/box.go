@@ -438,7 +438,7 @@ func newBox(options Options, constructionScope **adapter.Scope) (*Box, error) {
 			return nil, E.Cause(err, "initialize service[", i, "]")
 		}
 	}
-	for i, outboundOptions := range options.Outbounds {
+	for i, outboundOptions := range withAppProbeSelectionScope(options.Options).Outbounds {
 		var tag string
 		if outboundOptions.Tag != "" {
 			tag = outboundOptions.Tag

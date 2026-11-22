@@ -44,6 +44,7 @@ type Selector struct {
 	history                      *urltest.HistoryStorage
 	interruptGroup               *interrupt.Group
 	interruptExternalConnections bool
+	ephemeralPoolProbe           bool
 }
 
 func NewSelector(ctx context.Context, router adapter.Router, logger log.ContextLogger, tag string, options option.SelectorOutboundOptions) (adapter.Outbound, error) {
@@ -58,6 +59,7 @@ func NewSelector(ctx context.Context, router adapter.Router, logger log.ContextL
 		history:                      service.PtrFromContext[urltest.HistoryStorage](ctx),
 		interruptGroup:               interrupt.NewGroup(),
 		interruptExternalConnections: options.InterruptExistConnections,
+		ephemeralPoolProbe:           options.EphemeralPoolProbe,
 	}
 	if len(outbound.tags) == 0 {
 		return nil, E.New("missing tags")
@@ -85,7 +87,7 @@ func (s *Selector) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 		s.outbounds[tag] = detour
 	}
 
-	if s.Tag() != "" {
+	if s.Tag() != "" && !s.ephemeralPoolProbe {
 		cacheFile := service.FromContext[adapter.CacheFile](s.ctx)
 		if cacheFile != nil {
 			selected := cacheFile.LoadSelected(s.Tag())
@@ -125,6 +127,9 @@ func (s *Selector) PoolProbeMember(tag string) (adapter.Outbound, bool) {
 	member, exists := s.outbounds[tag]
 	return member, exists
 }
+
+// EphemeralPoolProbe identifies the dedicated App slot resolved at construction.
+func (s *Selector) EphemeralPoolProbe() bool { return s.ephemeralPoolProbe }
 
 func (s *Selector) AttachConnection(closer io.Closer) func() {
 	return s.interruptGroup.Add(closer, true)
@@ -175,7 +180,7 @@ func (s *Selector) RuntimeSelect(tag string) (changed bool, accepted bool, effec
 		return false, true, nil
 	}
 	return true, true, func() {
-		if s.Tag() != "" {
+		if s.Tag() != "" && !s.ephemeralPoolProbe {
 			cacheFile := service.FromContext[adapter.CacheFile](s.ctx)
 			if cacheFile != nil {
 				if err := cacheFile.StoreSelected(s.Tag(), tag); err != nil {
@@ -195,7 +200,7 @@ func (s *Selector) RuntimeSelect(tag string) (changed bool, accepted bool, effec
 func (s *Selector) RuntimeSelectInitial(tag string) bool {
 	s.runtimeAccess.Lock()
 	defer s.runtimeAccess.Unlock()
-	if !adapter.IsRuntimePreparation(s.ctx) || s.runtimeActive {
+	if s.ephemeralPoolProbe || !adapter.IsRuntimePreparation(s.ctx) || s.runtimeActive {
 		return false
 	}
 	detour, exists := s.outbounds[tag]
