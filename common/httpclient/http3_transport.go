@@ -13,6 +13,7 @@ import (
 
 	"github.com/sagernet/quic-go"
 	"github.com/sagernet/quic-go/http3"
+	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/common/tls"
 	"github.com/sagernet/sing-box/option"
 	E "github.com/sagernet/sing/common/exceptions"
@@ -147,7 +148,7 @@ func (t *http3FallbackTransport) roundTripHTTP3(request *http.Request) (*http.Re
 		return response, nil
 	}
 	if !errors.Is(err, http3.ErrNoCachedConn) {
-		t.markH3Broken(authority)
+		t.markH3Broken(authority, err)
 		return t.h2FallbackRoundTrip(cloneRequestForRetry(request))
 	}
 	if !requestReplayable(request) {
@@ -156,7 +157,7 @@ func (t *http3FallbackTransport) roundTripHTTP3(request *http.Request) (*http.Re
 			t.clearH3Broken(authority)
 			return response, nil
 		}
-		t.markH3Broken(authority)
+		t.markH3Broken(authority, err)
 		return nil, err
 	}
 	return t.roundTripHTTP3Race(request, authority)
@@ -229,7 +230,7 @@ func (t *http3FallbackTransport) roundTripHTTP3Race(request *http.Request, autho
 				return raceResult.response, nil
 			}
 			if raceResult.h3 {
-				t.markH3Broken(authority)
+				t.markH3Broken(authority, raceResult.err)
 				h3Err = raceResult.err
 				if len(cancels) == 1 {
 					if !timer.Stop() {
@@ -313,8 +314,8 @@ func (t *http3FallbackTransport) clearH3Broken(authority string) {
 	t.brokenAccess.Unlock()
 }
 
-func (t *http3FallbackTransport) markH3Broken(authority string) {
-	if authority == "" {
+func (t *http3FallbackTransport) markH3Broken(authority string, err error) {
+	if authority == "" || adapter.IsOutboundForegroundSlot(err) {
 		return
 	}
 	t.brokenAccess.Lock()
