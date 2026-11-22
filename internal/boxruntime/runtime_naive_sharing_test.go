@@ -3,6 +3,7 @@
 package boxruntime
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"crypto/ecdsa"
@@ -11,6 +12,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/binary"
 	"encoding/pem"
 	"errors"
 	"fmt"
@@ -21,12 +23,15 @@ import (
 	"net/http/httptest"
 	"slices"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/sagernet/quic-go"
 	"github.com/sagernet/quic-go/http3"
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/adapter/outbound"
+	"github.com/sagernet/sing-box/common/urltest"
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/internal/runtimegraph"
 	"github.com/sagernet/sing-box/option"
@@ -35,7 +40,13 @@ import (
 	M "github.com/sagernet/sing/common/metadata"
 	"github.com/sagernet/sing/service"
 
+	mdns "github.com/miekg/dns"
 	"github.com/stretchr/testify/require"
+)
+
+const (
+	runtimeNaiveProxyHost = "proxy.naive.test"
+	runtimeNaiveProbeHost = "probe.naive.test"
 )
 
 func TestRuntimeNaiveShareRequiresEquivalentAcyclicDependencies(t *testing.T) {
@@ -121,16 +132,18 @@ func TestRuntimeNaiveSharedClientThroughPublication(t *testing.T) {
 			protocol = 3
 		}
 		t.Run(fmt.Sprint("h", protocol), func(t *testing.T) {
-			port, root, peers := runtimeNaiveEchoProxy(t, protocol)
+			dnsPort, dnsQueries := runtimeNaiveDNS(t)
+			port, root, sessions := runtimeNaiveEchoProxy(t, protocol)
 			config := func(socksPort int, includeFirst bool, password string) []byte {
 				alias := func(tag string) string {
-					return fmt.Sprintf(`{"type":"naive","tag":%q,"server":"127.0.0.1","server_port":%d,"quic":%t,"username":"test","password":%q,"tls":{"enabled":true,"certificate":%q}},`, tag, port, h3, password, root)
+					return fmt.Sprintf(`{"type":"naive","tag":%q,"server":%q,"server_port":%d,"quic":%t,"username":"test","password":%q,"domain_resolver":{"server":"native-resolver","disable_cache":true},"tls":{"enabled":true,"certificate":%q}},`, tag, runtimeNaiveProxyHost, port, h3, password, root)
 				}
 				insertion := alias("proxy-b")
 				if includeFirst {
 					insertion = alias("proxy-a") + insertion
 				}
 				configuration := bytes.Replace(runtimeTestConfig(socksPort, "example.org"), []byte(`"outbounds":[`), []byte(`"outbounds":[`+insertion), 1)
+				configuration = bytes.Replace(configuration, []byte(`"servers":[`), fmt.Appendf(nil, `"servers":[{"type":"udp","tag":"native-resolver","server":"127.0.0.1","server_port":%d},`, dnsPort), 1)
 				return bytes.Replace(configuration, []byte(`"outbounds":["a","b"],"default":"a"`), []byte(`"outbounds":["proxy-b","a","b"],"default":"proxy-b"`), 1)
 			}
 			f, options := newRuntimeTestConstruction(t, runtimeTestConfig(1080, "example.org"), nil)
@@ -166,6 +179,43 @@ func TestRuntimeNaiveSharedClientThroughPublication(t *testing.T) {
 			})
 			require.Equal(t, 1, resets)
 
+			session := func(ctx context.Context) uint64 {
+				t.Helper()
+				select {
+				case id := <-sessions:
+					return id
+				case <-ctx.Done():
+					t.Fatal("proxy did not observe CONNECT")
+					return 0
+				}
+			}
+			probe := func(tag string) uint64 {
+				t.Helper()
+				ctx := runtimeTestContext(t)
+				probe, connected, err := instance.AcquireRuntimeURLTest(ctx, tag)
+				require.NoError(t, err)
+				require.True(t, connected)
+				defer probe.Release()
+				require.Equal(t, tag, probe.Outbound().Tag())
+				require.Same(t, view.histories[tag], probe.History())
+				delay, err := urltest.URLTest(probe.Context(), "http://"+runtimeNaiveProbeHost+"/", probe.Outbound())
+				require.NoError(t, err)
+				result := &adapter.URLTestHistory{Time: time.Now(), Delay: delay}
+				require.True(t, probe.IsCurrent())
+				require.True(t, urltest.PublishRuntimeResult(probe.Context(), probe.Epoch(), tag, result))
+				require.Equal(t, result, probe.History().LoadURLTestHistory(tag))
+				return session(ctx)
+			}
+			firstCold := probe("proxy-a")
+			firstQueries := dnsQueries.Load()
+			require.Positive(t, firstQueries, "first cold alias never queried the captured resolver")
+			secondCold := probe("proxy-b")
+			secondQueries := dnsQueries.Load()
+			require.Greater(t, secondQueries, firstQueries, "second cold alias never queried the captured resolver")
+			require.NotEqual(t, firstCold, secondCold, "cold aliases shared a temporary session")
+			require.Nil(t, view.histories["proxy-a"].LoadURLTestHistory("proxy-b"))
+			require.Nil(t, view.histories["proxy-b"].LoadURLTestHistory("proxy-a"))
+
 			echo := func(conn net.Conn) {
 				t.Helper()
 				deadline, _ := runtimeTestContext(t).Deadline()
@@ -177,7 +227,7 @@ func TestRuntimeNaiveSharedClientThroughPublication(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, "a", string(response))
 			}
-			dial := func(tag string) (net.Conn, string) {
+			dial := func(tag string) (net.Conn, uint64) {
 				t.Helper()
 				out, ok := instance.Outbound().Outbound(tag)
 				require.True(t, ok)
@@ -186,17 +236,14 @@ func TestRuntimeNaiveSharedClientThroughPublication(t *testing.T) {
 				require.NoError(t, err)
 				t.Cleanup(func() { _ = conn.Close() })
 				echo(conn)
-				select {
-				case peer := <-peers:
-					return conn, peer
-				case <-ctx.Done():
-					t.Fatal("proxy did not observe CONNECT")
-					return nil, ""
-				}
+				return conn, session(ctx)
 			}
-			firstConn, firstPeer := dial("proxy-a")
-			secondConn, secondPeer := dial("proxy-b")
-			require.Equal(t, firstPeer, secondPeer, "aliases opened separate physical proxy connections")
+			firstConn, firstSession := dial("proxy-a")
+			require.Greater(t, dnsQueries.Load(), secondQueries, "foreground slot never queried the captured resolver")
+			require.NotContains(t, []uint64{firstCold, secondCold}, firstSession, "cold probe warmed the active slot")
+			require.Equal(t, firstSession, probe("proxy-b"), "warm alias did not borrow the foreground session")
+			secondConn, secondSession := dial("proxy-b")
+			require.Equal(t, firstSession, secondSession, "aliases opened separate physical proxy connections")
 
 			apply := func(content []byte) RuntimeConfigOperation {
 				t.Helper()
@@ -241,9 +288,48 @@ func TestRuntimeNaiveSharedClientThroughPublication(t *testing.T) {
 	}
 }
 
-func runtimeNaiveEchoProxy(t *testing.T, protocol int) (port int, root string, peers <-chan string) {
+func runtimeNaiveDNS(t *testing.T) (int, *atomic.Int32) {
 	t.Helper()
-	connections := make(chan string, 4)
+	conn, err := net.ListenPacket("udp4", "127.0.0.1:0")
+	require.NoError(t, err)
+	var queries atomic.Int32
+	started := make(chan struct{})
+	server := &mdns.Server{
+		PacketConn:        conn,
+		NotifyStartedFunc: func() { close(started) },
+		Handler: mdns.HandlerFunc(func(w mdns.ResponseWriter, request *mdns.Msg) {
+			reply := new(mdns.Msg).SetReply(request)
+			if len(request.Question) == 1 {
+				q := request.Question[0]
+				if strings.EqualFold(q.Name, runtimeNaiveProxyHost+".") && q.Qtype == mdns.TypeA {
+					queries.Add(1)
+					reply.Answer = []mdns.RR{&mdns.A{
+						Hdr: mdns.RR_Header{Name: q.Name, Rrtype: q.Qtype, Class: q.Qclass, Ttl: 60},
+						A:   net.IPv4(127, 0, 0, 1),
+					}}
+				}
+			}
+			_ = w.WriteMsg(reply)
+		}),
+	}
+	done := make(chan error, 1)
+	go func() { done <- server.ActivateAndServe() }()
+	t.Cleanup(func() {
+		require.NoError(t, server.Shutdown())
+		require.NoError(t, <-done)
+	})
+	runtimeTestWait(t, started, "Naive DNS resolver listening")
+	return conn.LocalAddr().(*net.UDPAddr).Port, &queries
+}
+
+func runtimeNaiveEchoProxy(t *testing.T, protocol int) (port int, root string, sessions <-chan uint64) {
+	t.Helper()
+	type sessionKey struct{}
+	var nextSession atomic.Uint64
+	connectionContext := func(ctx context.Context) context.Context {
+		return context.WithValue(ctx, sessionKey{}, nextSession.Add(1))
+	}
+	connections := make(chan uint64, 4)
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodConnect || r.ProtoMajor != protocol {
 			w.WriteHeader(http.StatusBadRequest)
@@ -252,7 +338,36 @@ func runtimeNaiveEchoProxy(t *testing.T, protocol int) (port int, root string, p
 		flusher := w.(http.Flusher)
 		w.WriteHeader(http.StatusOK)
 		flusher.Flush()
-		connections <- r.RemoteAddr
+		connections <- r.Context().Value(sessionKey{}).(uint64)
+		authority := r.Header.Get("-connect-authority")
+		if authority == "" {
+			authority = r.URL.Host
+		}
+		if authority == "" {
+			authority = r.Host
+		}
+		if authority == runtimeNaiveProbeHost+":80" {
+			// The short HEAD request and response each occupy one Naive frame.
+			var header [3]byte
+			if _, err := io.ReadFull(r.Body, header[:]); err != nil {
+				return
+			}
+			length := int(binary.BigEndian.Uint16(header[:2]))
+			frame := make([]byte, length+int(header[2]))
+			if _, err := io.ReadFull(r.Body, frame); err != nil {
+				return
+			}
+			request, err := http.ReadRequest(bufio.NewReader(bytes.NewReader(frame[:length])))
+			if err != nil || request.Method != http.MethodHead {
+				return
+			}
+			const response = "HTTP/1.1 204 No Content\r\nConnection: close\r\n\r\n"
+			binary.BigEndian.PutUint16(header[:2], uint16(len(response)))
+			header[2] = 0
+			_, _ = w.Write(append(header[:], response...))
+			flusher.Flush()
+			return
+		}
 		var b [1]byte
 		for {
 			if _, err := io.ReadFull(r.Body, b[:]); err != nil {
@@ -264,8 +379,7 @@ func runtimeNaiveEchoProxy(t *testing.T, protocol int) (port int, root string, p
 			flusher.Flush()
 		}
 	})
-	// Chromium enforces certificate validity and an IP SAN for this numeric
-	// proxy address. Keep the self-signed trust anchor local to the test.
+	// Use a short-lived certificate for the proxy name resolved by the DNS stub.
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	require.NoError(t, err)
 	now := time.Now()
@@ -274,7 +388,7 @@ func runtimeNaiveEchoProxy(t *testing.T, protocol int) (port int, root string, p
 		Subject:               pkix.Name{CommonName: "Naive loopback test"},
 		NotBefore:             now.Add(-time.Hour),
 		NotAfter:              now.Add(time.Hour),
-		IPAddresses:           []net.IP{net.IPv4(127, 0, 0, 1)},
+		DNSNames:              []string{runtimeNaiveProxyHost},
 		KeyUsage:              x509.KeyUsageCertSign | x509.KeyUsageDigitalSignature,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 		BasicConstraintsValid: true,
@@ -288,13 +402,18 @@ func runtimeNaiveEchoProxy(t *testing.T, protocol int) (port int, root string, p
 		server := httptest.NewUnstartedServer(handler)
 		server.TLS = tlsConfig
 		server.EnableHTTP2 = true
+		server.Config.ConnContext = func(ctx context.Context, _ net.Conn) context.Context { return connectionContext(ctx) }
 		server.StartTLS()
 		t.Cleanup(server.Close)
 		return server.Listener.Addr().(*net.TCPAddr).Port, root, connections
 	}
 	packetConn, err := net.ListenPacket("udp4", "127.0.0.1:0")
 	require.NoError(t, err)
-	h3 := &http3.Server{TLSConfig: tlsConfig, Handler: handler}
+	h3 := &http3.Server{
+		TLSConfig:   tlsConfig,
+		Handler:     handler,
+		ConnContext: func(ctx context.Context, _ *quic.Conn) context.Context { return connectionContext(ctx) },
+	}
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
