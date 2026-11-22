@@ -306,7 +306,7 @@ func (d *outboundOwnedDialer) DialContext(ctx context.Context, network string, d
 		return nil, errors.New("Naive physical dial returned no carrier")
 	}
 	guarded, fence := outbound.WrapRuntimeOwnedConn(raw)
-	if err = d.owner.boundary.RegisterResource(fence); err != nil {
+	if err = d.owner.boundary.RegisterCarrier(fence); err != nil {
 		return nil, err
 	}
 	// No Upstream/ReaderReplaceable/raw descriptor escape: Cronet deliberately
