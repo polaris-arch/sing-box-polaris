@@ -26,8 +26,10 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-type runtimeActorKey struct{}
-type poolProbeAuthorizationKey struct{}
+type (
+	runtimeActorKey           struct{}
+	poolProbeAuthorizationKey struct{}
+)
 
 // ContextWithRuntimeActor is used after server authentication. No request field
 // or credential-derived hash supplies this scope.
