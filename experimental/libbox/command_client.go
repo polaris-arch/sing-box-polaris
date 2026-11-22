@@ -2,6 +2,7 @@ package libbox
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net"
 	"os"
@@ -40,6 +41,8 @@ type CommandClient struct {
 type CommandClientOptions struct {
 	commands       []int32
 	StatusInterval int64
+	// ConnectionEventFrames delivers validated snapshot frames to the handler as they arrive.
+	ConnectionEventFrames bool
 }
 
 func (o *CommandClientOptions) AddCommand(command int32) {
@@ -548,46 +551,104 @@ func (c *CommandClient) handleClashModeStream(client daemon.StartedServiceClient
 func (c *CommandClient) handleConnectionsStream(client daemon.StartedServiceClient, ctx context.Context) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
+	var callOptions []grpc.CallOption
+	if c.options.ConnectionEventFrames {
+		// Match the daemon's bounded connection event frame size.
+		callOptions = append(callOptions, grpc.MaxCallRecvMsgSize(1024*1024))
+	}
 	stream, err := client.SubscribeConnections(ctx, &daemon.SubscribeConnectionsRequest{
 		Interval:    c.options.StatusInterval,
 		BatchFrames: true,
-	})
+	}, callOptions...)
 	if err != nil {
-		c.handler.Disconnected(E.Cause(err, "subscribe connections").Error())
+		c.connectionEventsDisconnected(ctx, err, "subscribe connections")
 		return
 	}
+	c.receiveConnectionEvents(ctx, stream.Recv)
+}
 
-	reset, err := readConnectionEventReset(stream.Recv)
+func (c *CommandClient) receiveConnectionEvents(ctx context.Context, recv func() (*daemon.ConnectionEvents, error)) {
+	framed := c.options.ConnectionEventFrames
+	emit := func(frame *daemon.ConnectionEvents) {
+		events := connectionEventsFromGRPC(frame)
+		if !framed || ctx.Err() == nil {
+			c.handler.WriteConnectionEvents(events)
+		}
+	}
+	var emitSnapshotFrame func(*daemon.ConnectionEvents)
+	if framed {
+		recvFrame := recv
+		recv = func() (*daemon.ConnectionEvents, error) {
+			if err := ctx.Err(); err != nil {
+				return nil, err
+			}
+			frame, err := recvFrame()
+			// gRPC may return a buffered frame when cancellation is already visible.
+			if cancelErr := ctx.Err(); cancelErr != nil {
+				return nil, cancelErr
+			}
+			return frame, err
+		}
+		emitSnapshotFrame = emit
+	}
+	reset, err := readConnectionEventReset(recv, emitSnapshotFrame)
 	if err != nil {
-		c.handler.Disconnected(E.Cause(err, "connections stream recv").Error())
+		c.connectionEventsDisconnected(ctx, err, "connections stream recv")
 		return
 	}
-	c.handler.WriteConnectionEvents(connectionEventsFromGRPC(reset))
+	if reset != nil {
+		emit(reset)
+	}
 
 	for {
-		events, err := stream.Recv()
-		if err == nil && events.SnapshotComplete != nil {
+		events, err := recv()
+		if err == nil && (events.SnapshotComplete != nil || framed && events.Reset_) {
 			err = status.Error(codes.DataLoss, "unexpected connection snapshot frame")
 		}
 		if err != nil {
-			c.handler.Disconnected(E.Cause(err, "connections stream recv").Error())
+			c.connectionEventsDisconnected(ctx, err, "connections stream recv")
 			return
 		}
-		libboxEvents := connectionEventsFromGRPC(events)
-		c.handler.WriteConnectionEvents(libboxEvents)
+		emit(events)
 	}
 }
 
-func readConnectionEventReset(recv func() (*daemon.ConnectionEvents, error)) (*daemon.ConnectionEvents, error) {
+func (c *CommandClient) connectionEventsDisconnected(ctx context.Context, err error, operation string) {
+	if c.options.ConnectionEventFrames {
+		if ctx.Err() != nil {
+			return
+		}
+		failure := status.Convert(err)
+		// Other ResourceExhausted statuses may describe transport or admission limits.
+		if errors.Is(err, daemon.ErrConnectionEventSnapshotTooLarge) ||
+			failure.Code() == codes.ResourceExhausted && failure.Message() == "connection event exceeds stream frame limit" {
+			c.handler.WriteConnectionEvents(&ConnectionEvents{SnapshotState: ConnectionSnapshotTooLarge})
+		}
+	}
+	if !c.options.ConnectionEventFrames || ctx.Err() == nil {
+		c.handler.Disconnected(E.Cause(err, operation).Error())
+	}
+}
+
+func readConnectionEventReset(recv func() (*daemon.ConnectionEvents, error), emitFrame func(*daemon.ConnectionEvents)) (*daemon.ConnectionEvents, error) {
 	reset, err := recv()
-	if err != nil || reset.SnapshotComplete == nil {
-		return reset, err
+	if err != nil {
+		return nil, err
+	}
+	if reset.SnapshotComplete == nil {
+		if emitFrame != nil {
+			return nil, status.Error(codes.FailedPrecondition, "connection snapshot framing is unavailable")
+		}
+		return reset, nil
 	}
 	if !reset.Reset_ || reset.GetSnapshotComplete() {
 		return nil, status.Error(codes.DataLoss, "invalid connection snapshot start")
 	}
-	const maxSnapshotBytes = 64 * 1024 * 1024
 	size := proto.Size(reset)
+	if emitFrame != nil {
+		emitFrame(reset)
+		reset = nil
+	}
 	for {
 		frame, err := recv()
 		if err != nil {
@@ -597,17 +658,25 @@ func readConnectionEventReset(recv func() (*daemon.ConnectionEvents, error)) (*d
 			return nil, status.Error(codes.DataLoss, "invalid connection snapshot continuation")
 		}
 		if frame.GetSnapshotComplete() && len(frame.Events) == 0 {
-			reset.SnapshotComplete = nil
+			if emitFrame != nil {
+				emitFrame(frame)
+			} else {
+				reset.SnapshotComplete = nil
+			}
 			return reset, nil
 		}
 		if frame.GetSnapshotComplete() || len(frame.Events) == 0 {
 			return nil, status.Error(codes.DataLoss, "invalid connection snapshot data")
 		}
 		size += proto.Size(frame)
-		if size > maxSnapshotBytes {
-			return nil, status.Error(codes.ResourceExhausted, "connection snapshot exceeds its byte limit")
+		if size > daemon.ConnectionEventSnapshotLimit {
+			return nil, daemon.ErrConnectionEventSnapshotTooLarge
 		}
-		reset.Events = append(reset.Events, frame.Events...)
+		if emitFrame != nil {
+			emitFrame(frame)
+		} else {
+			reset.Events = append(reset.Events, frame.Events...)
+		}
 	}
 }
 

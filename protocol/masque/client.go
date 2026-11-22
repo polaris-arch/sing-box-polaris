@@ -16,6 +16,7 @@ import (
 	"github.com/sagernet/sing-box/adapter/outbound"
 	"github.com/sagernet/sing-box/common/dialer"
 	"github.com/sagernet/sing-box/common/iponly"
+	"github.com/sagernet/sing-box/common/urltest"
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
@@ -55,6 +56,7 @@ type ClientEndpoint struct {
 	device        device.Device
 	mtu           uint32
 	onDemand      bool
+	scopedProbes  bool
 	stateAccess   sync.Mutex
 	deviceStarted bool
 	state         atomic.Pointer[clientState]
@@ -86,13 +88,14 @@ func NewClientEndpoint(ctx context.Context, router adapter.Router, logger log.Co
 		options.HTTP3Options.InitialPacketSize = min(int(options.MTU)+masque.QUICPacketOverhead, math.MaxUint16)
 	}
 	clientEndpoint := &ClientEndpoint{
-		Adapter:   endpoint.NewAdapterWithDialerOptions(C.TypeMASQUEClient, tag, []string{N.NetworkTCP, N.NetworkUDP, N.NetworkICMP}, options.DialerOptions),
-		router:    router,
-		logger:    logger,
-		ctx:       ctx,
-		dnsRouter: service.FromContext[adapter.DNSRouter](ctx),
-		mtu:       options.MTU,
-		onDemand:  options.OnDemand,
+		Adapter:      endpoint.NewAdapterWithDialerOptions(C.TypeMASQUEClient, tag, []string{N.NetworkTCP, N.NetworkUDP, N.NetworkICMP}, options.DialerOptions),
+		router:       router,
+		logger:       logger,
+		ctx:          ctx,
+		dnsRouter:    service.FromContext[adapter.DNSRouter](ctx),
+		mtu:          options.MTU,
+		onDemand:     options.OnDemand,
+		scopedProbes: options.OnDemand && !options.System,
 	}
 	clientEndpoint.state.Store(&clientState{})
 	if err := clientEndpoint.initializeRuntime(ctx, options.System); err != nil {
@@ -163,6 +166,7 @@ func NewClientEndpoint(ctx context.Context, router adapter.Router, logger log.Co
 		Handler:         clientEndpoint,
 		// The reference manager can resume this client after PostStart.
 		StartSuspended: clientEndpoint.onDemand,
+		ScopedProbes:   clientEndpoint.scopedProbes,
 	})
 	if err != nil {
 		return nil, E.Errors(err, httpClient.Close())
@@ -289,18 +293,26 @@ func (c *ClientEndpoint) SetKeepIdleConnections(keep bool) {
 	}
 }
 
-func (c *ClientEndpoint) waitReady(ctx context.Context) error {
+func (c *ClientEndpoint) waitReady(ctx context.Context) (func(), error) {
+	if c.scopedProbes {
+		if urltest.HasProbeAdmission(ctx) {
+			return c.client.WaitReadyForProbe(ctx)
+		}
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+	}
 	if c.onDemand {
 		c.client.Resume()
 	} else if c.client.Ready() {
-		return nil
+		return nil, nil
 	}
 	// A session still being established is awaited, not failed: right after
 	// start the selected endpoint would otherwise drop its first flows.
 	// A failed attempt still fails fast with its error until the next retry.
 	waitCtx, cancel := context.WithTimeout(ctx, C.TCPTimeout)
 	defer cancel()
-	return c.client.WaitReady(waitCtx)
+	return nil, c.client.WaitReady(waitCtx)
 }
 
 func (c *ClientEndpoint) PreMatchFlow(network string, destination netip.Addr) adapter.PreMatchAction {
@@ -431,7 +443,9 @@ func (c *ClientEndpoint) writePacketBuffers(packetBuffers []*buf.Buffer) error {
 		}
 		defer leave()
 	}
-	if c.onDemand {
+	// The userspace writer also emits probe traffic and close packets. Only
+	// explicit flow and reference entry points can resume its dormant tunnel.
+	if c.onDemand && !c.scopedProbes {
 		c.client.Resume()
 	}
 	return c.client.WritePacketBuffers(packetBuffers, false)
@@ -499,16 +513,25 @@ func (c *ClientEndpoint) DialContext(ctx context.Context, network string, destin
 	})
 }
 
-func (c *ClientEndpoint) dialContext(ctx context.Context, network string, destination M.Socksaddr) (net.Conn, error) {
+func (c *ClientEndpoint) dialContext(ctx context.Context, network string, destination M.Socksaddr) (conn net.Conn, err error) {
 	switch network {
 	case N.NetworkTCP:
 		c.logger.InfoContext(ctx, "outbound connection to ", destination)
 	case N.NetworkUDP:
 		c.logger.InfoContext(ctx, "outbound packet connection to ", destination)
 	}
-	err := c.waitReady(ctx)
+	release, err := c.waitReady(ctx)
 	if err != nil {
 		return nil, err
+	}
+	if release != nil {
+		defer func() {
+			if err != nil || conn == nil {
+				release()
+			} else {
+				conn = outbound.WrapRuntimeConn(context.Background(), release, conn)
+			}
+		}()
 	}
 	if destination.IsDomain() {
 		destinationAddresses, lookupErr := c.dnsRouter.Lookup(ctx, destination.Fqdn, adapter.DNSQueryOptions{})
@@ -541,11 +564,20 @@ func (c *ClientEndpoint) ListenPacketWithDestination(ctx context.Context, destin
 	return packet, address, err
 }
 
-func (c *ClientEndpoint) listenPacketWithDestination(ctx context.Context, destination M.Socksaddr) (net.PacketConn, netip.Addr, error) {
+func (c *ClientEndpoint) listenPacketWithDestination(ctx context.Context, destination M.Socksaddr) (conn net.PacketConn, address netip.Addr, err error) {
 	c.logger.InfoContext(ctx, "outbound packet connection to ", destination)
-	err := c.waitReady(ctx)
+	release, err := c.waitReady(ctx)
 	if err != nil {
 		return nil, netip.Addr{}, err
+	}
+	if release != nil {
+		defer func() {
+			if err != nil || conn == nil {
+				release()
+			} else {
+				conn = outbound.WrapRuntimePacketConn(context.Background(), release, conn)
+			}
+		}()
 	}
 	if destination.IsDomain() {
 		destinationAddresses, lookupErr := c.dnsRouter.Lookup(ctx, destination.Fqdn, adapter.DNSQueryOptions{})

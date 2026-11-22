@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/sagernet/sing-box/adapter"
+	"github.com/sagernet/sing-box/common/urltest"
 	"github.com/sagernet/sing-box/internal/runtimegraph"
 )
 
@@ -39,6 +40,7 @@ func (c *Client) admitBackgroundRefresh(caller context.Context) (context.Context
 	}
 	ctx = adapter.ContextWithRuntimeOwnership(ctx, runtimeCtx)
 	ctx = context.WithValue(ctx, dnsRefreshLineageKey{}, owner)
+	ctx = urltest.ContextWithBackgroundProbe(ctx)
 	var once sync.Once
 	return ctx, func() {
 		once.Do(func() {

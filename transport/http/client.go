@@ -260,6 +260,7 @@ func (c *Client) DialContext(ctx context.Context, network string, destination M.
 	default:
 		return nil, E.Extend(N.ErrUnknownNetwork, network)
 	}
+	var http3Failure error
 	if c.http3Available() {
 		dialCtx, err := c.ownedDialContext(ctx)
 		if err != nil {
@@ -273,11 +274,15 @@ func (c *Client) DialContext(ctx context.Context, network string, destination M.
 		if c.disableVersionFallback || !errors.Is(err, ErrHTTP3Unavailable) {
 			return nil, err
 		}
+		http3Failure = err
 		c.markHTTP3Broken()
 	}
 	if c.tlsDialer != nil && !c.http2Unsupported.Load() {
 		clientConn, conn, err := c.acquireHTTP2(ctx)
 		if err != nil {
+			if http3Failure != nil && adapter.IsOutboundForegroundSlot(err) {
+				err = errors.Join(http3Failure, err)
+			}
 			return nil, err
 		}
 		if clientConn != nil {
@@ -291,6 +296,9 @@ func (c *Client) DialContext(ctx context.Context, network string, destination M.
 	}
 	conn, err := c.http1Dialer.DialContext(ctx, N.NetworkTCP, c.server)
 	if err != nil {
+		if http3Failure != nil && adapter.IsOutboundForegroundSlot(err) {
+			err = errors.Join(http3Failure, err)
+		}
 		return nil, err
 	}
 	return c.connectAndClose(ctx, conn, destination)

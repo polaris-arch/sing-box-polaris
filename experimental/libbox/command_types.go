@@ -98,9 +98,18 @@ type ConnectionEvent struct {
 	ClosedAt      int64
 }
 
+const (
+	ConnectionSnapshotNone int32 = iota
+	ConnectionSnapshotPart
+	ConnectionSnapshotComplete
+	ConnectionSnapshotTooLarge
+)
+
 type ConnectionEvents struct {
-	Reset  bool
-	events []*ConnectionEvent
+	Reset bool
+	// SnapshotState identifies an opt-in snapshot frame or a connection event size failure.
+	SnapshotState int32
+	events        []*ConnectionEvent
 }
 
 func (c *ConnectionEvents) Iterator() ConnectionEventIterator {
@@ -433,6 +442,13 @@ func connectionEventsFromGRPC(events *daemon.ConnectionEvents) *ConnectionEvents
 	}
 	libboxEvents := &ConnectionEvents{
 		Reset: events.Reset_,
+	}
+	if events.SnapshotComplete != nil {
+		if events.GetSnapshotComplete() {
+			libboxEvents.SnapshotState = ConnectionSnapshotComplete
+		} else {
+			libboxEvents.SnapshotState = ConnectionSnapshotPart
+		}
 	}
 	for _, event := range events.Events {
 		if libboxEvent := connectionEventFromGRPC(event); libboxEvent != nil {

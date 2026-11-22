@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/sagernet/sing-box/adapter"
 	E "github.com/sagernet/sing/common/exceptions"
 	M "github.com/sagernet/sing/common/metadata"
 	N "github.com/sagernet/sing/common/network"
@@ -48,6 +49,7 @@ func (c *Client) OpenTunnel(ctx context.Context, protocol string, path string) (
 }
 
 func (c *Client) openTunnel(ctx context.Context, request tunnelRequest) (net.Conn, DatagramStream, error) {
+	var http3Failure error
 	if c.http3Available() {
 		dialCtx, err := c.ownedDialContext(ctx)
 		if err != nil {
@@ -62,6 +64,7 @@ func (c *Client) openTunnel(ctx context.Context, request tunnelRequest) (net.Con
 		if c.disableVersionFallback || !errors.Is(err, ErrHTTP3Unavailable) {
 			return nil, nil, err
 		}
+		http3Failure = err
 		c.markHTTP3Broken()
 	}
 	if !extendedConnectAvailable && c.tlsDialer != nil && c.disableVersionFallback {
@@ -70,6 +73,9 @@ func (c *Client) openTunnel(ctx context.Context, request tunnelRequest) (net.Con
 	if extendedConnectAvailable && c.tlsDialer != nil && !c.http2Unsupported.Load() && !c.http2ExtendedConnectUnsupported.Load() {
 		clientConn, conn, err := c.acquireHTTP2(ctx)
 		if err != nil {
+			if http3Failure != nil && adapter.IsOutboundForegroundSlot(err) {
+				err = errors.Join(http3Failure, err)
+			}
 			return nil, nil, err
 		}
 		if clientConn != nil {
@@ -90,6 +96,9 @@ func (c *Client) openTunnel(ctx context.Context, request tunnelRequest) (net.Con
 	}
 	conn, err := c.http1Dialer.DialContext(ctx, N.NetworkTCP, c.server)
 	if err != nil {
+		if http3Failure != nil && adapter.IsOutboundForegroundSlot(err) {
+			err = errors.Join(http3Failure, err)
+		}
 		return nil, nil, err
 	}
 	return c.openTunnelHTTP1AndClose(ctx, conn, request)

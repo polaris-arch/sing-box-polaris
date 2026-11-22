@@ -264,12 +264,13 @@ func (m *ReferenceManager) updateInventory(inventory referenceInventory) {
 
 	devicePaused := inventory.devicePaused
 	keepIdle := make(map[any]bool)
+	var sharedIdle map[adapter.RuntimeResourceID]idleTarget
 	for _, outbound := range outboundManager.Outbounds() {
 		keeper, isKeeper := outbound.(adapter.IdleConnectionKeeper)
 		if !isKeeper {
 			continue
 		}
-		m.applyKeepIdle(keepIdle, idleTarget{
+		target := idleTarget{
 			value:    outbound,
 			keeper:   keeper,
 			kind:     "outbound/",
@@ -277,7 +278,23 @@ func (m *ReferenceManager) updateInventory(inventory referenceInventory) {
 			typeName: outbound.Type(),
 			tag:      outbound.Tag(),
 			keep:     referencedOutbounds[outbound.Tag()],
-		})
+		}
+		if member, ok := outbound.(adapter.RuntimeSharedConnectionOwner); ok {
+			if owner, shared := member.RuntimeSharedConnectionOwner(); shared {
+				target.value = owner
+				if sharedIdle == nil {
+					sharedIdle = make(map[adapter.RuntimeResourceID]idleTarget)
+				}
+				if previous, tracked := sharedIdle[owner]; !tracked || target.keep && !previous.keep {
+					sharedIdle[owner] = target
+				}
+				continue
+			}
+		}
+		m.applyKeepIdle(keepIdle, target)
+	}
+	for _, target := range sharedIdle {
+		m.applyKeepIdle(keepIdle, target)
 	}
 	for _, endpoint := range onDemandEndpoints {
 		m.applyKeepIdle(keepIdle, idleTarget{
@@ -355,16 +372,33 @@ func (m *ReferenceManager) applyKeepIdle(keepIdle map[any]bool, target idleTarge
 func (m *ReferenceManager) CloseIdleConnections() {
 	outboundManager := service.FromContext[adapter.OutboundManager](m.ctx)
 	transportManager := service.FromContext[adapter.DNSTransportManager](m.ctx)
-	for _, outbound := range outboundManager.Outbounds() {
-		keeper, isKeeper := outbound.(adapter.IdleConnectionKeeper)
-		if isKeeper {
-			keeper.CloseIdleConnections()
-		}
-	}
+	closeOutboundIdleConnections(outboundManager.Outbounds())
 	for _, transport := range transportManager.Transports() {
 		keeper, isKeeper := transport.(adapter.IdleConnectionKeeper)
 		if isKeeper {
 			keeper.CloseIdleConnections()
 		}
+	}
+}
+
+func closeOutboundIdleConnections(outbounds []adapter.Outbound) {
+	var seen map[adapter.RuntimeResourceID]bool
+	for _, outbound := range outbounds {
+		keeper, ok := outbound.(adapter.IdleConnectionKeeper)
+		if !ok {
+			continue
+		}
+		if member, ok := outbound.(adapter.RuntimeSharedConnectionOwner); ok {
+			if owner, shared := member.RuntimeSharedConnectionOwner(); shared {
+				if seen == nil {
+					seen = make(map[adapter.RuntimeResourceID]bool)
+				}
+				if seen[owner] {
+					continue
+				}
+				seen[owner] = true
+			}
+		}
+		keeper.CloseIdleConnections()
 	}
 }

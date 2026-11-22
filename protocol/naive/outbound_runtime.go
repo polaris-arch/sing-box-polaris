@@ -60,14 +60,15 @@ func reserveNativeEngines(ctx context.Context, count int) (func(int), error) {
 func (b *nativeEngineBudget) reserve(count int, keepHandoffSlot bool) (func(int), error) {
 	// A Cronet socket callback may dial through another Naive outbound. Waiting
 	// for capacity there can deadlock the engine that is already holding it.
-	var headroom int64
-	if keepHandoffSlot {
-		headroom = 1
-	}
 	b.mu.Lock()
-	if int64(count) > b.limit-b.used-headroom {
+	available := b.limit - b.used
+	if int64(count) > available {
 		b.mu.Unlock()
 		return nil, errNativeEngineCapacity
+	}
+	if keepHandoffSlot && int64(count) == available {
+		b.mu.Unlock()
+		return nil, adapter.ErrOutboundForegroundSlot
 	}
 	b.used += int64(count)
 	b.mu.Unlock()
@@ -96,9 +97,10 @@ func acquireColdProbe(ctx context.Context, slots int64) error {
 	return nil
 }
 
-// Each immutable outbound owns its native client, callbacks and physical
-// carriers. The composed Cronet Close is the actual operation/callback/proxy/
-// active-stream join followed by checked engine Shutdown and Destroy.
+// The physical slot and its callbacks belong to one runtime. A logical alias
+// has a separate runtime for its operation fence and cold probes.
+// Cronet Close joins its operations, callbacks, proxies and active streams
+// before checked engine Shutdown and Destroy.
 type outboundRuntime struct {
 	ctx        context.Context
 	cancel     context.CancelFunc
@@ -208,7 +210,15 @@ func (h *Outbound) WithURLTestDialer(ctx context.Context, test func(context.Cont
 			resultErr = errors.Join(resultErr, closeErr)
 		}
 	}()
-	options := probe.guardClientOptions(h.clients.options)
+	options := h.clients.options
+	if h.clients.owner != owner {
+		options.Context = h.ctx
+		options.Logger = h.logger
+		if h.clients.resolverForLogger != nil {
+			options.DNSResolver = h.clients.resolverForLogger(h.logger)
+		}
+	}
+	options = probe.guardClientOptions(options)
 	options.InsecureConcurrency = 1
 	options.ReserveEngines = func(_ context.Context, count int) (func(int), error) {
 		release, err := reserveNativeEngines(ctx, count)

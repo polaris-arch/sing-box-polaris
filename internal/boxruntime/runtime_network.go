@@ -31,7 +31,16 @@ func (c *runtimeCoordinator) VisitRuntimeNetwork(ctx context.Context, visit func
 	}()
 	for _, entry := range entries {
 		bound := adapter.ContextWithRuntimeResourceLease(ctx, entry.lease)
+		seenShared := false
 		for _, component := range entry.resource.components {
+			if member, ok := component.outbound.(adapter.RuntimeSharedConnectionOwner); ok {
+				if _, shared := member.RuntimeSharedConnectionOwner(); shared {
+					if seenShared {
+						continue
+					}
+					seenShared = true
+				}
+			}
 			// Pass a literal nil: a nil *route.Router would become a non-nil adapter.Router.
 			if component.router != nil {
 				visit(bound, component.outbound, component.router)

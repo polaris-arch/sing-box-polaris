@@ -32,6 +32,25 @@ func RegisterOutbound(registry *outbound.Registry) {
 	outbound.Register[option.NaiveOutboundOptions](registry, C.TypeNaive, NewOutbound)
 }
 
+const RuntimeClientSharing = true
+
+type runtimeClientKey struct{}
+
+// NewRuntimeClientGroup constructs the shared slot with the physical node's
+// context and scope. The returned binding is used only by its cohort's aliases.
+func NewRuntimeClientGroup(ctx context.Context, logger log.ContextLogger, options option.NaiveOutboundOptions) (func(context.Context) context.Context, error) {
+	if _, bound := adapter.RuntimeResourceSourceFromContext(ctx); !bound {
+		return nil, errors.New("shared Naive client requires a runtime owner")
+	}
+	clients, err := newNaiveClientSlot(ctx, logger, options)
+	if err != nil {
+		return nil, err
+	}
+	return func(ctx context.Context) context.Context {
+		return context.WithValue(ctx, runtimeClientKey{}, clients)
+	}, nil
+}
+
 type Outbound struct {
 	runtime *outboundRuntime
 	outbound.Adapter
@@ -41,7 +60,40 @@ type Outbound struct {
 	uotClient *uot.Client
 }
 
-func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextLogger, tag string, options option.NaiveOutboundOptions) (result adapter.Outbound, resultErr error) {
+func NewOutbound(ctx context.Context, _ adapter.Router, logger log.ContextLogger, tag string, options option.NaiveOutboundOptions) (adapter.Outbound, error) {
+	clients, _ := ctx.Value(runtimeClientKey{}).(*naiveClientSlot)
+	var runtime *outboundRuntime
+	if clients == nil {
+		var err error
+		clients, err = newNaiveClientSlot(ctx, logger, options)
+		if err != nil {
+			return nil, err
+		}
+		runtime = clients.owner
+	} else {
+		runtime = newOutboundRuntime(ctx)
+		if err := runtime.install(ctx); err != nil {
+			return nil, errors.Join(err, runtime.close())
+		}
+	}
+	networks := []string{N.NetworkTCP}
+	var uotClient *uot.Client
+	uotOptions := common.PtrValueOrDefault(options.UDPOverTCP)
+	if uotOptions.Enabled {
+		uotClient = &uot.Client{Dialer: clients, Version: uotOptions.Version}
+		networks = append(networks, N.NetworkUDP)
+	}
+	return &Outbound{
+		runtime:   runtime,
+		Adapter:   outbound.NewAdapterWithDialerOptions(C.TypeNaive, tag, networks, options.DialerOptions),
+		ctx:       ctx,
+		logger:    logger,
+		clients:   clients,
+		uotClient: uotClient,
+	}, nil
+}
+
+func newNaiveClientSlot(ctx context.Context, logger log.ContextLogger, options option.NaiveOutboundOptions) (result *naiveClientSlot, resultErr error) {
 	if options.TLS == nil || !options.TLS.Enabled {
 		return nil, C.ErrTLSRequired
 	}
@@ -132,9 +184,12 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 	}
 
 	dnsRouter := service.FromContext[adapter.DNSRouter](ctx)
-	var dnsResolver cronet.DNSResolverFunc
+	var resolverForLogger func(log.ContextLogger) cronet.DNSResolverFunc
 	if dnsRouter != nil {
-		dnsResolver = newDNSResolver(dnsRouter, outboundDialer.(dialer.ResolveDialer).QueryOptions(), logger)
+		queryOptions := outboundDialer.(dialer.ResolveDialer).QueryOptions()
+		resolverForLogger = func(logger log.ContextLogger) cronet.DNSResolverFunc {
+			return newDNSResolver(dnsRouter, queryOptions, logger)
+		}
 	}
 
 	var echEnabled bool
@@ -188,7 +243,6 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 		ReceiveWindow:            options.ReceiveWindow.Value(),
 		TrustedRootCertificates:  trustedRootCertificates,
 		Dialer:                   outboundDialer,
-		DNSResolver:              dnsResolver,
 		ECHEnabled:               echEnabled,
 		ECHConfigList:            echConfigList,
 		ECHQueryServerName:       echQueryServerName,
@@ -196,7 +250,10 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 		QUICCongestionControl:    quicCongestionControl,
 		QUICSessionReceiveWindow: options.QUICSessionReceiveWindow.Value(),
 	}
-	clients := &naiveClientSlot{owner: runtime, options: clientOptions, keep: true}
+	if resolverForLogger != nil {
+		clientOptions.DNSResolver = resolverForLogger(logger)
+	}
+	clients := &naiveClientSlot{owner: runtime, options: clientOptions, resolverForLogger: resolverForLogger, keep: true}
 	runtime.client = clients
 	clients.current, err = clients.newIncarnation()
 	if err != nil {
@@ -206,29 +263,8 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 		return nil, err
 	}
 	clients.current.runtime.begin = runtime.begin
-	var uotClient *uot.Client
-	uotOptions := common.PtrValueOrDefault(options.UDPOverTCP)
-	if uotOptions.Enabled {
-		uotClient = &uot.Client{
-			Dialer:  clients,
-			Version: uotOptions.Version,
-		}
-	}
-	var networks []string
-	if uotClient != nil {
-		networks = []string{N.NetworkTCP, N.NetworkUDP}
-	} else {
-		networks = []string{N.NetworkTCP}
-	}
 	constructed = true
-	return &Outbound{
-		runtime:   runtime,
-		Adapter:   outbound.NewAdapterWithDialerOptions(C.TypeNaive, tag, networks, options.DialerOptions),
-		ctx:       ctx,
-		logger:    logger,
-		clients:   clients,
-		uotClient: uotClient,
-	}, nil
+	return clients, nil
 }
 
 func (h *Outbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
@@ -241,12 +277,11 @@ func (h *Outbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 	}
 	err = func() error {
 		defer leave()
-		instance, err := h.clients.acquire(h.ctx, true)
-		if err != nil {
-			return err
+		if h.clients.owner == h.runtime {
+			return h.clients.start()
 		}
-		defer h.clients.release()
-		return instance.client.StartOnDemand(h.ctx)
+		h.clients.startOnce.Do(func() { h.clients.startErr = h.clients.start() })
+		return h.clients.startErr
 	}()
 	if err != nil {
 		return errors.Join(err, h.runtime.close())
@@ -289,7 +324,7 @@ func (h *Outbound) listenPacketOwned(ctx context.Context, destination M.Socksadd
 }
 
 func (h *Outbound) InterfaceUpdated(ctx context.Context) {
-	leave, err := h.runtime.fence.Acquire()
+	leave, err := h.clients.owner.fence.Acquire()
 	if err != nil {
 		return
 	}
@@ -298,7 +333,7 @@ func (h *Outbound) InterfaceUpdated(ctx context.Context) {
 }
 
 func (h *Outbound) SetKeepIdleConnections(keep bool) {
-	leave, err := h.runtime.fence.Acquire()
+	leave, err := h.clients.owner.fence.Acquire()
 	if err != nil {
 		return
 	}
@@ -306,8 +341,15 @@ func (h *Outbound) SetKeepIdleConnections(keep bool) {
 	h.clients.setKeep(keep)
 }
 
+func (h *Outbound) RuntimeSharedConnectionOwner() (adapter.RuntimeResourceID, bool) {
+	if h.clients.owner == h.runtime {
+		return adapter.RuntimeResourceID{}, false
+	}
+	return h.clients.owner.source.ID(), true
+}
+
 func (h *Outbound) CloseIdleConnections() {
-	leave, err := h.runtime.fence.Acquire()
+	leave, err := h.clients.owner.fence.Acquire()
 	if err != nil {
 		return
 	}

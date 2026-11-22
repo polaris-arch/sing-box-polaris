@@ -6,7 +6,10 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
+	"reflect"
+	"slices"
 	"sort"
+	"strings"
 
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/common/ipset"
@@ -14,6 +17,7 @@ import (
 	"github.com/sagernet/sing-box/internal/runtimeconfig"
 	"github.com/sagernet/sing-box/internal/runtimegraph"
 	"github.com/sagernet/sing-box/option"
+	"github.com/sagernet/sing-box/protocol/naive"
 	"github.com/sagernet/sing-box/route"
 	"github.com/sagernet/sing/common"
 	"github.com/sagernet/sing/common/domain"
@@ -22,15 +26,17 @@ import (
 )
 
 type runtimeNodeOptions struct {
-	node      runtimegraph.DependencyNode
-	service   *option.Service
-	endpoint  *option.Endpoint
-	inbound   *option.Inbound
-	outbound  *option.Outbound
-	transport *option.DNSServerOptions
-	ruleSet   *option.RuleSet
-	provider  *option.CertificateProvider
-	index     int
+	node         runtimegraph.DependencyNode
+	service      *option.Service
+	endpoint     *option.Endpoint
+	inbound      *option.Inbound
+	outbound     *option.Outbound
+	naiveClient  string
+	naiveOptions *option.NaiveOutboundOptions
+	transport    *option.DNSServerOptions
+	ruleSet      *option.RuleSet
+	provider     *option.CertificateProvider
+	index        int
 }
 
 func runtimeConfigNodes(ctx context.Context, options option.Options) ([]runtimegraph.DependencyNode, map[string]runtimeNodeOptions, error) {
@@ -596,8 +602,112 @@ func runtimeConfigNodes(ctx context.Context, options option.Options) ([]runtimeg
 			}
 		}
 	}
+	if naive.RuntimeClientSharing {
+		nodes, err = runtimeShareNaiveClients(ctx, nodes, configs, defaultsBytes)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
 	sort.Slice(nodes, func(i, j int) bool { return nodes[i].Name < nodes[j].Name })
 	return nodes, configs, nil
+}
+
+func runtimeShareNaiveClients(ctx context.Context, nodes []runtimegraph.DependencyNode, configs map[string]runtimeNodeOptions, defaults []byte) ([]runtimegraph.DependencyNode, error) {
+	groups := make(map[string][]int)
+	for i, node := range nodes {
+		config := configs[node.Name].outbound
+		if config == nil || config.Type != C.TypeNaive {
+			continue
+		}
+		options, ok := config.Options.(*option.NaiveOutboundOptions)
+		if !ok || !runtimeNaiveClientShareable(options) {
+			continue
+		}
+		encoded, err := json.MarshalContext(ctx, options)
+		if err != nil {
+			return nil, err
+		}
+		key := runtimeDigest(append(append(encoded, '\n'), defaults...))
+		groups[key] = append(groups[key], i)
+	}
+	var cyclic map[string]bool
+	for key, members := range groups {
+		if len(members) < 2 {
+			continue
+		}
+		if cyclic == nil {
+			cohorts, err := runtimegraph.DependencyCohorts(nodes)
+			if err != nil {
+				return nil, err
+			}
+			cyclic = make(map[string]bool)
+			for _, cohort := range cohorts {
+				if len(cohort.Members) > 1 {
+					for _, member := range cohort.Members {
+						cyclic[member] = true
+					}
+				}
+			}
+		}
+		first := nodes[members[0]]
+		options := configs[first.Name].outbound.Options.(*option.NaiveOutboundOptions)
+		compatible := true
+		for _, i := range members {
+			node := nodes[i]
+			if cyclic[node.Name] || slices.Contains(node.Dependencies, node.Name) ||
+				!slices.Equal(node.Dependencies, first.Dependencies) ||
+				!reflect.DeepEqual(configs[node.Name].outbound.Options, options) {
+				compatible = false
+				break
+			}
+		}
+		if !compatible {
+			continue
+		}
+		// The client and its aliases retire as one allocation. Identical outgoing
+		// edges and acyclic members keep this from merging any other cohort.
+		name := "naive-client:" + key
+		deps := slices.Clone(first.Dependencies)
+		for _, i := range members {
+			node := &nodes[i]
+			deps = append(deps, node.Name)
+			node.Dependencies = append(slices.Clone(node.Dependencies), name)
+			config := configs[node.Name]
+			config.node = *node
+			config.naiveClient = name
+			configs[node.Name] = config
+		}
+		node := runtimegraph.DependencyNode{Name: name, Fingerprint: key, Dependencies: deps}
+		nodes = append(nodes, node)
+		configs[name] = runtimeNodeOptions{node: node, naiveOptions: options}
+	}
+	return nodes, nil
+}
+
+func runtimeNaiveClientShareable(options *option.NaiveOutboundOptions) bool {
+	if options == nil || options.Detour != "" || options.InsecureConcurrency > 1 ||
+		options.TCPKeepAliveSystemDefaults || options.UDPBindPort != 0 || options.UDPFragmentDefault {
+		return false
+	}
+	tls := options.TLS
+	if tls == nil || !tls.Enabled || tls.CertificatePath != "" || tls.ClientCertificatePath != "" ||
+		tls.ClientKeyPath != "" || tls.ECH != nil && tls.ECH.ConfigPath != "" {
+		return false
+	}
+	// Header.Build merges case aliases in map iteration order. The first value
+	// could differ between two clients constructed with the same options.
+	headers := make(map[string]bool)
+	for key, values := range options.ExtraHeaders {
+		if len(values) == 0 {
+			continue
+		}
+		key = strings.ToLower(key)
+		if headers[key] {
+			return false
+		}
+		headers[key] = true
+	}
+	return true
 }
 
 // Hash the persisted matcher data without expanding IP ranges into prefixes or

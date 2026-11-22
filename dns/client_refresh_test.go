@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/sagernet/sing-box/adapter"
+	"github.com/sagernet/sing-box/common/urltest"
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/log"
 
@@ -215,6 +216,7 @@ func TestRefreshLineageThroughPolicyAndLookupFamilies(t *testing.T) {
 	select {
 	case observed := <-seen:
 		require.Same(t, client.refreshOwner, dnsRefreshLineage(observed))
+		require.True(t, urltest.IsBackgroundProbe(observed))
 	default:
 		t.Fatal("policy evaluate did not preserve lineage")
 	}
@@ -223,6 +225,7 @@ func TestRefreshLineageThroughPolicyAndLookupFamilies(t *testing.T) {
 		select {
 		case observed := <-seen:
 			require.Same(t, client.refreshOwner, dnsRefreshLineage(observed))
+			require.True(t, urltest.IsBackgroundProbe(observed))
 		default:
 			t.Fatal("lookup family did not preserve lineage")
 		}

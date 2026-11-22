@@ -3,6 +3,7 @@ package adapter
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/netip"
 
 	"github.com/sagernet/sing-box/log"
@@ -13,6 +14,42 @@ import (
 
 // ErrOutboundCapacity means an outbound could not allocate local resources to start a dial.
 var ErrOutboundCapacity = errors.New("outbound engine capacity exhausted")
+
+// ErrOutboundForegroundSlot is a local capacity refusal caused by reserving the last slot for foreground work.
+var ErrOutboundForegroundSlot = fmt.Errorf("outbound engine slot reserved for foreground: %w", ErrOutboundCapacity)
+
+// IsOutboundForegroundSlot recognizes a refusal with no accompanying failure.
+func IsOutboundForegroundSlot(err error) bool {
+	return isOnlyOutboundError(err, ErrOutboundForegroundSlot)
+}
+
+// IsOutboundCapacity recognizes a capacity refusal with no accompanying failure.
+func IsOutboundCapacity(err error) bool {
+	return isOnlyOutboundError(err, ErrOutboundCapacity)
+}
+
+func isOnlyOutboundError(err, target error) bool {
+	if err == target {
+		return true
+	}
+	switch cause := err.(type) {
+	case interface{ Unwrap() []error }:
+		causes := cause.Unwrap()
+		if len(causes) == 0 {
+			return false
+		}
+		for _, child := range causes {
+			if !isOnlyOutboundError(child, target) {
+				return false
+			}
+		}
+		return true
+	case interface{ Unwrap() error }:
+		return isOnlyOutboundError(cause.Unwrap(), target)
+	default:
+		return false
+	}
+}
 
 // Note: for proxy protocols, outbound creates early connections by default.
 
@@ -57,6 +94,12 @@ type OutboundManager interface {
 type IdleConnectionKeeper interface {
 	SetKeepIdleConnections(keep bool)
 	CloseIdleConnections()
+}
+
+// RuntimeSharedConnectionOwner identifies the physical connections behind
+// distinct logical outbounds. The owner belongs to the admitted runtime graph.
+type RuntimeSharedConnectionOwner interface {
+	RuntimeSharedConnectionOwner() (RuntimeResourceID, bool)
 }
 
 type Referrer interface {

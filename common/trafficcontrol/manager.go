@@ -1,13 +1,14 @@
 package trafficcontrol
 
 import (
+	"os"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/common/compatible"
 	"github.com/sagernet/sing/common/cleanup"
-	"github.com/sagernet/sing/common/observable"
 	"github.com/sagernet/sing/common/x/list"
 
 	"github.com/gofrs/uuid/v5"
@@ -41,13 +42,17 @@ type Manager struct {
 	closedUploadTotal       int64
 	closedDownloadTotal     int64
 
-	eventSubscriber *observable.Subscriber[ConnectionEvent]
-	eventObserver   *observable.Observer[ConnectionEvent]
+	events connectionEventObserver
 }
 
 func NewManager() *Manager {
 	return &Manager{
-		eventSubscriber: observable.NewSubscriber[ConnectionEvent](256),
+		events: connectionEventObserver{
+			events:    make(chan queuedConnectionEvent, 256),
+			lossWake:  make(chan struct{}, 1),
+			done:      make(chan struct{}),
+			listeners: make(map[*ConnectionEventSubscription]struct{}),
+		},
 	}
 }
 
@@ -57,8 +62,8 @@ func (m *Manager) Name() string {
 
 func (m *Manager) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 	if stage == adapter.StartStateInitialize {
-		m.eventObserver = observable.NewObserver(m.eventSubscriber, 64)
-		scope.Add(m.eventObserver.Close)
+		go m.events.run()
+		scope.Add(m.events.close)
 		cleaner := cleanup.Add(m.Clear)
 		scope.Add(func() error {
 			cleaner.Close()
@@ -68,18 +73,27 @@ func (m *Manager) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 	return nil
 }
 
-func (m *Manager) SubscribeEvents() (observable.Subscription[ConnectionEvent], <-chan struct{}, error) {
-	return m.eventObserver.Subscribe()
-}
-
-func (m *Manager) UnSubscribeEvents(subscription observable.Subscription[ConnectionEvent]) {
-	m.eventObserver.UnSubscribe(subscription)
+func (m *Manager) SubscribeEvents() (*ConnectionEventSubscription, error) {
+	o := &m.events
+	o.access.Lock()
+	defer o.access.Unlock()
+	if o.listeners == nil {
+		return nil, os.ErrClosed
+	}
+	subscription := &ConnectionEventSubscription{
+		observer:   o,
+		generation: o.generation.Add(1),
+		events:     make(chan ConnectionEvent, 64),
+		done:       make(chan struct{}),
+	}
+	o.listeners[subscription] = struct{}{}
+	return subscription, nil
 }
 
 func (m *Manager) join(tracker Tracker) {
 	metadata := tracker.Metadata()
 	m.connections.Store(metadata.ID, tracker)
-	m.eventSubscriber.Emit(ConnectionEvent{
+	m.events.emit(ConnectionEvent{
 		Type:     ConnectionEventNew,
 		ID:       metadata.ID,
 		Metadata: metadata,
@@ -104,7 +118,7 @@ func (m *Manager) leave(tracker Tracker) {
 	}
 	m.closedConnections.PushBack(metadataCopy)
 	m.closedConnectionsAccess.Unlock()
-	m.eventSubscriber.Emit(ConnectionEvent{
+	m.events.emit(ConnectionEvent{
 		Type:     ConnectionEventClosed,
 		ID:       metadata.ID,
 		Metadata: &metadataCopy,
@@ -187,4 +201,130 @@ func (m *Manager) Clear() {
 		m.closedDownloadTotal += element.Value.Download.Load()
 	}
 	m.closedConnections.Init()
+}
+
+type ConnectionEventSubscription struct {
+	observer   *connectionEventObserver
+	generation uint64
+	events     chan ConnectionEvent
+	done       chan struct{}
+	lost       bool // published by closing done
+}
+
+func (s *ConnectionEventSubscription) Events() <-chan ConnectionEvent { return s.events }
+func (s *ConnectionEventSubscription) Done() <-chan struct{}          { return s.done }
+
+func (s *ConnectionEventSubscription) Lost() bool {
+	// A stream can observe ingress loss before the dispatcher wakes it.
+	lost := s.observer.lostGeneration.Load() >= s.generation
+	select {
+	case <-s.done:
+		return s.lost
+	default:
+		return lost
+	}
+}
+
+func (s *ConnectionEventSubscription) Close() {
+	s.observer.access.Lock()
+	defer s.observer.access.Unlock()
+	if _, exists := s.observer.listeners[s]; exists {
+		delete(s.observer.listeners, s)
+		close(s.done)
+	}
+}
+
+type queuedConnectionEvent struct {
+	event      ConnectionEvent
+	generation uint64
+}
+
+type connectionEventObserver struct {
+	events         chan queuedConnectionEvent
+	lossWake       chan struct{}
+	done           chan struct{}
+	generation     atomic.Uint64
+	lostGeneration atomic.Uint64
+
+	access    sync.Mutex
+	listeners map[*ConnectionEventSubscription]struct{}
+}
+
+func (o *connectionEventObserver) emit(event ConnectionEvent) {
+	// Tracker state is updated before emit. A later subscriber's census covers
+	// earlier generations, even when earlier events are still queued.
+	generation := o.generation.Load()
+	if generation == 0 {
+		return
+	}
+	select {
+	case <-o.done:
+		return
+	default:
+	}
+	select {
+	case <-o.done:
+		return
+	case o.events <- queuedConnectionEvent{event: event, generation: generation}:
+		return
+	default:
+	}
+	for lost := o.lostGeneration.Load(); lost < generation; lost = o.lostGeneration.Load() {
+		if o.lostGeneration.CompareAndSwap(lost, generation) {
+			// The wake is independent of the queue that just filled.
+			select {
+			case o.lossWake <- struct{}{}:
+			default:
+			}
+			return
+		}
+	}
+}
+
+func (o *connectionEventObserver) run() {
+	for {
+		select {
+		case <-o.done:
+			return
+		case event := <-o.events:
+			o.dispatch(&event)
+		case <-o.lossWake:
+			o.dispatch(nil)
+		}
+	}
+}
+
+func (o *connectionEventObserver) dispatch(event *queuedConnectionEvent) {
+	o.access.Lock()
+	defer o.access.Unlock()
+	lostGeneration := o.lostGeneration.Load()
+	for subscription := range o.listeners {
+		if lostGeneration < subscription.generation {
+			if event == nil || event.generation < subscription.generation {
+				continue
+			}
+			select {
+			case subscription.events <- event.event:
+				continue
+			default:
+			}
+		}
+		subscription.lost = true
+		delete(o.listeners, subscription)
+		close(subscription.done)
+	}
+}
+
+func (o *connectionEventObserver) close() error {
+	o.access.Lock()
+	defer o.access.Unlock()
+	if o.listeners == nil {
+		return nil
+	}
+	close(o.done)
+	for subscription := range o.listeners {
+		close(subscription.done)
+	}
+	o.listeners = nil
+	return nil
 }

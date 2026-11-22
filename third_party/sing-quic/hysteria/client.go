@@ -40,6 +40,8 @@ type ClientOptions struct {
 	TLSConfig     aTLS.Config
 	QUICOptions   qtls.QUICOptions
 	UDPDisabled   bool
+
+	ProbeAdmission *qtls.ClientProbeAdmission
 }
 
 type Client struct {
@@ -59,6 +61,8 @@ type Client struct {
 	tlsConfig     aTLS.Config
 	quicConfig    *quic.Config
 	udpDisabled   bool
+
+	probeAdmission *qtls.ClientProbeAdmission
 
 	connAccess sync.Mutex
 	conn       *clientQUICConnection
@@ -114,6 +118,8 @@ func NewClient(options ClientOptions) (*Client, error) {
 		tlsConfig:     options.TLSConfig,
 		quicConfig:    quicConfig,
 		udpDisabled:   options.UDPDisabled,
+
+		probeAdmission: options.ProbeAdmission,
 	}
 	client.initRuntime()
 	return client, nil
@@ -153,42 +159,48 @@ func ParsePorts(serverPorts []string) ([]uint16, error) {
 
 func (c *Client) offer(ctx context.Context) (*clientQUICConnection, error) {
 	c.connAccess.Lock()
-	if c.runtime.closed.Load() { c.connAccess.Unlock(); return nil, net.ErrClosed }
+	if c.runtime.closed.Load() {
+		c.connAccess.Unlock()
+		return nil, net.ErrClosed
+	}
 	conn := c.conn
 	if conn != nil && conn.active() {
 		c.connAccess.Unlock()
 		return conn, nil
 	}
-	pending := c.pending
-	if pending != nil {
-		c.connAccess.Unlock()
-		select {
-		case <-pending.done:
-			return pending.conn, pending.err
-		case <-ctx.Done():
-			return nil, ctx.Err()
+	if c.probeAdmission != nil {
+		if err := ctx.Err(); err != nil {
+			c.connAccess.Unlock()
+			return nil, err
 		}
 	}
-	// A pending offer is shared by concurrent callers. Do not derive offerCtx
-	// from the foreground request ctx: a timed-out request must stop waiting for
-	// the shared result, but it must not tear down the background QUIC dial that
-	// may still be reused by later requests. The connection attempt is owned by
-	// the client lifetime context instead.
-	offerCtx := c.ctx
-	if offerCtx == nil {
-		offerCtx = context.Background()
+	pending := c.pending
+	var offerCtx context.Context
+	if pending == nil {
+		// The client owns the attempt even when a caller stops waiting.
+		ownerCtx := c.ctx
+		if ownerCtx == nil {
+			ownerCtx = context.Background()
+		}
+		var cancel context.CancelCauseFunc
+		offerCtx, cancel = context.WithCancelCause(ownerCtx)
+		pending = &clientOffer{done: make(chan struct{}), cancel: cancel}
+		c.pending = pending
 	}
-	offerCtx, cancel := context.WithCancelCause(offerCtx)
-	pending = &clientOffer{
-		done:   make(chan struct{}),
-		cancel: cancel,
+	if c.probeAdmission != nil {
+		defer pending.probeWaiters.Add(ctx)()
 	}
-	c.pending = pending
 	c.connAccess.Unlock()
 
-	if !c.runtime.run(func() { c.completeOffer(pending, offerCtx) }) {
+	if offerCtx != nil && !c.runtime.run(func() { c.completeOffer(pending, offerCtx) }) {
 		pending.cancel(net.ErrClosed)
-		c.connAccess.Lock(); pending.err = net.ErrClosed; if c.pending == pending { c.pending = nil }; close(pending.done); c.connAccess.Unlock()
+		c.connAccess.Lock()
+		pending.err = net.ErrClosed
+		if c.pending == pending {
+			c.pending = nil
+		}
+		close(pending.done)
+		c.connAccess.Unlock()
 	}
 
 	select {
@@ -212,12 +224,27 @@ func (c *Client) offerWithStream(ctx context.Context) (*clientQUICConnection, er
 }
 
 func (c *Client) completeOffer(pending *clientOffer, offerCtx context.Context) {
-	conn, err := c.offerNew(offerCtx)
-	pending.cancel(nil)
-
+	policy := c.probeAdmission
+	dialCtx := offerCtx
+	var firstDialDone func(net.Conn, error)
+	var refused bool
+	if policy != nil {
+		dialCtx = policy.Context(offerCtx, pending.probeWaiters.AllBackground)
+		firstDialDone = func(conn net.Conn, err error) {
+			refused = conn == nil && policy.IsForegroundSlot(err)
+		}
+	}
+	conn, err := c.offerNew(dialCtx, firstDialDone)
+	c.connAccess.Lock()
+	if refused && !pending.discarded && !c.runtime.closed.Load() && offerCtx.Err() == nil &&
+		!pending.probeWaiters.AllBackground(policy.IsBackground) {
+		// The slot refusal happened before opening the first UDP carrier.
+		c.connAccess.Unlock()
+		conn, err = c.offerNew(policy.Context(offerCtx, nil), nil)
+		c.connAccess.Lock()
+	}
 	discardErr := err
 	shouldDiscard := false
-	c.connAccess.Lock()
 	if pending.discarded {
 		shouldDiscard = true
 		if pending.cause != nil {
@@ -234,33 +261,45 @@ func (c *Client) completeOffer(pending *clientOffer, offerCtx context.Context) {
 	if c.pending == pending {
 		c.pending = nil
 	}
-	close(pending.done)
 	c.connAccess.Unlock()
+	pending.cancel(nil)
+	close(pending.done)
 
 	if shouldDiscard && conn != nil {
 		conn.closeWithError(discardErr)
 	}
 }
 
-func (c *Client) offerNew(ctx context.Context) (*clientQUICConnection, error) {
-	dialCtx := ctx
+func (c *Client) offerNew(ctx context.Context, firstDialDone func(net.Conn, error)) (*clientQUICConnection, error) {
 	hopCtx := c.ctx
 	if hopCtx == nil {
 		hopCtx = context.Background()
 	}
 	hopCtx, cancelHop := context.WithCancel(hopCtx)
 	hopAdopted := false
-	defer func(){if !hopAdopted{cancelHop()}}()
-	firstDial := true
+	defer func() {
+		if !hopAdopted {
+			cancelHop()
+		}
+	}()
+	firstDial := func(serverAddr M.Socksaddr) (net.Conn, error) {
+		conn, err := c.dialer.DialContext(ctx, "udp", serverAddr)
+		if firstDialDone != nil {
+			firstDialDone(conn, err)
+		}
+		return conn, err
+	}
 	dialFunc := func(serverAddr M.Socksaddr) (net.Conn, error) {
-		currentCtx := hopCtx
-		if firstDial {
+		var udpConn net.Conn
+		var err error
+		if firstDial != nil {
 			// The initial socket open belongs to the shared offer. Later port hops
 			// belong to the live client connection and must outlive any one caller.
-			currentCtx = dialCtx
-			firstDial = false
+			udpConn, err = firstDial(serverAddr)
+			firstDial = nil
+		} else {
+			udpConn, err = c.dialer.DialContext(hopCtx, "udp", serverAddr)
 		}
-		udpConn, err := c.dialer.DialContext(currentCtx, "udp", serverAddr)
 		if err != nil {
 			return nil, err
 		}
@@ -287,7 +326,7 @@ func (c *Client) offerNew(ctx context.Context) (*clientQUICConnection, error) {
 			return nil, err
 		}
 	}
-	rawConn = &clientCancelableConn{Conn:rawConn,cancel:cancelHop}
+	rawConn = &clientCancelableConn{Conn: rawConn, cancel: cancelHop}
 	hopAdopted = true
 	quicConn, err := qtls.Dial(ctx, rawConn, c.tlsConfig, c.quicConfig)
 	if err != nil {
@@ -299,7 +338,11 @@ func (c *Client) offerNew(ctx context.Context) (*clientQUICConnection, error) {
 		defer close(watchDone)
 		_ = quicConn.CloseWithError(0, "")
 	})
-	defer func() { if !stopWatch() { <-watchDone } }()
+	defer func() {
+		if !stopWatch() {
+			<-watchDone
+		}
+	}()
 	controlStream, err := quicConn.OpenStreamSync(ctx)
 	if err != nil {
 		rawConn.Close()
@@ -488,12 +531,14 @@ type clientOffer struct {
 	err       error
 	discarded bool
 	cause     error
+
+	probeWaiters qtls.ClientProbeWaiters
 }
 
 type clientQUICConnection struct {
-	runtimeOwner *clientRuntime
+	runtimeOwner  *clientRuntime
 	transportOnce sync.Once
-	transportErr error
+	transportErr  error
 
 	quicConn    *quic.Conn
 	rawConn     io.Closer
@@ -581,7 +626,9 @@ func (c *clientQUICConnection) closeWithError(err error) {
 func (c *clientQUICConnection) closeTransport() {
 	c.transportOnce.Do(func() {
 		c.transportErr = errors.Join(c.quicConn.CloseWithError(0, ""), c.rawConn.Close())
-		if c.runtimeOwner!=nil{c.runtimeOwner.retire(c,c.transportErr)}
+		if c.runtimeOwner != nil {
+			c.runtimeOwner.retire(c, c.transportErr)
+		}
 	})
 }
 

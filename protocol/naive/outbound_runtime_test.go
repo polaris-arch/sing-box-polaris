@@ -104,6 +104,21 @@ func TestNaiveColdProbePressureAndQueueDeadline(t *testing.T) {
 	}
 }
 
+func TestNaiveBudgetDistinguishesReservedForegroundSlot(t *testing.T) {
+	budget := nativeEngineBudget{limit: 2, used: 1}
+	if _, err := budget.reserve(1, true); !adapter.IsOutboundForegroundSlot(err) || !errors.Is(err, adapter.ErrOutboundCapacity) {
+		t.Fatalf("last slot did not report a compatible foreground reservation: %v", err)
+	}
+	if _, err := budget.reserve(2, true); err != adapter.ErrOutboundCapacity || adapter.IsOutboundForegroundSlot(err) {
+		t.Fatalf("physical capacity was classified as a foreground reservation: %v", err)
+	}
+	release, err := budget.reserve(1, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	release(1)
+}
+
 func TestNaiveColdProbePreservesForegroundSlot(t *testing.T) {
 	active, _ := testWarmNaiveOutbound(t)
 	cold, _ := testWarmNaiveOutbound(t)

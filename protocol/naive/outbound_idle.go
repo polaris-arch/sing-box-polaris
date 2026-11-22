@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/sagernet/cronet-go"
+	"github.com/sagernet/sing-box/log"
 	M "github.com/sagernet/sing/common/metadata"
 )
 
@@ -18,19 +19,32 @@ type naiveClientIncarnation struct {
 	runtime *outboundRuntime
 }
 
-// The outbound remains registered while each client and its physical carriers
+// The slot remains registered while each client and its physical carriers
 // are owned and closed together. At most one such client is live in the slot.
 type naiveClientSlot struct {
-	mu        sync.Mutex
-	owner     *outboundRuntime
-	options   cronet.NaiveClientOptions
-	current   *naiveClientIncarnation
-	borrowers int
-	keep      bool
-	pinned    bool
-	closed    bool
-	retiring  chan struct{}
-	closeErr  error
+	mu                sync.Mutex
+	owner             *outboundRuntime
+	options           cronet.NaiveClientOptions
+	resolverForLogger func(log.ContextLogger) cronet.DNSResolverFunc
+	startOnce         sync.Once
+	startErr          error
+	current           *naiveClientIncarnation
+	borrowers         int
+	keep              bool
+	pinned            bool
+	closed            bool
+	retiring          chan struct{}
+	closeErr          error
+}
+
+func (s *naiveClientSlot) start() error {
+	ctx := s.options.Context
+	instance, err := s.acquire(ctx, true)
+	if err != nil {
+		return err
+	}
+	defer s.release()
+	return instance.client.StartOnDemand(ctx)
 }
 
 func (s *naiveClientSlot) newIncarnation() (*naiveClientIncarnation, error) {

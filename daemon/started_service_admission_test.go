@@ -513,6 +513,212 @@ func TestSubscribeConnectionsResetFraming(t *testing.T) {
 			}
 		})
 	}
+	t.Run("oversized_batched_native", func(t *testing.T) {
+		for range ConnectionEventSnapshotLimit / len(wide) {
+			snapshotTestConnection(t, manager, "outbound").Metadata().Metadata.Domain = wide
+		}
+		ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
+		defer cancel()
+		var sentBytes int
+		stream := &admissionSendStream[ConnectionEvents]{ctx: ctx, send: func(frame *ConnectionEvents) error {
+			if frame.GetSnapshotComplete() {
+				t.Fatal("oversized snapshot must not complete")
+			}
+			sentBytes += proto.Size(frame)
+			if sentBytes > ConnectionEventSnapshotLimit {
+				t.Fatal("oversized snapshot data was sent")
+			}
+			return nil
+		}}
+		err := service.SubscribeConnections(&SubscribeConnectionsRequest{BatchFrames: true}, stream)
+		if sentBytes <= ConnectionEventSnapshotLimit-connectionEventFrameLimit || !errors.Is(err, ErrConnectionEventSnapshotTooLarge) {
+			t.Fatalf("sent %d snapshot bytes and returned %v", sentBytes, err)
+		}
+	})
+	t.Run("retired_oversized_snapshot", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(t.Context())
+		frame := &ConnectionEvents{SnapshotComplete: proto.Bool(false), Events: []*ConnectionEvent{{Id: "retired"}}}
+		batch := connectionEventBatch{
+			server:       &admissionSendStream[ConnectionEvents]{ctx: ctx},
+			frame:        frame,
+			size:         proto.Size(frame),
+			snapshotSize: ConnectionEventSnapshotLimit,
+		}
+		cancel()
+		if err := batch.send(); !errors.Is(err, context.Canceled) {
+			t.Fatalf("oversized retired snapshot returned %v", err)
+		}
+	})
+}
+
+func TestSubscribeConnectionsAbortsOnIngressOverflow(t *testing.T) {
+	manager := trafficcontrol.NewManager()
+	witness, err := manager.SubscribeEvents()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer witness.Close()
+	service := &StartedService{
+		ctx:           t.Context(),
+		serviceStatus: &ServiceStatus{Status: ServiceStatus_STARTED},
+		instance:      &Instance{ctx: t.Context(), trafficManager: manager},
+	}
+	var replacement *trafficcontrol.ConnectionEventSubscription
+	stream := &admissionSendStream[ConnectionEvents]{ctx: t.Context(), send: func(frame *ConnectionEvents) error {
+		if !frame.Reset_ || frame.GetSnapshotComplete() {
+			t.Fatal("snapshot continued after ingress overflow")
+		}
+		// Hold initialization so the 256-entry ingress fills before fan-out.
+		for range 257 {
+			snapshotTestConnection(t, manager, "outbound")
+		}
+		replacement, err = manager.SubscribeEvents()
+		if err != nil {
+			t.Fatal(err)
+		}
+		return nil
+	}}
+	if err := service.SubscribeConnections(&SubscribeConnectionsRequest{BatchFrames: true}, stream); status.Code(err) != codes.Aborted {
+		t.Fatalf("ingress overflow returned %v", err)
+	}
+	defer replacement.Close()
+	if replacement.Lost() {
+		t.Fatal("fresh subscription inherited an older ingress loss")
+	}
+
+	scope := adapter.NewScope(t.Context(), nil)
+	if err := manager.Start(adapter.StartStateInitialize, scope); err != nil {
+		t.Fatal(err)
+	}
+	defer scope.Close()
+	select {
+	case <-witness.Done():
+		if !witness.Lost() {
+			t.Fatal("ingress overflow ended a listener as ordinary closure")
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("ingress overflow did not wake the listener")
+	}
+	if replacement.Lost() {
+		t.Fatal("dispatch of an older ingress loss retired a fresh subscription")
+	}
+}
+
+func TestConnectionSubscriptionSkipsBacklogFromBeforeRegistration(t *testing.T) {
+	manager := trafficcontrol.NewManager()
+	retired, err := manager.SubscribeEvents()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for range 65 {
+		snapshotTestConnection(t, manager, "outbound")
+	}
+	current, err := manager.SubscribeEvents()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer current.Close()
+	retired.Close()
+	retired.Close()
+	want := snapshotTestConnection(t, manager, "outbound").Metadata().ID
+	scope := adapter.NewScope(t.Context(), nil)
+	if err := manager.Start(adapter.StartStateInitialize, scope); err != nil {
+		t.Fatal(err)
+	}
+	defer scope.Close()
+	select {
+	case event := <-current.Events():
+		if event.ID != want || current.Lost() {
+			t.Fatalf("fresh subscription got an older event or loss: %v", event.ID)
+		}
+	case <-current.Done():
+		t.Fatal("retiring the old subscription ended its successor")
+	case <-time.After(5 * time.Second):
+		t.Fatal("fresh subscription did not get its first event")
+	}
+	if err := scope.Close(); err != nil {
+		t.Fatal(err)
+	}
+	<-current.Done()
+	if current.Lost() {
+		t.Fatal("ordinary shutdown reported loss")
+	}
+	if _, err := manager.SubscribeEvents(); !errors.Is(err, os.ErrClosed) {
+		t.Fatalf("closed manager returned %v", err)
+	}
+}
+
+func TestSubscribeConnectionsAbortsOnlySlowListener(t *testing.T) {
+	manager := trafficcontrol.NewManager()
+	scope := adapter.NewScope(t.Context(), nil)
+	if err := manager.Start(adapter.StartStateInitialize, scope); err != nil {
+		t.Fatal(err)
+	}
+	defer scope.Close()
+	fast, err := manager.SubscribeEvents()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer fast.Close()
+	service := &StartedService{
+		ctx:           t.Context(),
+		serviceStatus: &ServiceStatus{Status: ServiceStatus_STARTED},
+		instance:      &Instance{ctx: t.Context(), trafficManager: manager},
+	}
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancel()
+	read := func(subscription *trafficcontrol.ConnectionEventSubscription, want uuid.UUID) {
+		t.Helper()
+		select {
+		case event := <-subscription.Events():
+			if event.ID != want || subscription.Lost() {
+				t.Fatalf("healthy subscription received %v (want %v)", event.ID, want)
+			}
+		case <-subscription.Done():
+			t.Fatal("healthy subscription ended")
+		case <-ctx.Done():
+			t.Fatal(ctx.Err())
+		}
+	}
+	firstSend := make(chan struct{})
+	unblock := make(chan struct{})
+	unblockSend := sync.OnceFunc(func() { close(unblock) })
+	defer unblockSend()
+	var writes int
+	stream := &admissionSendStream[ConnectionEvents]{ctx: ctx, send: func(frame *ConnectionEvents) error {
+		writes++
+		if writes == 1 {
+			close(firstSend)
+			<-unblock
+		}
+		return nil
+	}}
+	finished := make(chan error, 1)
+	go func() {
+		finished <- service.SubscribeConnections(&SubscribeConnectionsRequest{BatchFrames: true}, stream)
+	}()
+	select {
+	case <-firstSend:
+	case <-ctx.Done():
+		t.Fatal(ctx.Err())
+	}
+	// Acknowledge each fan-out through the fast listener, so only the slow
+	// listener can overflow. The last event follows the 65th dispatch.
+	for range 66 {
+		read(fast, snapshotTestConnection(t, manager, "outbound").Metadata().ID)
+	}
+	replacement, err := manager.SubscribeEvents()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer replacement.Close()
+	unblockSend()
+	if err := admissionAwait(t, finished); status.Code(err) != codes.Aborted || writes != 1 {
+		t.Fatalf("slow listener made %d writes and returned %v", writes, err)
+	}
+	want := snapshotTestConnection(t, manager, "outbound").Metadata().ID
+	read(fast, want)
+	read(replacement, want)
 }
 
 func TestConnectionEventBatchRejectsOversizedRecord(t *testing.T) {

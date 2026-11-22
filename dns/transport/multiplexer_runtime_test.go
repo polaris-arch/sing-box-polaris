@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/sagernet/sing-box/adapter"
+	"github.com/sagernet/sing-box/common/urltest"
 	boxDNS "github.com/sagernet/sing-box/dns"
 	"github.com/sagernet/sing-box/internal/runtimegraph"
 	"github.com/sagernet/sing-box/log"
@@ -83,6 +84,9 @@ func TestMultiplexerRetirementCancelsProbeButKeepsAdmittedSingle(t *testing.T) {
 			kind := "single"
 			if _, hasDeadline := ctx.Deadline(); hasDeadline {
 				kind = "probe"
+			}
+			if background := urltest.IsBackgroundProbe(ctx); background != (kind == "probe") {
+				t.Errorf("%s DNS dial background priority = %t", kind, background)
 			}
 			conn := newRuntimeOwnedConn(kind)
 			if kind == "probe" {

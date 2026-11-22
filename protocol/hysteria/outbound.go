@@ -9,9 +9,11 @@ import (
 	"github.com/sagernet/sing-box/adapter/outbound"
 	"github.com/sagernet/sing-box/common/dialer"
 	"github.com/sagernet/sing-box/common/tls"
+	"github.com/sagernet/sing-box/common/urltest"
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
+	qtls "github.com/sagernet/sing-quic"
 	"github.com/sagernet/sing-quic/hysteria"
 	"github.com/sagernet/sing/common"
 	"github.com/sagernet/sing/common/bufio"
@@ -96,6 +98,11 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 		TLSConfig:     tlsConfig,
 		QUICOptions:   buildOutboundQUICOptions(options),
 		UDPDisabled:   !common.Contains(networkList, N.NetworkUDP),
+		ProbeAdmission: &qtls.ClientProbeAdmission{
+			IsBackground:     urltest.IsBackgroundProbe,
+			Context:          urltest.ContextWithSharedBackgroundProbe,
+			IsForegroundSlot: adapter.IsOutboundForegroundSlot,
+		},
 	})
 	if err != nil {
 		return nil, err
