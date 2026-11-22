@@ -13,6 +13,7 @@ import (
 
 	"github.com/sagernet/cronet-go"
 	"github.com/sagernet/sing-box/adapter"
+	"github.com/sagernet/sing-box/common/dialer"
 	"github.com/sagernet/sing-box/common/urltest"
 	"github.com/sagernet/sing-box/internal/runtimegraph"
 	"github.com/sagernet/sing-box/log"
@@ -241,6 +242,50 @@ func TestNaiveOutboundSealedReceiverAndClientAccessor(t *testing.T) {
 	}
 	if (&Outbound{clients: clients}).Client() != client || !clients.pinned {
 		t.Fatal("standalone accessor changed")
+	}
+}
+
+type naiveProbeTestResolver struct{}
+
+func (naiveProbeTestResolver) PoolProbeResolverEligible() bool { return true }
+
+func TestNaivePoolProbeEligibility(t *testing.T) {
+	owner, err := runtimegraph.NewResourceOwner(t.Context(), adapter.RuntimeResourceID{Incarnation: "naive", Sequence: 1}, nil, func() error { return nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(owner.Seal)
+	runtime := &outboundRuntime{source: owner, registered: true}
+	direct := dialer.NewResolveDialer(t.Context(), &dialer.DefaultDialer{}, false, "", adapter.DNSQueryOptions{}, 0)
+	tests := []struct {
+		name   string
+		header string
+		want   bool
+	}{
+		{name: "regular header", header: "X-Custom", want: true},
+		{name: "native control", header: "-connect-authority"},
+		{name: "pseudo header", header: ":authority"},
+		{name: "host override", header: "hOsT"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			h := &Outbound{
+				runtime: runtime,
+				clients: &naiveClientSlot{
+					owner:             runtime,
+					poolProbeResolver: naiveProbeTestResolver{},
+					options: cronet.NaiveClientOptions{
+						ServerAddress: M.ParseSocksaddrHostPort("127.0.0.1", 443),
+						ServerName:    "proxy.example",
+						Dialer:        direct,
+						ExtraHeaders:  map[string]string{test.header: "example.org"},
+					},
+				},
+			}
+			if got := h.PoolProbeNaiveEligible(); got != test.want {
+				t.Fatalf("PoolProbeNaiveEligible() = %v, want %v", got, test.want)
+			}
+		})
 	}
 }
 

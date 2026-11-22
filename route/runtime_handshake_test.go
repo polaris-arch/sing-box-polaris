@@ -17,9 +17,11 @@ import (
 
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/common/urltest"
+	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing-box/protocol/group"
+	R "github.com/sagernet/sing-box/route/rule"
 	proxyhttp "github.com/sagernet/sing-box/transport/http"
 	"github.com/sagernet/sing/common"
 	M "github.com/sagernet/sing/common/metadata"
@@ -622,6 +624,7 @@ func TestRouteProbeConnectProofAfterFlowAdmission(t *testing.T) {
 		background bool
 		wantStatus int
 		wantProof  bool
+		ticket     string
 	}{
 		{name: "final close rejects before dial", stopBefore: true, dialErr: dialFailure},
 		{name: "real dial failure", dialErr: dialFailure, wantProof: true},
@@ -634,6 +637,12 @@ func TestRouteProbeConnectProofAfterFlowAdmission(t *testing.T) {
 		{name: "local context cancelled before a successful dial returns", cancelDial: true},
 		{name: "final close prevents publishing dialed connection", stopInDial: true},
 		{name: "published outbound connection", wantProof: true},
+		{name: "ticket uses member without changing selector", ticket: "valid", background: true, wantProof: true},
+		{name: "ticket for a different slot", ticket: "slot", wantStatus: http.StatusBadGateway},
+		{name: "ticket for a different destination", ticket: "destination", wantStatus: http.StatusBadGateway},
+		{name: "ticket for a different purpose", ticket: "purpose", wantStatus: http.StatusBadGateway},
+		{name: "ticket before a route change", ticket: "graph", wantStatus: http.StatusBadGateway},
+		{name: "ticket without a matching rule", ticket: "rule", wantStatus: http.StatusBadGateway},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx, cancel := context.WithCancel(t.Context())
@@ -666,10 +675,30 @@ func TestRouteProbeConnectProofAfterFlowAdmission(t *testing.T) {
 				return out, nil
 			}}
 			outbounds := &referenceTestOutbounds{values: []adapter.Outbound{leaf}, defaultTag: slot}
-			selector := newHandshakeTestSelector(t, outbounds, slot, option.SelectorOutboundOptions{Outbounds: []string{member}})
+			options := option.SelectorOutboundOptions{Outbounds: []string{member}}
+			if tc.ticket != "" {
+				outbounds.values = append(outbounds.values, &probeGraphTestOutbound{referenceTestOutbound: referenceTestOutbound{tag: "direct"}})
+				options.Outbounds = append(options.Outbounds, "direct")
+				options.Default = "direct"
+				options.InterruptExistConnections = true
+			}
+			selector := newHandshakeTestSelector(t, outbounds, slot, options)
 			outbounds.values = append(outbounds.values, selector)
 			router := &Router{ctx: ctx, logger: logger, outbound: outbounds, connection: manager}
+			if tc.ticket != "" && tc.ticket != "rule" {
+				rule, err := R.NewRule(ctx, logger, option.Rule{DefaultOptions: option.DefaultRule{
+					RawDefaultRule: option.RawDefaultRule{Inbound: []string{"probe-in-0"}},
+					RuleAction:     option.RuleAction{Action: C.RuleActionTypeRoute, RouteOptions: option.RouteActionOptions{Outbound: slot}},
+				}}, true)
+				if err != nil {
+					t.Fatal(err)
+				}
+				router.rules = []adapter.Rule{rule}
+			}
 			graph := newReferenceTestGraph(1, outbounds.values, nil)
+			if tc.ticket == "graph" {
+				graph = newReferenceTestGraph(2, outbounds.values, nil)
+			}
 			graph.view.identity.Incarnation = incarnation
 			root := handshakeRouterLease{RuntimeLease: graph.acquire(), view: handshakeRouterView{RuntimeView: graph.view, router: router}}
 			defer root.Release()
@@ -679,7 +708,7 @@ func TestRouteProbeConnectProofAfterFlowAdmission(t *testing.T) {
 				t.Fatal(err)
 			}
 			proxy := proxyhttp.NewServer(proxyhttp.ServerOptions{HTTP1: true, ProbeConnect: true, Logger: logger})
-			handler := adapter.NewUpstreamHandler(adapter.InboundContext{Inbound: "probe-in-0", Domain: "example.test"}, stable.RouteConnectionEx, nil)
+			handler := adapter.NewUpstreamHandler(adapter.InboundContext{Inbound: "probe-in-0", InboundType: C.TypeHTTP, Domain: "example.test"}, stable.RouteConnectionEx, nil)
 			handled := make(chan struct{})
 			go func() {
 				defer close(handled)
@@ -689,7 +718,25 @@ func TestRouteProbeConnectProofAfterFlowAdmission(t *testing.T) {
 			if tc.background {
 				probeMode = "background"
 			}
-			if _, err := fmt.Fprintf(client, "CONNECT example.test:443 HTTP/1.1\r\nHost: example.test:443\r\nX-Polaris-Probe: %s\r\nX-Polaris-Probe-Member: %x\r\nX-Polaris-Probe-Graph: %s\r\n\r\n", probeMode, sha256.Sum256([]byte(member)), graphToken); err != nil {
+			var ticketHeader string
+			if tc.ticket != "" {
+				var ticketSlot uint32
+				authority, background := "example.test:443", tc.background
+				switch tc.ticket {
+				case "slot":
+					ticketSlot = 1
+				case "destination":
+					authority = "other.test:443"
+				case "purpose":
+					background = !background
+				}
+				ticket, ok := urltest.IssuePoolProbeTicket(graphToken, ticketSlot, member, authority, background)
+				if !ok {
+					t.Fatal("issue test ticket")
+				}
+				ticketHeader = "X-Polaris-Probe-Ticket: " + ticket + "\r\n"
+			}
+			if _, err := fmt.Fprintf(client, "CONNECT example.test:443 HTTP/1.1\r\nHost: example.test:443\r\nX-Polaris-Probe: %s\r\nX-Polaris-Probe-Member: %x\r\nX-Polaris-Probe-Graph: %s\r\n%s\r\n", probeMode, sha256.Sum256([]byte(member)), graphToken, ticketHeader); err != nil {
 				t.Fatal(err)
 			}
 			var wireResponse bytes.Buffer
@@ -728,11 +775,14 @@ func TestRouteProbeConnectProofAfterFlowAdmission(t *testing.T) {
 				}
 			}
 			var wantDials int32 = 1
-			if tc.stopBefore {
+			if tc.stopBefore || (tc.ticket != "" && tc.ticket != "valid") {
 				wantDials = 0
 			}
 			if got := dialCalls.Load(); got != wantDials {
 				t.Fatalf("outbound dial calls=%d want %d", got, wantDials)
+			}
+			if tc.ticket != "" && selector.Selected(N.NetworkTCP).Tag() != "direct" {
+				t.Fatal("ticket changed the persistent selector")
 			}
 		})
 	}

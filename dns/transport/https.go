@@ -22,6 +22,7 @@ import (
 	"github.com/sagernet/sing-box/dns"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
+	"github.com/sagernet/sing-box/protocol/direct"
 	"github.com/sagernet/sing/common"
 	"github.com/sagernet/sing/common/buf"
 	E "github.com/sagernet/sing/common/exceptions"
@@ -51,6 +52,7 @@ type HTTPSTransport struct {
 	destination       *url.URL
 	headers           http.Header
 	serverAddr        M.Socksaddr
+	poolProbeResolver bool
 	fallback          *atomic.Bool
 	keepIdle          atomic.Bool
 	transportAccess   sync.Mutex
@@ -124,6 +126,8 @@ func NewHTTPS(ctx context.Context, logger log.ContextLogger, tag string, options
 		serverAddr,
 		tlsConfig,
 	)
+	result.poolProbeResolver = serverAddr.IsIP() && options.DomainResolver == nil &&
+		(tlsOptions.ECH == nil || !tlsOptions.ECH.Enabled)
 	if adapter.HasConstructionScope(ctx) {
 		result.constructionOwned = true
 		if err = adapter.DeferConstructionCleanup(ctx, result.RuntimeCloseAndWait); err != nil {
@@ -137,6 +141,28 @@ func NewHTTPS(ctx context.Context, logger log.ContextLogger, tag string, options
 		return nil, err
 	}
 	return result, nil
+}
+
+// PoolProbeResolverEligible reports a constructor-proven terminal DNS path.
+func (t *HTTPSTransport) PoolProbeResolverEligible() bool {
+	if !t.poolProbeResolver {
+		return false
+	}
+	upstream, ok := t.dialer.(interface{ Upstream() any })
+	if !ok {
+		return false
+	}
+	switch physical := upstream.Upstream().(type) {
+	case *dialer.DefaultDialer:
+		return true
+	case *dialer.DetourDialer:
+		member, err := physical.Dialer()
+		_, terminal := member.(*direct.Outbound)
+		// A literal destination does not enter the direct outbound's resolver.
+		return err == nil && terminal
+	default:
+		return false
+	}
 }
 
 func NewHTTPSRaw(

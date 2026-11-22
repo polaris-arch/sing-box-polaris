@@ -149,7 +149,8 @@ func newCommandServer(handler CommandServerHandler, platformInterface PlatformIn
 }
 
 func unaryAuthInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
-	if sCommandServerSecret == "" {
+	secret := sCommandServerSecret
+	if secret == "" {
 		return handler(daemon.ContextWithRuntimeActor(ctx, "libbox:command-owner"), req)
 	}
 	md, ok := metadata.FromIncomingContext(ctx)
@@ -160,9 +161,10 @@ func unaryAuthInterceptor(ctx context.Context, req any, info *grpc.UnaryServerIn
 	if len(values) == 0 {
 		return nil, status.Error(codes.Unauthenticated, "missing authentication secret")
 	}
-	if values[0] != sCommandServerSecret {
+	if values[0] != secret {
 		return nil, status.Error(codes.Unauthenticated, "invalid authentication secret")
 	}
+	ctx = daemon.ContextWithPoolProbeAuthorization(ctx)
 	return handler(daemon.ContextWithRuntimeActor(ctx, "libbox:command-owner"), req)
 }
 

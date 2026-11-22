@@ -38,6 +38,7 @@ type Inbound struct {
 	server      *http.Server
 	tlsConfig   tls.ServerConfig
 	http3       bool
+	poolProbe   bool
 	quicOptions option.QUICOptions
 }
 
@@ -71,6 +72,7 @@ func NewInbound(ctx context.Context, router adapter.Router, logger log.ContextLo
 			ProbeConnect:  probeConnect,
 		}),
 		http3:       serveHTTP3,
+		poolProbe:   probeConnect && serveHTTP1,
 		quicOptions: options.HTTP3Options,
 	}
 	if options.TLS != nil {
@@ -103,6 +105,8 @@ func NewInbound(ctx context.Context, router adapter.Router, logger log.ContextLo
 	})
 	return inbound, nil
 }
+
+func (h *Inbound) PoolProbeEnabled() bool { return h.poolProbe }
 
 func (h *Inbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 	if stage != adapter.StartStateStart {

@@ -26,6 +26,7 @@ type naiveClientSlot struct {
 	owner             *outboundRuntime
 	options           cronet.NaiveClientOptions
 	resolverForLogger func(log.ContextLogger) cronet.DNSResolverFunc
+	poolProbeResolver poolProbeResolver
 	startOnce         sync.Once
 	startErr          error
 	current           *naiveClientIncarnation

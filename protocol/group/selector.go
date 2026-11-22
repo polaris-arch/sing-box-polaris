@@ -120,6 +120,12 @@ func (s *Selector) Selected(network string) adapter.Outbound {
 	return s.selected.Load()
 }
 
+// PoolProbeMember reads the immutable membership of a started selector.
+func (s *Selector) PoolProbeMember(tag string) (adapter.Outbound, bool) {
+	member, exists := s.outbounds[tag]
+	return member, exists
+}
+
 func (s *Selector) AttachConnection(closer io.Closer) func() {
 	return s.interruptGroup.Add(closer, true)
 }

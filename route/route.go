@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/netip"
 	"slices"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -42,6 +43,8 @@ var defaultPacketSniffers = []sniff.PacketSniffer{
 	sniff.NTP,
 }
 
+type poolProbeRouteKey struct{}
+
 // Deprecated: use RouteConnectionEx instead.
 func (r *Router) RouteConnection(ctx context.Context, conn net.Conn, metadata adapter.InboundContext) error {
 	done := make(chan any)
@@ -71,8 +74,13 @@ func (r *Router) RouteConnectionEx(ctx context.Context, conn net.Conn, metadata 
 }
 
 func (r *Router) routeConnection(ctx context.Context, conn net.Conn, metadata adapter.InboundContext, onClose N.CloseHandlerFunc) error {
+	ctx, probeBinding, boundProbe := adapter.TakeProbeBinding(ctx)
 	//nolint:staticcheck
 	if metadata.InboundDetour != "" {
+		if probeBinding.TicketMember != "" {
+			closeRouteHandshakeFailure(conn, onClose, adapter.ErrProbeBindingMismatch)
+			return nil
+		}
 		if metadata.LastInbound == metadata.InboundDetour {
 			return E.New("routing loop on detour: ", metadata.InboundDetour)
 		}
@@ -87,16 +95,39 @@ func (r *Router) routeConnection(ctx context.Context, conn net.Conn, metadata ad
 		metadata.LastInbound = metadata.Inbound
 		metadata.Inbound = metadata.InboundDetour
 		metadata.InboundDetour = ""
+		if boundProbe {
+			ctx = adapter.ContextWithProbeBinding(ctx, probeBinding)
+		}
 		injectable.NewConnection(ctx, conn, metadata, onClose)
 		return nil
 	}
-	ctx, probeBinding, boundProbe := adapter.TakeProbeBinding(ctx)
 	if probeBinding.Graph.Incarnation != "" {
 		lease, ok := adapter.RuntimeLeaseFromContext(ctx)
 		if !ok || lease.View().Identity() != probeBinding.Graph {
 			closeRouteHandshakeFailure(conn, onClose, adapter.ErrProbeBindingMismatch)
 			return nil
 		}
+	}
+	var probeMember adapter.Outbound
+	matchCtx := ctx
+	probeDestination := metadata.Destination
+	if probeBinding.TicketMember != "" {
+		slot := strconv.FormatUint(uint64(probeBinding.TicketSlot), 10)
+		selector, _ := r.outbound.Outbound("probe-selector-" + slot)
+		group, selectable := selector.(interface {
+			PoolProbeMember(string) (adapter.Outbound, bool)
+		})
+		if !selectable || metadata.Inbound != "probe-in-"+slot || metadata.InboundType != C.TypeHTTP {
+			closeRouteHandshakeFailure(conn, onClose, adapter.ErrProbeBindingMismatch)
+			return nil
+		}
+		var available bool
+		probeMember, available = group.PoolProbeMember(probeBinding.TicketMember)
+		if !available {
+			closeRouteHandshakeFailure(conn, onClose, adapter.ErrProbeBindingMismatch)
+			return nil
+		}
+		matchCtx = context.WithValue(ctx, poolProbeRouteKey{}, selector.Tag())
 	}
 	metadata.Network = N.NetworkTCP
 	switch metadata.Destination.Fqdn {
@@ -116,9 +147,14 @@ func (r *Router) routeConnection(ctx context.Context, conn net.Conn, metadata ad
 	if deadline.NeedAdditionalReadDeadline(conn) {
 		conn = deadline.NewConn(conn)
 	}
-	selectedRule, _, buffers, _, err := r.matchRule(ctx, &metadata, conn, nil)
+	selectedRule, _, buffers, _, err := r.matchRule(matchCtx, &metadata, conn, nil)
 	if err != nil {
 		return err
+	}
+	if probeMember != nil && (selectedRule == nil || metadata.Destination != probeDestination) {
+		buf.ReleaseMulti(buffers)
+		closeRouteHandshakeFailure(conn, onClose, adapter.ErrProbeBindingMismatch)
+		return nil
 	}
 	var selectedOutbound adapter.Outbound
 	if selectedRule != nil {
@@ -157,7 +193,13 @@ func (r *Router) routeConnection(ctx context.Context, conn net.Conn, metadata ad
 	if selectedRule == nil {
 		selectedOutbound = r.outbound.Default()
 	}
-	chain, err := resolveOutbound(selectedOutbound, N.NetworkTCP)
+	var chain []adapter.Outbound
+	if probeMember != nil {
+		chain, err = resolveOutbound(probeMember, N.NetworkTCP)
+		chain = append([]adapter.Outbound{selectedOutbound}, chain...)
+	} else {
+		chain, err = resolveOutbound(selectedOutbound, N.NetworkTCP)
+	}
 	if boundProbe && !probeMemberMatches(metadata.Inbound, chain, probeBinding.Member) {
 		buf.ReleaseMulti(buffers)
 		closeRouteHandshakeFailure(conn, onClose, adapter.ErrProbeBindingMismatch)
@@ -183,7 +225,13 @@ func (r *Router) routeConnection(ctx context.Context, conn net.Conn, metadata ad
 	if boundProbe {
 		staleSelection = adapter.ErrProbeBindingMismatch
 	}
-	onClose, attached := registerInterrupt(chain, conn, onClose, staleSelection)
+	interruptChain := chain
+	if probeMember != nil {
+		// The first selector has no shared selection to interrupt. Nested
+		// selectors still apply their normal interruption rules.
+		interruptChain = chain[1:]
+	}
+	onClose, attached := registerInterrupt(interruptChain, conn, onClose, staleSelection)
 	if !attached {
 		return nil
 	}
@@ -735,12 +783,20 @@ func (r *Router) matchRule(
 	if fatalErr != nil {
 		return
 	}
+	probeSelector, scoped := ctx.Value(poolProbeRouteKey{}).(string)
 
 match:
 	for currentRuleIndex, currentRule := range r.rules {
 		metadata.ResetRuleCache()
 		if !currentRule.Match(metadata) {
 			continue
+		}
+		if scoped {
+			action, ok := currentRule.Action().(*R.RuleActionRoute)
+			if !ok || action.Outbound != probeSelector {
+				fatalErr = adapter.ErrProbeBindingMismatch
+				return
+			}
 		}
 		ruleDescription := currentRule.String()
 		if ruleDescription != "" {

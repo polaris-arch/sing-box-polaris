@@ -358,8 +358,10 @@ type RuntimeCapabilities struct {
 	SupportedClientImpactPolicyVersions []uint32 `protobuf:"varint,11,rep,packed,name=supported_client_impact_policy_versions,json=supportedClientImpactPolicyVersions,proto3" json:"supported_client_impact_policy_versions,omitempty"`
 	// Zero means there is no connected exit IP probe contract.
 	ExitIpProbeVersion uint32 `protobuf:"varint,12,opt,name=exit_ip_probe_version,json=exitIpProbeVersion,proto3" json:"exit_ip_probe_version,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// Zero means the Core cannot authorize isolated pool CONNECT probes.
+	PoolProbeTicketVersion uint32 `protobuf:"varint,13,opt,name=pool_probe_ticket_version,json=poolProbeTicketVersion,proto3" json:"pool_probe_ticket_version,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *RuntimeCapabilities) Reset() {
@@ -476,6 +478,133 @@ func (x *RuntimeCapabilities) GetExitIpProbeVersion() uint32 {
 	return 0
 }
 
+func (x *RuntimeCapabilities) GetPoolProbeTicketVersion() uint32 {
+	if x != nil {
+		return x.PoolProbeTicketVersion
+	}
+	return 0
+}
+
+type AuthorizePoolProbeRequest struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Graph            string                 `protobuf:"bytes,1,opt,name=graph,proto3" json:"graph,omitempty"`
+	Slot             uint32                 `protobuf:"varint,2,opt,name=slot,proto3" json:"slot,omitempty"`
+	MemberTag        string                 `protobuf:"bytes,3,opt,name=member_tag,json=memberTag,proto3" json:"member_tag,omitempty"`
+	ConnectAuthority string                 `protobuf:"bytes,4,opt,name=connect_authority,json=connectAuthority,proto3" json:"connect_authority,omitempty"`
+	Background       bool                   `protobuf:"varint,5,opt,name=background,proto3" json:"background,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *AuthorizePoolProbeRequest) Reset() {
+	*x = AuthorizePoolProbeRequest{}
+	mi := &file_daemon_runtime_config_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AuthorizePoolProbeRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AuthorizePoolProbeRequest) ProtoMessage() {}
+
+func (x *AuthorizePoolProbeRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_daemon_runtime_config_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AuthorizePoolProbeRequest.ProtoReflect.Descriptor instead.
+func (*AuthorizePoolProbeRequest) Descriptor() ([]byte, []int) {
+	return file_daemon_runtime_config_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *AuthorizePoolProbeRequest) GetGraph() string {
+	if x != nil {
+		return x.Graph
+	}
+	return ""
+}
+
+func (x *AuthorizePoolProbeRequest) GetSlot() uint32 {
+	if x != nil {
+		return x.Slot
+	}
+	return 0
+}
+
+func (x *AuthorizePoolProbeRequest) GetMemberTag() string {
+	if x != nil {
+		return x.MemberTag
+	}
+	return ""
+}
+
+func (x *AuthorizePoolProbeRequest) GetConnectAuthority() string {
+	if x != nil {
+		return x.ConnectAuthority
+	}
+	return ""
+}
+
+func (x *AuthorizePoolProbeRequest) GetBackground() bool {
+	if x != nil {
+		return x.Background
+	}
+	return false
+}
+
+type AuthorizePoolProbeResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Ticket        string                 `protobuf:"bytes,1,opt,name=ticket,proto3" json:"ticket,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AuthorizePoolProbeResponse) Reset() {
+	*x = AuthorizePoolProbeResponse{}
+	mi := &file_daemon_runtime_config_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AuthorizePoolProbeResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AuthorizePoolProbeResponse) ProtoMessage() {}
+
+func (x *AuthorizePoolProbeResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_daemon_runtime_config_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AuthorizePoolProbeResponse.ProtoReflect.Descriptor instead.
+func (*AuthorizePoolProbeResponse) Descriptor() ([]byte, []int) {
+	return file_daemon_runtime_config_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *AuthorizePoolProbeResponse) GetTicket() string {
+	if x != nil {
+		return x.Ticket
+	}
+	return ""
+}
+
 // The method has a fixed HTTPS destination. The request names the exact
 // concrete leaf already selected by this runtime and cannot change it.
 type ProbeExitIPRequest struct {
@@ -490,7 +619,7 @@ type ProbeExitIPRequest struct {
 
 func (x *ProbeExitIPRequest) Reset() {
 	*x = ProbeExitIPRequest{}
-	mi := &file_daemon_runtime_config_proto_msgTypes[3]
+	mi := &file_daemon_runtime_config_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -502,7 +631,7 @@ func (x *ProbeExitIPRequest) String() string {
 func (*ProbeExitIPRequest) ProtoMessage() {}
 
 func (x *ProbeExitIPRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_daemon_runtime_config_proto_msgTypes[3]
+	mi := &file_daemon_runtime_config_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -515,7 +644,7 @@ func (x *ProbeExitIPRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProbeExitIPRequest.ProtoReflect.Descriptor instead.
 func (*ProbeExitIPRequest) Descriptor() ([]byte, []int) {
-	return file_daemon_runtime_config_proto_rawDescGZIP(), []int{3}
+	return file_daemon_runtime_config_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *ProbeExitIPRequest) GetVersion() uint32 {
@@ -558,7 +687,7 @@ type ProbeExitIPResponse struct {
 
 func (x *ProbeExitIPResponse) Reset() {
 	*x = ProbeExitIPResponse{}
-	mi := &file_daemon_runtime_config_proto_msgTypes[4]
+	mi := &file_daemon_runtime_config_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -570,7 +699,7 @@ func (x *ProbeExitIPResponse) String() string {
 func (*ProbeExitIPResponse) ProtoMessage() {}
 
 func (x *ProbeExitIPResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_daemon_runtime_config_proto_msgTypes[4]
+	mi := &file_daemon_runtime_config_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -583,7 +712,7 @@ func (x *ProbeExitIPResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProbeExitIPResponse.ProtoReflect.Descriptor instead.
 func (*ProbeExitIPResponse) Descriptor() ([]byte, []int) {
-	return file_daemon_runtime_config_proto_rawDescGZIP(), []int{4}
+	return file_daemon_runtime_config_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *ProbeExitIPResponse) GetActive() *RuntimeIdentity {
@@ -623,7 +752,7 @@ type LookupPublicDnsRequest struct {
 
 func (x *LookupPublicDnsRequest) Reset() {
 	*x = LookupPublicDnsRequest{}
-	mi := &file_daemon_runtime_config_proto_msgTypes[5]
+	mi := &file_daemon_runtime_config_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -635,7 +764,7 @@ func (x *LookupPublicDnsRequest) String() string {
 func (*LookupPublicDnsRequest) ProtoMessage() {}
 
 func (x *LookupPublicDnsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_daemon_runtime_config_proto_msgTypes[5]
+	mi := &file_daemon_runtime_config_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -648,7 +777,7 @@ func (x *LookupPublicDnsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LookupPublicDnsRequest.ProtoReflect.Descriptor instead.
 func (*LookupPublicDnsRequest) Descriptor() ([]byte, []int) {
-	return file_daemon_runtime_config_proto_rawDescGZIP(), []int{5}
+	return file_daemon_runtime_config_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *LookupPublicDnsRequest) GetDomain() string {
@@ -668,7 +797,7 @@ type LookupPublicDnsResponse struct {
 
 func (x *LookupPublicDnsResponse) Reset() {
 	*x = LookupPublicDnsResponse{}
-	mi := &file_daemon_runtime_config_proto_msgTypes[6]
+	mi := &file_daemon_runtime_config_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -680,7 +809,7 @@ func (x *LookupPublicDnsResponse) String() string {
 func (*LookupPublicDnsResponse) ProtoMessage() {}
 
 func (x *LookupPublicDnsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_daemon_runtime_config_proto_msgTypes[6]
+	mi := &file_daemon_runtime_config_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -693,7 +822,7 @@ func (x *LookupPublicDnsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LookupPublicDnsResponse.ProtoReflect.Descriptor instead.
 func (*LookupPublicDnsResponse) Descriptor() ([]byte, []int) {
-	return file_daemon_runtime_config_proto_rawDescGZIP(), []int{6}
+	return file_daemon_runtime_config_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *LookupPublicDnsResponse) GetAddresses() []string {
@@ -723,7 +852,7 @@ type RuntimeOverrideOptions struct {
 
 func (x *RuntimeOverrideOptions) Reset() {
 	*x = RuntimeOverrideOptions{}
-	mi := &file_daemon_runtime_config_proto_msgTypes[7]
+	mi := &file_daemon_runtime_config_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -735,7 +864,7 @@ func (x *RuntimeOverrideOptions) String() string {
 func (*RuntimeOverrideOptions) ProtoMessage() {}
 
 func (x *RuntimeOverrideOptions) ProtoReflect() protoreflect.Message {
-	mi := &file_daemon_runtime_config_proto_msgTypes[7]
+	mi := &file_daemon_runtime_config_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -748,7 +877,7 @@ func (x *RuntimeOverrideOptions) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RuntimeOverrideOptions.ProtoReflect.Descriptor instead.
 func (*RuntimeOverrideOptions) Descriptor() ([]byte, []int) {
-	return file_daemon_runtime_config_proto_rawDescGZIP(), []int{7}
+	return file_daemon_runtime_config_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *RuntimeOverrideOptions) GetAutoRedirect() bool {
@@ -787,7 +916,7 @@ type PlanRuntimeConfigRequest struct {
 
 func (x *PlanRuntimeConfigRequest) Reset() {
 	*x = PlanRuntimeConfigRequest{}
-	mi := &file_daemon_runtime_config_proto_msgTypes[8]
+	mi := &file_daemon_runtime_config_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -799,7 +928,7 @@ func (x *PlanRuntimeConfigRequest) String() string {
 func (*PlanRuntimeConfigRequest) ProtoMessage() {}
 
 func (x *PlanRuntimeConfigRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_daemon_runtime_config_proto_msgTypes[8]
+	mi := &file_daemon_runtime_config_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -812,7 +941,7 @@ func (x *PlanRuntimeConfigRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PlanRuntimeConfigRequest.ProtoReflect.Descriptor instead.
 func (*PlanRuntimeConfigRequest) Descriptor() ([]byte, []int) {
-	return file_daemon_runtime_config_proto_rawDescGZIP(), []int{8}
+	return file_daemon_runtime_config_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *PlanRuntimeConfigRequest) GetContractVersion() uint32 {
@@ -876,7 +1005,7 @@ type RuntimeSelectorIntent struct {
 
 func (x *RuntimeSelectorIntent) Reset() {
 	*x = RuntimeSelectorIntent{}
-	mi := &file_daemon_runtime_config_proto_msgTypes[9]
+	mi := &file_daemon_runtime_config_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -888,7 +1017,7 @@ func (x *RuntimeSelectorIntent) String() string {
 func (*RuntimeSelectorIntent) ProtoMessage() {}
 
 func (x *RuntimeSelectorIntent) ProtoReflect() protoreflect.Message {
-	mi := &file_daemon_runtime_config_proto_msgTypes[9]
+	mi := &file_daemon_runtime_config_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -901,7 +1030,7 @@ func (x *RuntimeSelectorIntent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RuntimeSelectorIntent.ProtoReflect.Descriptor instead.
 func (*RuntimeSelectorIntent) Descriptor() ([]byte, []int) {
-	return file_daemon_runtime_config_proto_rawDescGZIP(), []int{9}
+	return file_daemon_runtime_config_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *RuntimeSelectorIntent) GetGroup() string {
@@ -955,7 +1084,7 @@ type RuntimeConfigPlan struct {
 
 func (x *RuntimeConfigPlan) Reset() {
 	*x = RuntimeConfigPlan{}
-	mi := &file_daemon_runtime_config_proto_msgTypes[10]
+	mi := &file_daemon_runtime_config_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -967,7 +1096,7 @@ func (x *RuntimeConfigPlan) String() string {
 func (*RuntimeConfigPlan) ProtoMessage() {}
 
 func (x *RuntimeConfigPlan) ProtoReflect() protoreflect.Message {
-	mi := &file_daemon_runtime_config_proto_msgTypes[10]
+	mi := &file_daemon_runtime_config_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -980,7 +1109,7 @@ func (x *RuntimeConfigPlan) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RuntimeConfigPlan.ProtoReflect.Descriptor instead.
 func (*RuntimeConfigPlan) Descriptor() ([]byte, []int) {
-	return file_daemon_runtime_config_proto_rawDescGZIP(), []int{10}
+	return file_daemon_runtime_config_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *RuntimeConfigPlan) GetContractVersion() uint32 {
@@ -1102,7 +1231,7 @@ type RuntimeImpact struct {
 
 func (x *RuntimeImpact) Reset() {
 	*x = RuntimeImpact{}
-	mi := &file_daemon_runtime_config_proto_msgTypes[11]
+	mi := &file_daemon_runtime_config_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1114,7 +1243,7 @@ func (x *RuntimeImpact) String() string {
 func (*RuntimeImpact) ProtoMessage() {}
 
 func (x *RuntimeImpact) ProtoReflect() protoreflect.Message {
-	mi := &file_daemon_runtime_config_proto_msgTypes[11]
+	mi := &file_daemon_runtime_config_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1127,7 +1256,7 @@ func (x *RuntimeImpact) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RuntimeImpact.ProtoReflect.Descriptor instead.
 func (*RuntimeImpact) Descriptor() ([]byte, []int) {
-	return file_daemon_runtime_config_proto_rawDescGZIP(), []int{11}
+	return file_daemon_runtime_config_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *RuntimeImpact) GetResourceId() string {
@@ -1184,7 +1313,7 @@ type RuntimePlanError struct {
 
 func (x *RuntimePlanError) Reset() {
 	*x = RuntimePlanError{}
-	mi := &file_daemon_runtime_config_proto_msgTypes[12]
+	mi := &file_daemon_runtime_config_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1196,7 +1325,7 @@ func (x *RuntimePlanError) String() string {
 func (*RuntimePlanError) ProtoMessage() {}
 
 func (x *RuntimePlanError) ProtoReflect() protoreflect.Message {
-	mi := &file_daemon_runtime_config_proto_msgTypes[12]
+	mi := &file_daemon_runtime_config_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1209,7 +1338,7 @@ func (x *RuntimePlanError) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RuntimePlanError.ProtoReflect.Descriptor instead.
 func (*RuntimePlanError) Descriptor() ([]byte, []int) {
-	return file_daemon_runtime_config_proto_rawDescGZIP(), []int{12}
+	return file_daemon_runtime_config_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *RuntimePlanError) GetCode() string {
@@ -1255,7 +1384,7 @@ type ApplyRuntimeConfigRequest struct {
 
 func (x *ApplyRuntimeConfigRequest) Reset() {
 	*x = ApplyRuntimeConfigRequest{}
-	mi := &file_daemon_runtime_config_proto_msgTypes[13]
+	mi := &file_daemon_runtime_config_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1267,7 +1396,7 @@ func (x *ApplyRuntimeConfigRequest) String() string {
 func (*ApplyRuntimeConfigRequest) ProtoMessage() {}
 
 func (x *ApplyRuntimeConfigRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_daemon_runtime_config_proto_msgTypes[13]
+	mi := &file_daemon_runtime_config_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1280,7 +1409,7 @@ func (x *ApplyRuntimeConfigRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApplyRuntimeConfigRequest.ProtoReflect.Descriptor instead.
 func (*ApplyRuntimeConfigRequest) Descriptor() ([]byte, []int) {
-	return file_daemon_runtime_config_proto_rawDescGZIP(), []int{13}
+	return file_daemon_runtime_config_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *ApplyRuntimeConfigRequest) GetContractVersion() uint32 {
@@ -1356,7 +1485,7 @@ type RuntimeConfigOperation struct {
 
 func (x *RuntimeConfigOperation) Reset() {
 	*x = RuntimeConfigOperation{}
-	mi := &file_daemon_runtime_config_proto_msgTypes[14]
+	mi := &file_daemon_runtime_config_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1368,7 +1497,7 @@ func (x *RuntimeConfigOperation) String() string {
 func (*RuntimeConfigOperation) ProtoMessage() {}
 
 func (x *RuntimeConfigOperation) ProtoReflect() protoreflect.Message {
-	mi := &file_daemon_runtime_config_proto_msgTypes[14]
+	mi := &file_daemon_runtime_config_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1381,7 +1510,7 @@ func (x *RuntimeConfigOperation) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RuntimeConfigOperation.ProtoReflect.Descriptor instead.
 func (*RuntimeConfigOperation) Descriptor() ([]byte, []int) {
-	return file_daemon_runtime_config_proto_rawDescGZIP(), []int{14}
+	return file_daemon_runtime_config_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *RuntimeConfigOperation) GetContractVersion() uint32 {
@@ -1507,7 +1636,7 @@ type RuntimeConfigStatusRequest struct {
 
 func (x *RuntimeConfigStatusRequest) Reset() {
 	*x = RuntimeConfigStatusRequest{}
-	mi := &file_daemon_runtime_config_proto_msgTypes[15]
+	mi := &file_daemon_runtime_config_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1519,7 +1648,7 @@ func (x *RuntimeConfigStatusRequest) String() string {
 func (*RuntimeConfigStatusRequest) ProtoMessage() {}
 
 func (x *RuntimeConfigStatusRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_daemon_runtime_config_proto_msgTypes[15]
+	mi := &file_daemon_runtime_config_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1532,7 +1661,7 @@ func (x *RuntimeConfigStatusRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RuntimeConfigStatusRequest.ProtoReflect.Descriptor instead.
 func (*RuntimeConfigStatusRequest) Descriptor() ([]byte, []int) {
-	return file_daemon_runtime_config_proto_rawDescGZIP(), []int{15}
+	return file_daemon_runtime_config_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *RuntimeConfigStatusRequest) GetContractVersion() uint32 {
@@ -1574,7 +1703,7 @@ type RuntimeConfigStatus struct {
 
 func (x *RuntimeConfigStatus) Reset() {
 	*x = RuntimeConfigStatus{}
-	mi := &file_daemon_runtime_config_proto_msgTypes[16]
+	mi := &file_daemon_runtime_config_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1586,7 +1715,7 @@ func (x *RuntimeConfigStatus) String() string {
 func (*RuntimeConfigStatus) ProtoMessage() {}
 
 func (x *RuntimeConfigStatus) ProtoReflect() protoreflect.Message {
-	mi := &file_daemon_runtime_config_proto_msgTypes[16]
+	mi := &file_daemon_runtime_config_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1599,7 +1728,7 @@ func (x *RuntimeConfigStatus) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RuntimeConfigStatus.ProtoReflect.Descriptor instead.
 func (*RuntimeConfigStatus) Descriptor() ([]byte, []int) {
-	return file_daemon_runtime_config_proto_rawDescGZIP(), []int{16}
+	return file_daemon_runtime_config_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *RuntimeConfigStatus) GetContractVersion() uint32 {
@@ -1689,7 +1818,7 @@ type RuntimePersistenceAcknowledgementRequest struct {
 
 func (x *RuntimePersistenceAcknowledgementRequest) Reset() {
 	*x = RuntimePersistenceAcknowledgementRequest{}
-	mi := &file_daemon_runtime_config_proto_msgTypes[17]
+	mi := &file_daemon_runtime_config_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1701,7 +1830,7 @@ func (x *RuntimePersistenceAcknowledgementRequest) String() string {
 func (*RuntimePersistenceAcknowledgementRequest) ProtoMessage() {}
 
 func (x *RuntimePersistenceAcknowledgementRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_daemon_runtime_config_proto_msgTypes[17]
+	mi := &file_daemon_runtime_config_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1714,7 +1843,7 @@ func (x *RuntimePersistenceAcknowledgementRequest) ProtoReflect() protoreflect.M
 
 // Deprecated: Use RuntimePersistenceAcknowledgementRequest.ProtoReflect.Descriptor instead.
 func (*RuntimePersistenceAcknowledgementRequest) Descriptor() ([]byte, []int) {
-	return file_daemon_runtime_config_proto_rawDescGZIP(), []int{17}
+	return file_daemon_runtime_config_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *RuntimePersistenceAcknowledgementRequest) GetContractVersion() uint32 {
@@ -1782,7 +1911,7 @@ type RuntimePersistenceRetryRequest struct {
 
 func (x *RuntimePersistenceRetryRequest) Reset() {
 	*x = RuntimePersistenceRetryRequest{}
-	mi := &file_daemon_runtime_config_proto_msgTypes[18]
+	mi := &file_daemon_runtime_config_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1794,7 +1923,7 @@ func (x *RuntimePersistenceRetryRequest) String() string {
 func (*RuntimePersistenceRetryRequest) ProtoMessage() {}
 
 func (x *RuntimePersistenceRetryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_daemon_runtime_config_proto_msgTypes[18]
+	mi := &file_daemon_runtime_config_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1807,7 +1936,7 @@ func (x *RuntimePersistenceRetryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RuntimePersistenceRetryRequest.ProtoReflect.Descriptor instead.
 func (*RuntimePersistenceRetryRequest) Descriptor() ([]byte, []int) {
-	return file_daemon_runtime_config_proto_rawDescGZIP(), []int{18}
+	return file_daemon_runtime_config_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *RuntimePersistenceRetryRequest) GetContractVersion() uint32 {
@@ -1862,7 +1991,7 @@ const file_daemon_runtime_config_proto_rawDesc = "" +
 	"\x0fadapter_version\x18\x05 \x01(\tR\x0eadapterVersion\x12\x1e\n" +
 	"\n" +
 	"conditions\x18\x06 \x03(\tR\n" +
-	"conditions\"\xc8\x05\n" +
+	"conditions\"\x83\x06\n" +
 	"\x13RuntimeCapabilities\x12)\n" +
 	"\x10contract_version\x18\x01 \x01(\rR\x0fcontractVersion\x122\n" +
 	"\x15connected_hot_enabled\x18\x02 \x01(\bR\x13connectedHotEnabled\x12D\n" +
@@ -1876,7 +2005,19 @@ const file_daemon_runtime_config_proto_rawDesc = "" +
 	"!tls_fingerprint_capabilities_json\x18\n" +
 	" \x01(\tR\x1etlsFingerprintCapabilitiesJson\x12T\n" +
 	"'supported_client_impact_policy_versions\x18\v \x03(\rR#supportedClientImpactPolicyVersions\x121\n" +
-	"\x15exit_ip_probe_version\x18\f \x01(\rR\x12exitIpProbeVersion\"\xba\x01\n" +
+	"\x15exit_ip_probe_version\x18\f \x01(\rR\x12exitIpProbeVersion\x129\n" +
+	"\x19pool_probe_ticket_version\x18\r \x01(\rR\x16poolProbeTicketVersion\"\xb1\x01\n" +
+	"\x19AuthorizePoolProbeRequest\x12\x14\n" +
+	"\x05graph\x18\x01 \x01(\tR\x05graph\x12\x12\n" +
+	"\x04slot\x18\x02 \x01(\rR\x04slot\x12\x1d\n" +
+	"\n" +
+	"member_tag\x18\x03 \x01(\tR\tmemberTag\x12+\n" +
+	"\x11connect_authority\x18\x04 \x01(\tR\x10connectAuthority\x12\x1e\n" +
+	"\n" +
+	"background\x18\x05 \x01(\bR\n" +
+	"background\"4\n" +
+	"\x1aAuthorizePoolProbeResponse\x12\x16\n" +
+	"\x06ticket\x18\x01 \x01(\tR\x06ticket\"\xba\x01\n" +
 	"\x12ProbeExitIPRequest\x12\x18\n" +
 	"\aversion\x18\x01 \x01(\rR\aversion\x123\n" +
 	"\bexpected\x18\x02 \x01(\v2\x17.daemon.RuntimeIdentityR\bexpected\x12:\n" +
@@ -2020,7 +2161,7 @@ const file_daemon_runtime_config_proto_rawDesc = "" +
 	"\vACTIVE_ONLY\x10\x00\x12\t\n" +
 	"\x05FOUND\x10\x01\x12\x16\n" +
 	"\x12UNKNOWN_OR_EXPIRED\x10\x02\x12\x15\n" +
-	"\x11WRONG_INCARNATION\x10\x032\xdd\x05\n" +
+	"\x11WRONG_INCARNATION\x10\x032\xba\x06\n" +
 	"\x14RuntimeConfigService\x12M\n" +
 	"\x16GetRuntimeCapabilities\x12\x16.google.protobuf.Empty\x1a\x1b.daemon.RuntimeCapabilities\x12P\n" +
 	"\x11PlanRuntimeConfig\x12 .daemon.PlanRuntimeConfigRequest\x1a\x19.daemon.RuntimeConfigPlan\x12W\n" +
@@ -2029,7 +2170,8 @@ const file_daemon_runtime_config_proto_rawDesc = "" +
 	"\x17RetryRuntimePersistence\x12&.daemon.RuntimePersistenceRetryRequest\x1a\x1e.daemon.RuntimeConfigOperation\x12q\n" +
 	"\x1dAcknowledgeRuntimePersistence\x120.daemon.RuntimePersistenceAcknowledgementRequest\x1a\x1e.daemon.RuntimeConfigOperation\x12F\n" +
 	"\vProbeExitIP\x12\x1a.daemon.ProbeExitIPRequest\x1a\x1b.daemon.ProbeExitIPResponse\x12R\n" +
-	"\x0fLookupPublicDns\x12\x1e.daemon.LookupPublicDnsRequest\x1a\x1f.daemon.LookupPublicDnsResponseB%Z#github.com/sagernet/sing-box/daemonb\x06proto3"
+	"\x0fLookupPublicDns\x12\x1e.daemon.LookupPublicDnsRequest\x1a\x1f.daemon.LookupPublicDnsResponse\x12[\n" +
+	"\x12AuthorizePoolProbe\x12!.daemon.AuthorizePoolProbeRequest\x1a\".daemon.AuthorizePoolProbeResponseB%Z#github.com/sagernet/sing-box/daemonb\x06proto3"
 
 var (
 	file_daemon_runtime_config_proto_rawDescOnce sync.Once
@@ -2044,7 +2186,7 @@ func file_daemon_runtime_config_proto_rawDescGZIP() []byte {
 }
 
 var file_daemon_runtime_config_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_daemon_runtime_config_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
+var file_daemon_runtime_config_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
 var file_daemon_runtime_config_proto_goTypes = []any{
 	(RuntimeUpdateClass)(0),                          // 0: daemon.RuntimeUpdateClass
 	(RuntimeOperationState)(0),                       // 1: daemon.RuntimeOperationState
@@ -2052,23 +2194,25 @@ var file_daemon_runtime_config_proto_goTypes = []any{
 	(*RuntimeIdentity)(nil),                          // 3: daemon.RuntimeIdentity
 	(*RuntimeFieldCapability)(nil),                   // 4: daemon.RuntimeFieldCapability
 	(*RuntimeCapabilities)(nil),                      // 5: daemon.RuntimeCapabilities
-	(*ProbeExitIPRequest)(nil),                       // 6: daemon.ProbeExitIPRequest
-	(*ProbeExitIPResponse)(nil),                      // 7: daemon.ProbeExitIPResponse
-	(*LookupPublicDnsRequest)(nil),                   // 8: daemon.LookupPublicDnsRequest
-	(*LookupPublicDnsResponse)(nil),                  // 9: daemon.LookupPublicDnsResponse
-	(*RuntimeOverrideOptions)(nil),                   // 10: daemon.RuntimeOverrideOptions
-	(*PlanRuntimeConfigRequest)(nil),                 // 11: daemon.PlanRuntimeConfigRequest
-	(*RuntimeSelectorIntent)(nil),                    // 12: daemon.RuntimeSelectorIntent
-	(*RuntimeConfigPlan)(nil),                        // 13: daemon.RuntimeConfigPlan
-	(*RuntimeImpact)(nil),                            // 14: daemon.RuntimeImpact
-	(*RuntimePlanError)(nil),                         // 15: daemon.RuntimePlanError
-	(*ApplyRuntimeConfigRequest)(nil),                // 16: daemon.ApplyRuntimeConfigRequest
-	(*RuntimeConfigOperation)(nil),                   // 17: daemon.RuntimeConfigOperation
-	(*RuntimeConfigStatusRequest)(nil),               // 18: daemon.RuntimeConfigStatusRequest
-	(*RuntimeConfigStatus)(nil),                      // 19: daemon.RuntimeConfigStatus
-	(*RuntimePersistenceAcknowledgementRequest)(nil), // 20: daemon.RuntimePersistenceAcknowledgementRequest
-	(*RuntimePersistenceRetryRequest)(nil),           // 21: daemon.RuntimePersistenceRetryRequest
-	(*emptypb.Empty)(nil),                            // 22: google.protobuf.Empty
+	(*AuthorizePoolProbeRequest)(nil),                // 6: daemon.AuthorizePoolProbeRequest
+	(*AuthorizePoolProbeResponse)(nil),               // 7: daemon.AuthorizePoolProbeResponse
+	(*ProbeExitIPRequest)(nil),                       // 8: daemon.ProbeExitIPRequest
+	(*ProbeExitIPResponse)(nil),                      // 9: daemon.ProbeExitIPResponse
+	(*LookupPublicDnsRequest)(nil),                   // 10: daemon.LookupPublicDnsRequest
+	(*LookupPublicDnsResponse)(nil),                  // 11: daemon.LookupPublicDnsResponse
+	(*RuntimeOverrideOptions)(nil),                   // 12: daemon.RuntimeOverrideOptions
+	(*PlanRuntimeConfigRequest)(nil),                 // 13: daemon.PlanRuntimeConfigRequest
+	(*RuntimeSelectorIntent)(nil),                    // 14: daemon.RuntimeSelectorIntent
+	(*RuntimeConfigPlan)(nil),                        // 15: daemon.RuntimeConfigPlan
+	(*RuntimeImpact)(nil),                            // 16: daemon.RuntimeImpact
+	(*RuntimePlanError)(nil),                         // 17: daemon.RuntimePlanError
+	(*ApplyRuntimeConfigRequest)(nil),                // 18: daemon.ApplyRuntimeConfigRequest
+	(*RuntimeConfigOperation)(nil),                   // 19: daemon.RuntimeConfigOperation
+	(*RuntimeConfigStatusRequest)(nil),               // 20: daemon.RuntimeConfigStatusRequest
+	(*RuntimeConfigStatus)(nil),                      // 21: daemon.RuntimeConfigStatus
+	(*RuntimePersistenceAcknowledgementRequest)(nil), // 22: daemon.RuntimePersistenceAcknowledgementRequest
+	(*RuntimePersistenceRetryRequest)(nil),           // 23: daemon.RuntimePersistenceRetryRequest
+	(*emptypb.Empty)(nil),                            // 24: google.protobuf.Empty
 }
 var file_daemon_runtime_config_proto_depIdxs = []int32{
 	0,  // 0: daemon.RuntimeFieldCapability.update_class:type_name -> daemon.RuntimeUpdateClass
@@ -2077,41 +2221,43 @@ var file_daemon_runtime_config_proto_depIdxs = []int32{
 	3,  // 3: daemon.ProbeExitIPRequest.expected:type_name -> daemon.RuntimeIdentity
 	3,  // 4: daemon.ProbeExitIPResponse.active:type_name -> daemon.RuntimeIdentity
 	3,  // 5: daemon.PlanRuntimeConfigRequest.expected:type_name -> daemon.RuntimeIdentity
-	10, // 6: daemon.PlanRuntimeConfigRequest.overrides:type_name -> daemon.RuntimeOverrideOptions
-	12, // 7: daemon.PlanRuntimeConfigRequest.selector_intents:type_name -> daemon.RuntimeSelectorIntent
+	12, // 6: daemon.PlanRuntimeConfigRequest.overrides:type_name -> daemon.RuntimeOverrideOptions
+	14, // 7: daemon.PlanRuntimeConfigRequest.selector_intents:type_name -> daemon.RuntimeSelectorIntent
 	3,  // 8: daemon.RuntimeConfigPlan.expected:type_name -> daemon.RuntimeIdentity
-	14, // 9: daemon.RuntimeConfigPlan.impacts:type_name -> daemon.RuntimeImpact
-	15, // 10: daemon.RuntimeConfigPlan.errors:type_name -> daemon.RuntimePlanError
+	16, // 9: daemon.RuntimeConfigPlan.impacts:type_name -> daemon.RuntimeImpact
+	17, // 10: daemon.RuntimeConfigPlan.errors:type_name -> daemon.RuntimePlanError
 	0,  // 11: daemon.RuntimeImpact.update_class:type_name -> daemon.RuntimeUpdateClass
 	3,  // 12: daemon.ApplyRuntimeConfigRequest.expected:type_name -> daemon.RuntimeIdentity
 	1,  // 13: daemon.RuntimeConfigOperation.state:type_name -> daemon.RuntimeOperationState
 	3,  // 14: daemon.RuntimeConfigOperation.before:type_name -> daemon.RuntimeIdentity
 	3,  // 15: daemon.RuntimeConfigOperation.active:type_name -> daemon.RuntimeIdentity
-	14, // 16: daemon.RuntimeConfigOperation.impacts:type_name -> daemon.RuntimeImpact
-	15, // 17: daemon.RuntimeConfigOperation.errors:type_name -> daemon.RuntimePlanError
+	16, // 16: daemon.RuntimeConfigOperation.impacts:type_name -> daemon.RuntimeImpact
+	17, // 17: daemon.RuntimeConfigOperation.errors:type_name -> daemon.RuntimePlanError
 	3,  // 18: daemon.RuntimeConfigStatus.active:type_name -> daemon.RuntimeIdentity
-	17, // 19: daemon.RuntimeConfigStatus.operation:type_name -> daemon.RuntimeConfigOperation
+	19, // 19: daemon.RuntimeConfigStatus.operation:type_name -> daemon.RuntimeConfigOperation
 	2,  // 20: daemon.RuntimeConfigStatus.lookup_state:type_name -> daemon.RuntimeLookupState
 	3,  // 21: daemon.RuntimePersistenceAcknowledgementRequest.active:type_name -> daemon.RuntimeIdentity
 	3,  // 22: daemon.RuntimePersistenceRetryRequest.active:type_name -> daemon.RuntimeIdentity
-	22, // 23: daemon.RuntimeConfigService.GetRuntimeCapabilities:input_type -> google.protobuf.Empty
-	11, // 24: daemon.RuntimeConfigService.PlanRuntimeConfig:input_type -> daemon.PlanRuntimeConfigRequest
-	16, // 25: daemon.RuntimeConfigService.ApplyRuntimeConfig:input_type -> daemon.ApplyRuntimeConfigRequest
-	18, // 26: daemon.RuntimeConfigService.GetRuntimeConfigStatus:input_type -> daemon.RuntimeConfigStatusRequest
-	21, // 27: daemon.RuntimeConfigService.RetryRuntimePersistence:input_type -> daemon.RuntimePersistenceRetryRequest
-	20, // 28: daemon.RuntimeConfigService.AcknowledgeRuntimePersistence:input_type -> daemon.RuntimePersistenceAcknowledgementRequest
-	6,  // 29: daemon.RuntimeConfigService.ProbeExitIP:input_type -> daemon.ProbeExitIPRequest
-	8,  // 30: daemon.RuntimeConfigService.LookupPublicDns:input_type -> daemon.LookupPublicDnsRequest
-	5,  // 31: daemon.RuntimeConfigService.GetRuntimeCapabilities:output_type -> daemon.RuntimeCapabilities
-	13, // 32: daemon.RuntimeConfigService.PlanRuntimeConfig:output_type -> daemon.RuntimeConfigPlan
-	17, // 33: daemon.RuntimeConfigService.ApplyRuntimeConfig:output_type -> daemon.RuntimeConfigOperation
-	19, // 34: daemon.RuntimeConfigService.GetRuntimeConfigStatus:output_type -> daemon.RuntimeConfigStatus
-	17, // 35: daemon.RuntimeConfigService.RetryRuntimePersistence:output_type -> daemon.RuntimeConfigOperation
-	17, // 36: daemon.RuntimeConfigService.AcknowledgeRuntimePersistence:output_type -> daemon.RuntimeConfigOperation
-	7,  // 37: daemon.RuntimeConfigService.ProbeExitIP:output_type -> daemon.ProbeExitIPResponse
-	9,  // 38: daemon.RuntimeConfigService.LookupPublicDns:output_type -> daemon.LookupPublicDnsResponse
-	31, // [31:39] is the sub-list for method output_type
-	23, // [23:31] is the sub-list for method input_type
+	24, // 23: daemon.RuntimeConfigService.GetRuntimeCapabilities:input_type -> google.protobuf.Empty
+	13, // 24: daemon.RuntimeConfigService.PlanRuntimeConfig:input_type -> daemon.PlanRuntimeConfigRequest
+	18, // 25: daemon.RuntimeConfigService.ApplyRuntimeConfig:input_type -> daemon.ApplyRuntimeConfigRequest
+	20, // 26: daemon.RuntimeConfigService.GetRuntimeConfigStatus:input_type -> daemon.RuntimeConfigStatusRequest
+	23, // 27: daemon.RuntimeConfigService.RetryRuntimePersistence:input_type -> daemon.RuntimePersistenceRetryRequest
+	22, // 28: daemon.RuntimeConfigService.AcknowledgeRuntimePersistence:input_type -> daemon.RuntimePersistenceAcknowledgementRequest
+	8,  // 29: daemon.RuntimeConfigService.ProbeExitIP:input_type -> daemon.ProbeExitIPRequest
+	10, // 30: daemon.RuntimeConfigService.LookupPublicDns:input_type -> daemon.LookupPublicDnsRequest
+	6,  // 31: daemon.RuntimeConfigService.AuthorizePoolProbe:input_type -> daemon.AuthorizePoolProbeRequest
+	5,  // 32: daemon.RuntimeConfigService.GetRuntimeCapabilities:output_type -> daemon.RuntimeCapabilities
+	15, // 33: daemon.RuntimeConfigService.PlanRuntimeConfig:output_type -> daemon.RuntimeConfigPlan
+	19, // 34: daemon.RuntimeConfigService.ApplyRuntimeConfig:output_type -> daemon.RuntimeConfigOperation
+	21, // 35: daemon.RuntimeConfigService.GetRuntimeConfigStatus:output_type -> daemon.RuntimeConfigStatus
+	19, // 36: daemon.RuntimeConfigService.RetryRuntimePersistence:output_type -> daemon.RuntimeConfigOperation
+	19, // 37: daemon.RuntimeConfigService.AcknowledgeRuntimePersistence:output_type -> daemon.RuntimeConfigOperation
+	9,  // 38: daemon.RuntimeConfigService.ProbeExitIP:output_type -> daemon.ProbeExitIPResponse
+	11, // 39: daemon.RuntimeConfigService.LookupPublicDns:output_type -> daemon.LookupPublicDnsResponse
+	7,  // 40: daemon.RuntimeConfigService.AuthorizePoolProbe:output_type -> daemon.AuthorizePoolProbeResponse
+	32, // [32:41] is the sub-list for method output_type
+	23, // [23:32] is the sub-list for method input_type
 	23, // [23:23] is the sub-list for extension type_name
 	23, // [23:23] is the sub-list for extension extendee
 	0,  // [0:23] is the sub-list for field type_name
@@ -2122,14 +2268,14 @@ func file_daemon_runtime_config_proto_init() {
 	if File_daemon_runtime_config_proto != nil {
 		return
 	}
-	file_daemon_runtime_config_proto_msgTypes[16].OneofWrappers = []any{}
+	file_daemon_runtime_config_proto_msgTypes[18].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_daemon_runtime_config_proto_rawDesc), len(file_daemon_runtime_config_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   19,
+			NumMessages:   21,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

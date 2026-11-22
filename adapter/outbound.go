@@ -28,9 +28,11 @@ type ProbeMemberDigest [sha256.Size]byte
 
 // ProbeBinding pins a loopback probe to a member and optionally to one runtime graph.
 type ProbeBinding struct {
-	Member     ProbeMemberDigest
-	Graph      RuntimeRevision
-	OnVerified func()
+	Member       ProbeMemberDigest
+	Graph        RuntimeRevision
+	OnVerified   func()
+	TicketMember string
+	TicketSlot   uint32
 }
 
 type probeBindingKey struct{}

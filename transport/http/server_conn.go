@@ -146,6 +146,22 @@ func (c *serverConn) serveConnect(ctx context.Context, request *http.Request, so
 		conn := probeConnectConn{Conn: c.conn, version: version}
 		return requestClose, E.Errors(adapter.ErrProbeBindingMismatch, conn.HandshakeFailure(adapter.ErrProbeBindingMismatch))
 	}
+	if values := request.Header.Values("X-Polaris-Probe-Ticket"); len(values) > 0 {
+		if len(values) != 1 || graph == "" || encodedMember == "" {
+			return c.rejectAndClose(request, http.StatusBadRequest, E.New("invalid pool probe ticket context"))
+		}
+		authority := request.URL.Host
+		if authority == "" {
+			authority = request.Host
+		}
+		member, slot, valid := urltest.VerifyPoolProbeTicket(values[0], graph, binding.Member, authority, probeMode == "background")
+		if !valid {
+			conn := probeConnectConn{Conn: c.conn, version: version}
+			return requestClose, E.Errors(adapter.ErrProbeBindingMismatch, conn.HandshakeFailure(adapter.ErrProbeBindingMismatch))
+		}
+		binding.TicketMember = member
+		binding.TicketSlot = slot
+	}
 	conn := &probeConnectConn{Conn: c.reader.cachedConn(c.conn), version: version, graph: graph}
 	if graph != "" {
 		binding.OnVerified = conn.verifyGraph

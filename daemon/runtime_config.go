@@ -3,12 +3,20 @@ package daemon
 import (
 	"context"
 	"errors"
+	"net/netip"
+	"slices"
+	"strconv"
+	"unicode/utf8"
 
 	box "github.com/sagernet/sing-box"
+	"github.com/sagernet/sing-box/adapter"
 	boxtls "github.com/sagernet/sing-box/common/tls"
+	"github.com/sagernet/sing-box/common/urltest"
 	C "github.com/sagernet/sing-box/constant"
+	"github.com/sagernet/sing-box/protocol/direct"
 	"github.com/sagernet/sing/common/json"
 	M "github.com/sagernet/sing/common/metadata"
+	N "github.com/sagernet/sing/common/network"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -19,11 +27,18 @@ import (
 )
 
 type runtimeActorKey struct{}
+type poolProbeAuthorizationKey struct{}
 
 // ContextWithRuntimeActor is used after server authentication. No request field
 // or credential-derived hash supplies this scope.
 func ContextWithRuntimeActor(ctx context.Context, actor string) context.Context {
 	return context.WithValue(ctx, runtimeActorKey{}, actor)
+}
+
+// ContextWithPoolProbeAuthorization is for management ingress that has checked
+// its credential. A trusted-local actor alone cannot mint a probe ticket.
+func ContextWithPoolProbeAuthorization(ctx context.Context) context.Context {
+	return context.WithValue(ctx, poolProbeAuthorizationKey{}, true)
 }
 
 func runtimeActor(ctx context.Context) (string, error) {
@@ -92,6 +107,9 @@ func (s *StartedService) GetRuntimeCapabilities(ctx context.Context, _ *emptypb.
 	result.TlsFingerprintCapabilitiesJson = document
 	if capability.Enabled && capability.Identity.Revision != 0 {
 		result.ExitIpProbeVersion = box.RuntimeExitIPProbeVersion
+		if ctx.Value(poolProbeAuthorizationKey{}) == true {
+			result.PoolProbeTicketVersion = urltest.PoolProbeTicketVersion
+		}
 	}
 	for _, version := range capability.SupportedClientImpactPolicyVersions {
 		result.SupportedClientImpactPolicyVersions = append(result.SupportedClientImpactPolicyVersions, uint32(version))
@@ -100,6 +118,96 @@ func (s *StartedService) GetRuntimeCapabilities(ctx context.Context, _ *emptypb.
 		result.Fields = append(result.Fields, &RuntimeFieldCapability{EffectivePath: field.Path, Variant: field.Variant, PlatformBuild: field.PlatformBuild, UpdateClass: RuntimeUpdateClass(RuntimeUpdateClass_value[field.UpdateClass]), AdapterVersion: field.AdapterVersion, Conditions: append([]string(nil), field.Conditions...)})
 	}
 	return result, nil
+}
+
+func (s *StartedService) AuthorizePoolProbe(ctx context.Context, request *AuthorizePoolProbeRequest) (*AuthorizePoolProbeResponse, error) {
+	if _, err := runtimeActor(ctx); err != nil {
+		return nil, err
+	}
+	if ctx.Value(poolProbeAuthorizationKey{}) != true {
+		return nil, status.Error(codes.PermissionDenied, "authenticated pool probe management required")
+	}
+	if request == nil || len(request.Graph) > 85 || len(request.MemberTag) == 0 ||
+		len(request.MemberTag) > urltest.PoolProbeMemberMaxBytes || !utf8.ValidString(request.MemberTag) {
+		return nil, status.Error(codes.InvalidArgument, "invalid pool probe request")
+	}
+	graph, ok := adapter.ParseRuntimeRevisionToken(request.Graph)
+	if !ok {
+		return nil, status.Error(codes.InvalidArgument, "invalid pool probe graph")
+	}
+	authority, ok := urltest.NormalizePoolProbeAuthority(request.ConnectAuthority)
+	if !ok {
+		return nil, status.Error(codes.InvalidArgument, "invalid pool probe authority")
+	}
+	instance, err := s.runtimeInstance()
+	if err != nil {
+		return nil, err
+	}
+	lease, changed, connected, err := instance.AcquireRuntimeAPI()
+	if !connected {
+		return nil, status.Error(codes.Unimplemented, "runtime pool probing unavailable")
+	}
+	if err != nil || lease == nil {
+		return nil, status.Error(codes.Unavailable, "runtime pool graph unavailable")
+	}
+	defer lease.Release()
+	view := lease.View()
+	if view.Identity() != graph {
+		return nil, status.Error(codes.FailedPrecondition, "pool probe graph changed")
+	}
+	eligible, err := poolProbeMemberEligible(view, request.Slot, request.MemberTag, authority)
+	if err != nil {
+		return nil, err
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, status.FromContextError(err).Err()
+	}
+	select {
+	case <-changed:
+		return nil, status.Error(codes.FailedPrecondition, "pool probe graph changed")
+	default:
+	}
+	if !eligible {
+		_ = grpc.SetTrailer(ctx, metadata.Pairs("x-polaris-pool-probe", "legacy-member"))
+		return nil, status.Error(codes.Unimplemented, "pool probe member not supported")
+	}
+	ticket, ok := urltest.IssuePoolProbeTicket(request.Graph, request.Slot, request.MemberTag, authority, request.Background)
+	if !ok {
+		return nil, status.Error(codes.InvalidArgument, "invalid pool probe request")
+	}
+	return &AuthorizePoolProbeResponse{Ticket: ticket}, nil
+}
+
+func poolProbeMemberEligible(view adapter.RuntimeView, slot uint32, memberTag, authority string) (bool, error) {
+	pool, ok := view.(interface{ InboundManager() adapter.InboundManager })
+	if !ok {
+		return false, status.Error(codes.Unimplemented, "runtime pool probing unavailable")
+	}
+	index := strconv.FormatUint(uint64(slot), 10)
+	inbound, _ := pool.InboundManager().Get("probe-in-" + index)
+	if probe, ok := inbound.(interface{ PoolProbeEnabled() bool }); !ok || !probe.PoolProbeEnabled() {
+		return false, status.Error(codes.FailedPrecondition, "pool probe inbound unavailable")
+	}
+	outbound, _ := view.OutboundManager().Outbound("probe-selector-" + index)
+	selector, ok := outbound.(interface {
+		PoolProbeMember(string) (adapter.Outbound, bool)
+	})
+	if !ok {
+		return false, status.Error(codes.FailedPrecondition, "pool probe selector unavailable")
+	}
+	member, ok := selector.PoolProbeMember(memberTag)
+	if !ok || member.Tag() != memberTag {
+		return false, status.Error(codes.FailedPrecondition, "pool probe member unavailable")
+	}
+	if !slices.Contains(member.Network(), N.NetworkTCP) {
+		return false, status.Error(codes.FailedPrecondition, "pool probe member does not support TCP")
+	}
+	if leaf, ok := member.(*direct.Outbound); ok && leaf.IsEmpty() {
+		_, err := netip.ParseAddrPort(authority)
+		return err == nil, nil
+	}
+	leaf, ok := member.(interface{ PoolProbeNaiveEligible() bool })
+	return ok && member.Type() == C.TypeNaive && leaf.PoolProbeNaiveEligible(), nil
 }
 
 func (s *StartedService) ProbeExitIP(ctx context.Context, request *ProbeExitIPRequest) (*ProbeExitIPResponse, error) {
