@@ -442,11 +442,7 @@ func (m *RuntimeReferenceManager) run(closeIdle bool) (err error) {
 		inventory.devicePaused = m.pauseManager.IsDevicePaused()
 	}
 	if closeIdle {
-		for _, outbound := range inventory.outbounds.Outbounds() {
-			if keeper, ok := outbound.(adapter.IdleConnectionKeeper); ok {
-				keeper.CloseIdleConnections()
-			}
-		}
+		closeOutboundIdleConnections(inventory.outbounds.Outbounds())
 		for _, transport := range inventory.transports.Transports() {
 			transport.(adapter.IdleConnectionKeeper).CloseIdleConnections()
 		}

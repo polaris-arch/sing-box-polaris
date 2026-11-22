@@ -516,6 +516,14 @@ jobs:
         timeout-minutes: 77
         run: |
           set -euo pipefail
+          cronet_library_dir() {
+            local module=github.com/sagernet/cronet-go/lib/linux_amd64
+            local directory
+            go mod download "$module" || return
+            directory="$(go list -m -f '{{.Dir}}' "$module")" || return
+            test -r "$directory/libcronet.so" || return
+            printf '%s\n' "$directory"
+          }
           # Product tags share the upstream spelling; keep upstream baseline refs private.
           [[ "$BASE_REF" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[a-z]+\.[0-9]+)?$ ]] || exit 1
           [[ "$BASE_COMMIT" =~ ^[0-9a-f]{40}$ ]] || exit 1
@@ -547,9 +555,15 @@ jobs:
               fi
             done
             if [ "${#ordinary_packages[@]}" -gt 0 ]; then
-              go test -race -count=1 -skip "^($INSTANCE_TESTS)\$" \
-                -tags "$tags" -ldflags "$(cat release/LDFLAGS)" \
-                "${ordinary_packages[@]}" | tee test.log
+              (
+                if [[ ",$tags," == *,with_naive_outbound,* ]]; then
+                  cronet_dir="$(cronet_library_dir)"
+                  export LD_LIBRARY_PATH="$cronet_dir${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+                fi
+                go test -race -count=1 -skip "^($INSTANCE_TESTS)\$" \
+                  -tags "$tags" -ldflags "$(cat release/LDFLAGS)" \
+                  "${ordinary_packages[@]}"
+              ) | tee test.log
               grep -q '^ok' test.log
             fi
           fi
@@ -570,10 +584,7 @@ jobs:
                 -tags "$tags" -ldflags "$ldflags" \
                 -run '^TestWireGuardEndpointDataPlane$/^system=false$' ./test |
                 tee "$selection_dir/wireguard-integration-test.log"
-              cronet_module=github.com/sagernet/cronet-go/lib/linux_amd64
-              go mod download "$cronet_module"
-              cronet_dir="$(go list -m -f '{{.Dir}}' "$cronet_module")"
-              test -r "$cronet_dir/libcronet.so"
+              cronet_dir="$(cronet_library_dir)"
               LD_LIBRARY_PATH="$cronet_dir" go test -mod=readonly -race -count=1 -timeout=10m -v \
                 -tags "$tags" -ldflags "$ldflags" -run '^TestNaiveSelf(ECH|InsecureConcurrency|QUIC(CongestionControl)?)?$' ./test |
                 tee "$selection_dir/naive-integration-test.log"

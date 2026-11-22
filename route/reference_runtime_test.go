@@ -41,6 +41,15 @@ func (o *referenceTestOutbound) CloseIdleConnections() {
 	}
 }
 
+type referenceSharedOutbound struct {
+	*referenceTestOutbound
+	owner adapter.RuntimeResourceID
+}
+
+func (o *referenceSharedOutbound) RuntimeSharedConnectionOwner() (adapter.RuntimeResourceID, bool) {
+	return o.owner, true
+}
+
 type referenceTestTransport struct {
 	adapter.DNSTransport
 	tag          string
@@ -889,6 +898,48 @@ func TestRuntimeReferenceCensusTraversesSelectedCurrentDependencies(t *testing.T
 	awaitReferenceKeep(t, other, true)
 	if upstream.resets.Load() != 0 || resolver.resets.Load() != 0 {
 		t.Fatal("reference census reset a live dependency")
+	}
+}
+
+func TestRuntimeReferenceSharedAliasesKeepOnePhysicalOwner(t *testing.T) {
+	var kept []bool
+	idle := 0
+	newAlias := func(tag string) *referenceSharedOutbound {
+		return &referenceSharedOutbound{referenceTestOutbound: &referenceTestOutbound{
+			tag: tag, keep: func(keep bool) { kept = append(kept, keep) }, idle: func() { idle++ },
+		}}
+	}
+	first, second := newAlias("first"), newAlias("second")
+	selector := &referenceTestOutbound{tag: "selector", references: []string{second.Tag()}}
+	graph := newReferenceTestGraph(1, []adapter.Outbound{selector, first, second}, nil)
+	first.owner = graph.ids[first]
+	second.owner = first.owner
+	graph.ids[second] = first.owner
+	provider := &referenceTestProvider{graph: graph, options: referenceTestOptions(t, option.Options{})}
+	manager := NewRuntimeReferenceManager(t.Context(), log.NewNOPFactory().Logger(), provider, nil)
+	run := func(closeIdle bool) {
+		t.Helper()
+		if err := manager.run(closeIdle); err != nil {
+			t.Fatal(err)
+		}
+	}
+	run(false)
+	if len(kept) != 1 || !kept[0] {
+		t.Fatalf("only one alias was selected, physical keep calls = %v", kept)
+	}
+	selector.references = []string{first.Tag()}
+	run(false)
+	if len(kept) != 1 {
+		t.Fatalf("changing the selected alias changed physical keep: %v", kept)
+	}
+	selector.references = nil
+	run(false)
+	if len(kept) != 2 || kept[1] {
+		t.Fatalf("physical keep calls after both aliases became unreferenced = %v", kept)
+	}
+	run(true)
+	if idle != 1 {
+		t.Fatalf("physical idle close calls = %d", idle)
 	}
 }
 

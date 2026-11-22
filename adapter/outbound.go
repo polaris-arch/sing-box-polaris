@@ -59,6 +59,12 @@ type IdleConnectionKeeper interface {
 	CloseIdleConnections()
 }
 
+// RuntimeSharedConnectionOwner identifies the physical connections behind
+// distinct logical outbounds. The owner belongs to the admitted runtime graph.
+type RuntimeSharedConnectionOwner interface {
+	RuntimeSharedConnectionOwner() (RuntimeResourceID, bool)
+}
+
 type Referrer interface {
 	References() []string
 }

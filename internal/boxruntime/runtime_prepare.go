@@ -26,6 +26,7 @@ import (
 	"github.com/sagernet/sing-box/internal/runtimegraph"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
+	"github.com/sagernet/sing-box/protocol/naive"
 	"github.com/sagernet/sing-box/route"
 	R "github.com/sagernet/sing-box/route/rule"
 	"github.com/sagernet/sing-tun"
@@ -611,6 +612,25 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 	if err := endpointManager.Freeze(); err != nil {
 		return prepared, err
 	}
+	var naiveClients map[string]func(context.Context) context.Context
+	for _, node := range nodes {
+		options := configs[node.Name].naiveOptions
+		if options == nil || !owned[bindings[node.Name]] {
+			continue
+		}
+		ctx, contextErr := componentContext(node.Name)
+		if contextErr != nil {
+			return prepared, contextErr
+		}
+		bind, createErr := naive.NewRuntimeClientGroup(ctx, s.logFactory.NewLogger("outbound/"+C.TypeNaive), *options)
+		if createErr != nil {
+			return prepared, E.Cause(createErr, "initialize shared Naive client")
+		}
+		if naiveClients == nil {
+			naiveClients = make(map[string]func(context.Context) context.Context)
+		}
+		naiveClients[node.Name] = bind
+	}
 	for _, node := range nodes {
 		config := configs[node.Name]
 		if config.outbound == nil {
@@ -622,6 +642,9 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 			ctx, contextErr := componentContext(node.Name)
 			if contextErr != nil {
 				return prepared, contextErr
+			}
+			if config.naiveClient != "" {
+				ctx = naiveClients[config.naiveClient](ctx)
 			}
 			component.history = urltest.NewIncarnationHistory(service.PtrFromContext[urltest.HistoryStorage](c.ctx))
 			service.MustRegisterPtr(ctx, component.history)
