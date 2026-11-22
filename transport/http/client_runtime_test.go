@@ -322,6 +322,15 @@ func (*incompleteHTTP3) ResetConnection() {}
 func (c *incompleteHTTP3) Close() error   { return c.closeErr }
 
 func TestHTTPTunnelForegroundSlotRefusalKeepsHTTP3Available(t *testing.T) {
+	testHTTPForegroundSlotRefusalKeepsHTTP3Available(t, false)
+}
+
+func TestHTTPDialForegroundSlotRefusalKeepsHTTP3Available(t *testing.T) {
+	testHTTPForegroundSlotRefusalKeepsHTTP3Available(t, true)
+}
+
+func testHTTPForegroundSlotRefusalKeepsHTTP3Available(t *testing.T, tcp bool) {
+	t.Helper()
 	if NewHTTP3Client == nil {
 		t.Skip("HTTP/3 requires with_quic")
 	}
@@ -339,12 +348,12 @@ func TestHTTPTunnelForegroundSlotRefusalKeepsHTTP3Available(t *testing.T) {
 		{"local HTTP1 refusal", networkFailure, deferred, false},
 	} {
 		t.Run(scenario.name, func(t *testing.T) {
-			if scenario.requiresHTTP2 && !extendedConnectAvailable {
+			if !tcp && scenario.requiresHTTP2 && !extendedConnectAvailable {
 				t.Skip("HTTP/2 extended CONNECT is unavailable")
 			}
 			ctx, cancel := context.WithCancel(t.Context())
 			defer cancel()
-			var udpDials, tcpDials int
+			var udpDials, tcpDials, http1Dials int
 			dialer := runtimeTestDialer(func(_ context.Context, network string, _ M.Socksaddr) (net.Conn, error) {
 				if network == "tcp" {
 					tcpDials++
@@ -370,26 +379,46 @@ func TestHTTPTunnelForegroundSlotRefusalKeepsHTTP3Available(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			http1Dialer := client.http1Dialer
+			client.http1Dialer = runtimeTestDialer(func(ctx context.Context, network string, server M.Socksaddr) (net.Conn, error) {
+				http1Dials++
+				return http1Dialer.DialContext(ctx, network, server)
+			})
 			t.Cleanup(func() {
 				if err := client.Close(); err != nil {
 					t.Fatal(err)
 				}
 			})
 			if !scenario.requiresHTTP2 {
-				client.http2ExtendedConnectUnsupported.Store(true)
+				if tcp {
+					client.http2Unsupported.Store(true)
+				} else {
+					client.http2ExtendedConnectUnsupported.Store(true)
+				}
 			}
-			if _, err := client.OpenTunnel(ctx, "connect-ip", "/"); !errors.Is(err, context.Canceled) {
+			dial := func(ctx context.Context) error {
+				if tcp {
+					_, err := client.DialContext(ctx, "tcp", M.ParseSocksaddr("example.org:443"))
+					return err
+				}
+				_, err := client.OpenTunnel(ctx, "connect-ip", "/")
+				return err
+			}
+			if err := dial(ctx); !errors.Is(err, context.Canceled) {
 				t.Fatalf("cancellation lost to local refusal: %v", err)
 			}
-			if _, err := client.OpenTunnel(t.Context(), "connect-ip", "/"); err != deferred {
+			if err := dial(t.Context()); err != deferred {
 				t.Fatalf("pure local refusal changed: %v", err)
 			}
 			if udpDials != 2 || tcpDials != 0 || !client.http3Available() || client.http3Backoff.Load() != 0 {
 				t.Fatalf("local refusal changed HTTP/3 availability: UDP dials=%d TCP dials=%d backoff=%d", udpDials, tcpDials, client.http3Backoff.Load())
 			}
-			_, err = client.OpenTunnel(t.Context(), "connect-ip", "/")
+			err = dial(t.Context())
 			if udpDials != 3 || tcpDials != 1 || client.http3Backoff.Load() == 0 {
 				t.Fatalf("retry or fallback changed: UDP dials=%d TCP dials=%d backoff=%d", udpDials, tcpDials, client.http3Backoff.Load())
+			}
+			if (http1Dials == 0) != scenario.requiresHTTP2 {
+				t.Fatalf("unexpected HTTP/1 fallback dial count: %d", http1Dials)
 			}
 			if scenario.tcpFailure != deferred {
 				if err != fallbackFailure {
@@ -401,7 +430,7 @@ func TestHTTPTunnelForegroundSlotRefusalKeepsHTTP3Available(t *testing.T) {
 				t.Fatalf("fallback refusal hid the HTTP/3 failure: %v", err)
 			}
 			client.http3Broken.Store(time.Now().Add(time.Hour).UnixNano())
-			_, err = client.OpenTunnel(t.Context(), "connect-ip", "/")
+			err = dial(t.Context())
 			if udpDials != 3 || tcpDials != 2 || err != deferred {
 				t.Fatalf("a previous HTTP/3 failure tainted the next call: UDP dials=%d TCP dials=%d error=%v", udpDials, tcpDials, err)
 			}
