@@ -5,16 +5,24 @@ package boxruntime
 import (
 	"bytes"
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/tls"
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
+	"math/big"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/sagernet/quic-go/http3"
 	"github.com/sagernet/sing-box/adapter"
@@ -256,17 +264,37 @@ func runtimeNaiveEchoProxy(t *testing.T, protocol int) (port int, root string, p
 			flusher.Flush()
 		}
 	})
-	server := httptest.NewUnstartedServer(handler)
-	server.EnableHTTP2 = true
-	server.StartTLS()
-	t.Cleanup(server.Close)
-	root = string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: server.Certificate().Raw}))
+	// Chromium enforces certificate validity and an IP SAN for this numeric
+	// proxy address. Keep the self-signed trust anchor local to the test.
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+	now := time.Now()
+	cert := &x509.Certificate{
+		SerialNumber:          big.NewInt(1),
+		Subject:               pkix.Name{CommonName: "Naive loopback test"},
+		NotBefore:             now.Add(-time.Hour),
+		NotAfter:              now.Add(time.Hour),
+		IPAddresses:           []net.IP{net.IPv4(127, 0, 0, 1)},
+		KeyUsage:              x509.KeyUsageCertSign | x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		BasicConstraintsValid: true,
+		IsCA:                  true,
+	}
+	der, err := x509.CreateCertificate(rand.Reader, cert, cert, &key.PublicKey, key)
+	require.NoError(t, err)
+	tlsConfig := &tls.Config{Certificates: []tls.Certificate{{Certificate: [][]byte{der}, PrivateKey: key}}}
+	root = string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der}))
 	if protocol == 2 {
+		server := httptest.NewUnstartedServer(handler)
+		server.TLS = tlsConfig
+		server.EnableHTTP2 = true
+		server.StartTLS()
+		t.Cleanup(server.Close)
 		return server.Listener.Addr().(*net.TCPAddr).Port, root, connections
 	}
 	packetConn, err := net.ListenPacket("udp4", "127.0.0.1:0")
 	require.NoError(t, err)
-	h3 := &http3.Server{TLSConfig: server.TLS.Clone(), Handler: handler}
+	h3 := &http3.Server{TLSConfig: tlsConfig, Handler: handler}
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
