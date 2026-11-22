@@ -321,6 +321,63 @@ func (*incompleteHTTP3) OpenTunnel(context.Context, tunnelRequest) (DatagramStre
 func (*incompleteHTTP3) ResetConnection() {}
 func (c *incompleteHTTP3) Close() error   { return c.closeErr }
 
+func TestHTTPTunnelForegroundSlotRefusalKeepsHTTP3Available(t *testing.T) {
+	if NewHTTP3Client == nil {
+		t.Skip("HTTP/3 requires with_quic")
+	}
+	deferred := fmt.Errorf("local admission: %w", adapter.ErrOutboundForegroundSlot)
+	networkFailure := errors.New("UDP dial failed")
+	fallbackFailure := errors.New("TCP fallback dial failed")
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	var udpDials, tcpDials int
+	dialer := runtimeTestDialer(func(_ context.Context, network string, _ M.Socksaddr) (net.Conn, error) {
+		if network == "tcp" {
+			tcpDials++
+			return nil, fallbackFailure
+		}
+		if network != "udp" {
+			t.Fatalf("unexpected dial network %q", network)
+		}
+		udpDials++
+		switch udpDials {
+		case 1:
+			cancel()
+			return nil, deferred
+		case 2:
+			return nil, deferred
+		default:
+			return nil, errors.Join(deferred, networkFailure)
+		}
+	})
+	client, err := NewClientWithTLS(t.Context(), log.NewNOPFactory().Logger(), dialer, option.ServerOptions{
+		Server: "192.0.2.1", ServerPort: 443,
+	}, option.OutboundTLSOptions{Enabled: true}, ClientOptions{Version: 3})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := client.Close(); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if _, err := client.OpenTunnel(ctx, "connect-ip", "/"); !errors.Is(err, context.Canceled) {
+		t.Fatalf("cancellation lost to local refusal: %v", err)
+	}
+	if _, err := client.OpenTunnel(t.Context(), "connect-ip", "/"); err != deferred {
+		t.Fatalf("pure local refusal changed: %v", err)
+	}
+	if udpDials != 2 || tcpDials != 0 || !client.http3Available() || client.http3Backoff.Load() != 0 {
+		t.Fatalf("local refusal changed HTTP/3 availability: UDP dials=%d TCP dials=%d backoff=%d", udpDials, tcpDials, client.http3Backoff.Load())
+	}
+	if _, err := client.OpenTunnel(t.Context(), "connect-ip", "/"); !errors.Is(err, fallbackFailure) {
+		t.Fatalf("mixed failure did not reach TCP fallback: %v", err)
+	}
+	if udpDials != 3 || tcpDials != 1 || client.http3Backoff.Load() == 0 {
+		t.Fatalf("retry or fallback changed: UDP dials=%d TCP dials=%d backoff=%d", udpDials, tcpDials, client.http3Backoff.Load())
+	}
+}
+
 func TestHTTPStandaloneTerminalDoesNotInventNativeJoin(t *testing.T) {
 	client, err := NewClient(ClientOptions{Version: 1, DisableVersionFallback: true})
 	if err != nil {

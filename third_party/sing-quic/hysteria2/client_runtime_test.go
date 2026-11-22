@@ -83,25 +83,14 @@ func TestClientRuntimeProbeAdmissionOnFirstCarrier(t *testing.T) {
 		t.Run(protocol, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 			defer cancel()
-			type probeKey struct{}
-			isBackground := func(ctx context.Context) bool {
-				background, _ := ctx.Value(probeKey{}).(bool)
-				return background
-			}
 			refused := errors.New("reserved foreground slot")
-			admission := &qtls.ClientProbeAdmission{
-				IsBackground:     isBackground,
-				IsForegroundSlot: func(err error) bool { return err == refused },
-				Context: func(ctx context.Context, allBackground func(func(context.Context) bool) bool) context.Context {
-					return context.WithValue(ctx, probeKey{}, allBackground != nil && allBackground(isBackground))
-				},
-			}
+			admission := runtimeProbeAdmission(refused)
 			firstDial, release := make(chan struct{}), make(chan struct{})
 			var calls atomic.Int32
 			dialer := realmRuntimeDialer{
 				dial: func(dialCtx context.Context, _ string, _ M.Socksaddr) (net.Conn, error) {
 					initial := calls.Add(1) == 1
-					if isBackground(dialCtx) != initial {
+					if admission.IsBackground(dialCtx) != initial {
 						t.Error("initial UDP dial must be background and its retry foreground")
 					}
 					if initial {
@@ -170,6 +159,30 @@ func TestClientRuntimeProbeAdmissionOnFirstCarrier(t *testing.T) {
 				t.Fatalf("UDP dial count = %d, want one foreground retry", calls.Load())
 			}
 		})
+	}
+}
+
+type probeKey struct{}
+
+func runtimeProbeAdmission(refused error) *qtls.ClientProbeAdmission {
+	isBackground := func(ctx context.Context) bool {
+		switch classification := ctx.Value(probeKey{}).(type) {
+		case bool:
+			return classification
+		case func() bool:
+			return classification()
+		default:
+			return false
+		}
+	}
+	return &qtls.ClientProbeAdmission{
+		IsBackground:     isBackground,
+		IsForegroundSlot: func(err error) bool { return err == refused },
+		Context: func(ctx context.Context, allBackground func(func(context.Context) bool) bool) context.Context {
+			return context.WithValue(ctx, probeKey{}, func() bool {
+				return allBackground != nil && allBackground(isBackground)
+			})
+		},
 	}
 }
 
@@ -254,9 +267,9 @@ type realmRuntimeTLS struct{ aTLS.Config }
 
 func (realmRuntimeTLS) NextProtos() []string { return []string{"h3"} }
 
-func realmRuntimeClient(t *testing.T, ipVersion int, transport http.RoundTripper, dialer realmRuntimeDialer) *Client {
+func realmRuntimeClient(t *testing.T, ipVersion int, transport http.RoundTripper, dialer realmRuntimeDialer, admission ...*qtls.ClientProbeAdmission) *Client {
 	t.Helper()
-	client, err := NewClient(ClientOptions{
+	options := ClientOptions{
 		Context: context.Background(), Logger: logger.NOP(), Dialer: dialer, TLSConfig: realmRuntimeTLS{},
 		RealmOptions: &realm.Options{ServerURL: "https://realm.invalid", RealmID: "test", IPVersion: ipVersion,
 			STUNServers: []string{"192.0.2.1:3478", "[2001:db8::1]:3478"},
@@ -264,7 +277,11 @@ func realmRuntimeClient(t *testing.T, ipVersion int, transport http.RoundTripper
 				return nil, errors.New("literal STUN address invoked DNS")
 			},
 			HTTPClient: &http.Client{Transport: transport}},
-	})
+	}
+	if len(admission) > 0 {
+		options.ProbeAdmission = admission[0]
+	}
+	client, err := NewClient(options)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -572,6 +589,100 @@ func TestRealmForegroundTimeoutDoesNotCancelSharedControlOffer(t *testing.T) {
 	releaseNow()
 	realmRuntimeWait(t, closed)
 	realmRuntimeWait(t, packet.closed)
+}
+
+func TestRealmProbeAdmissionRetriesOnlyUnopenedCandidateBatch(t *testing.T) {
+	refused := errors.New("reserved foreground slot")
+	bindErr := errors.New("failed to bind IPv4")
+	cleanupErr := &realmCleanupError{refused}
+	for _, test := range []struct {
+		name        string
+		firstIPv4   error
+		wantRounds  int32
+		wantConnect int32
+		wantErr     error
+	}{
+		{"all refused", refused, 2, 1, refused},
+		{"IPv4 survives", nil, 1, 1, refused},
+		{"mixed failure", bindErr, 1, 0, bindErr},
+		{"unresolved cleanup", cleanupErr, 1, 0, cleanupErr},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			admission := runtimeProbeAdmission(refused)
+			admission.IsForegroundSlot = func(err error) bool { return errors.Is(err, refused) }
+			first, release := make(chan struct{}, 2), make(chan struct{})
+			var listens [2]atomic.Int32
+			var discoveries, connects atomic.Int32
+			listen := func(ctx context.Context, address M.Socksaddr) (net.PacketConn, error) {
+				ipv4 := address.Addr.Is4()
+				family := 1
+				if ipv4 {
+					family = 0
+				}
+				initial := listens[family].Add(1) == 1
+				if admission.IsBackground(ctx) != initial {
+					t.Error("candidate admission used the wrong probe source")
+				}
+				if initial {
+					first <- struct{}{}
+					select {
+					case <-release:
+					case <-ctx.Done():
+						return nil, ctx.Err()
+					}
+					if !ipv4 {
+						return nil, refused
+					}
+					if test.firstIPv4 != nil {
+						return nil, test.firstIPv4
+					}
+				}
+				return newRealmRuntimePacket(ipv4), nil
+			}
+			c := realmRuntimeClient(t, 0, realmRuntimeRoundTrip(func(r *http.Request) (*http.Response, error) {
+				connects.Add(1)
+				if r.Context().Value(probeKey{}) != nil || r.URL.Path != "/v1/test/connect" {
+					t.Error("connect did not retain its original owner context or endpoint")
+				}
+				// Even this exact refusal must not restart a Realm exchange.
+				return nil, refused
+			}), realmRuntimeDialer{listen: listen}, admission)
+			c.realmHooks = &realmClientHooks{
+				discover: func(ctx context.Context, _ net.PacketConn, servers []netip.AddrPort) ([]netip.AddrPort, error) {
+					discoveries.Add(1)
+					if ctx.Value(probeKey{}) != nil {
+						t.Error("STUN discovery inherited candidate admission context")
+					}
+					return servers, nil
+				},
+			}
+			ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+			defer cancel()
+			result := make(chan error, 2)
+			offer := func(ctx context.Context) {
+				_, err := c.offer(ctx)
+				result <- err
+			}
+			go offer(context.WithValue(ctx, probeKey{}, true))
+			realmRuntimeWait(t, first)
+			realmRuntimeWait(t, first)
+			waiting := make(chan struct{}, 1)
+			go offer(probeOfferWaiter{Context: ctx, waiting: waiting})
+			realmRuntimeWait(t, waiting)
+			close(release)
+			for range 2 {
+				if err := <-result; !errors.Is(err, test.wantErr) {
+					t.Fatalf("offer result = %v, want %v", err, test.wantErr)
+				}
+			}
+			if listens[0].Load() != test.wantRounds || listens[1].Load() != test.wantRounds || connects.Load() != test.wantConnect {
+				t.Fatalf("listens v4/v6 = %d/%d, connect calls = %d", listens[0].Load(), listens[1].Load(), connects.Load())
+			}
+			if discoveries.Load() != test.wantConnect*test.wantRounds {
+				t.Fatalf("STUN discovery calls = %d", discoveries.Load())
+			}
+		})
+	}
 }
 
 type realmRuntimeMapper struct {

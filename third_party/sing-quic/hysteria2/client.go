@@ -184,6 +184,7 @@ func NewClient(options ClientOptions) (*Client, error) {
 		udpDisabled:        options.UDPDisabled,
 		bbrProfile:         bbrProfile,
 		realmOptions:       options.RealmOptions,
+		probeAdmission:     options.ProbeAdmission,
 	}
 	client.initRuntime()
 	if options.RealmOptions != nil {
@@ -206,8 +207,6 @@ func NewClient(options ClientOptions) (*Client, error) {
 		if err != nil {
 			return nil, errors.Join(E.Cause(err, "create control client"), client.RuntimeCloseAndWait())
 		}
-	} else {
-		client.probeAdmission = options.ProbeAdmission
 	}
 	return client, nil
 }
@@ -289,13 +288,26 @@ func (c *Client) completeOffer(pending *clientOffer, offerCtx context.Context) {
 			refused = conn == nil && policy.IsForegroundSlot(err)
 		}
 	}
-	conn, err := c.offerNew(dialCtx, firstDialDone)
+	attempt := func(carrierCtx context.Context, firstDialDone func(net.Conn, error)) (*clientQUICConnection, error) {
+		if c.realmOptions == nil {
+			return c.offerNew(carrierCtx, firstDialDone)
+		}
+		families, allRefused, err := c.realmOpenFamilies(carrierCtx)
+		refused = allRefused
+		if err != nil {
+			return nil, err
+		}
+		// Only opening candidates uses probe admission. Realm control and
+		// mapping stay on the original offer context.
+		return c.offerNewRealm(offerCtx, families)
+	}
+	conn, err := attempt(dialCtx, firstDialDone)
 	c.connAccess.Lock()
 	if refused && !pending.discarded && !c.runtime.closed.Load() && offerCtx.Err() == nil &&
 		!pending.probeWaiters.AllBackground(policy.IsBackground) {
-		// The slot refusal happened before opening the first UDP carrier.
+		// No UDP carrier opened, so no handshake or Realm exchange can be replayed.
 		c.connAccess.Unlock()
-		conn, err = c.offerNew(policy.Context(offerCtx, nil), nil)
+		conn, err = attempt(policy.Context(offerCtx, nil), nil)
 		c.connAccess.Lock()
 	}
 	discardErr := err
@@ -326,9 +338,6 @@ func (c *Client) completeOffer(pending *clientOffer, offerCtx context.Context) {
 }
 
 func (c *Client) offerNew(ctx context.Context, firstDialDone func(net.Conn, error)) (*clientQUICConnection, error) {
-	if c.realmOptions != nil {
-		return c.offerNewRealm(ctx)
-	}
 	hopCtx := c.ctx
 	if hopCtx == nil {
 		hopCtx = context.Background()
@@ -401,11 +410,7 @@ type realmFamilyConn struct {
 	localAddresses []netip.AddrPort
 }
 
-func (c *Client) offerNewRealm(ctx context.Context) (resultConn *clientQUICConnection, resultErr error) {
-	families, err := c.realmOpenFamilies(ctx)
-	if err != nil {
-		return nil, err
-	}
+func (c *Client) offerNewRealm(ctx context.Context, families []*realmFamilyConn) (resultConn *clientQUICConnection, resultErr error) {
 	session := &clientRealmSession{client: c, families: families}
 	adopted := false
 	defer func() {
@@ -448,7 +453,7 @@ func (c *Client) offerNewRealm(ctx context.Context) (resultConn *clientQUICConne
 			} else if mapper == nil {
 				return nil, errors.New("port mapper returned no mapping")
 			} else {
-				if err = session.startMapper(mapper); err != nil {
+				if err := session.startMapper(mapper); err != nil {
 					return nil, err
 				}
 				joinMapperPrepare = linkRealmOfferCancellation(ctx, session.mapperCancel)
@@ -458,7 +463,7 @@ func (c *Client) offerNewRealm(ctx context.Context) (resultConn *clientQUICConne
 			break
 		}
 	}
-	if err = ctx.Err(); err != nil {
+	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
 	surviving, localAddresses, err := c.realmDiscoverFamilies(ctx, families)
@@ -524,7 +529,7 @@ func (c *Client) offerNewRealm(ctx context.Context) (resultConn *clientQUICConne
 	return conn, nil
 }
 
-func (c *Client) realmOpenFamilies(ctx context.Context) ([]*realmFamilyConn, error) {
+func (c *Client) realmOpenFamilies(ctx context.Context) ([]*realmFamilyConn, bool, error) {
 	specs := []struct {
 		family string
 		ipv4   bool
@@ -541,6 +546,7 @@ func (c *Client) realmOpenFamilies(ctx context.Context) ([]*realmFamilyConn, err
 	}
 	conns := make([]*realmFamilyConn, len(specs))
 	listenErrs := make([]error, len(specs))
+	var refusals atomic.Int32
 	var wg sync.WaitGroup
 	for i, spec := range specs {
 		wg.Add(1)
@@ -552,6 +558,12 @@ func (c *Client) realmOpenFamilies(ctx context.Context) ([]*realmFamilyConn, err
 			}
 			if ctx.Err() != nil {
 				listenErr = errors.Join(listenErr, ctx.Err())
+			}
+			if policy := c.probeAdmission; conn == nil && policy != nil && policy.IsForegroundSlot(listenErr) {
+				var incomplete interface{ RuntimeCleanupIncomplete() bool }
+				if !errors.As(listenErr, &incomplete) || !incomplete.RuntimeCleanupIncomplete() {
+					refusals.Add(1)
+				}
 			}
 			if listenErr != nil || conn == nil {
 				if conn != nil {
@@ -576,10 +588,11 @@ func (c *Client) realmOpenFamilies(ctx context.Context) ([]*realmFamilyConn, err
 		}
 		errs = append(errs, listenErrs[i])
 	}
-	if len(families) == 0 || ctx.Err() != nil {
-		return nil, errors.Join(E.Cause(E.Errors(errs...), "listen UDP for realm"), ctx.Err(), closeRealmFamilies(families))
+	if ctxErr := ctx.Err(); len(families) == 0 || ctxErr != nil {
+		allRefused := ctxErr == nil && int(refusals.Load()) == len(specs)
+		return nil, allRefused, errors.Join(E.Cause(E.Errors(errs...), "listen UDP for realm"), ctxErr, closeRealmFamilies(families))
 	}
-	return families, nil
+	return families, false, nil
 }
 
 func (c *Client) realmDiscoverFamilies(ctx context.Context, families []*realmFamilyConn) ([]*realmFamilyConn, []netip.AddrPort, error) {

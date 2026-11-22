@@ -14,6 +14,7 @@ import (
 
 	"github.com/sagernet/quic-go"
 	"github.com/sagernet/quic-go/http3"
+	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/common/httpclient"
 	"github.com/sagernet/sing-quic"
 	E "github.com/sagernet/sing/common/exceptions"
@@ -97,6 +98,9 @@ func (c *http3ClientImpl) acquire(ctx context.Context) (*http3.ClientConn, error
 	if err != nil {
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
+		}
+		if rawConn == nil && adapter.IsOutboundForegroundSlot(err) {
+			return nil, err
 		}
 		return nil, E.Cause1(ErrHTTP3Unavailable, err)
 	}
