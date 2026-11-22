@@ -218,7 +218,7 @@ func (s *Server) NewTunnelRequest(ctx context.Context, request transportHTTP.Tun
 	if err != nil {
 		current.cancel(err)
 	}
-	err = current.run()
+	err = current.run(nil)
 	if err != nil && !E.IsClosedOrCanceled(err) {
 		s.logger.ErrorContext(ctx, E.Cause(err, "tunnel from ", request.Source(), " closed"))
 	} else {

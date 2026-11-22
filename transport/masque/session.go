@@ -56,18 +56,27 @@ func newSession(ctx context.Context, stream io.ReadWriteCloser, handler sessionH
 	return current
 }
 
-func (s *session) run() error {
+func (s *session) run(setup func() error) error {
+	closed := make(chan struct{})
 	stop := context.AfterFunc(s.ctx, func() {
+		defer close(closed)
 		s.stream.Close()
 	})
 	defer stop()
+	if setup != nil {
+		if err := setup(); err != nil {
+			s.cancel(err)
+			<-closed
+			return context.Cause(s.ctx)
+		}
+	}
 	var loops sync.WaitGroup
 	if s.datagrams != nil {
 		loops.Go(s.loopDatagram)
 	}
 	err := s.loopCapsule()
 	s.cancel(err)
-	s.stream.Close()
+	<-closed
 	loops.Wait()
 	return context.Cause(s.ctx)
 }

@@ -212,6 +212,11 @@ func ContextWithSharedBackgroundProbe(ctx context.Context, check func(func(conte
 	return context.WithValue(ctx, backgroundProbeKey{}, &sharedBackgroundProbe{check: check})
 }
 
+// HasProbeAdmission reports whether ctx carries probe or shared dial attribution.
+func HasProbeAdmission(ctx context.Context) bool {
+	return ctx.Value(backgroundProbeKey{}) != nil
+}
+
 func IsBackgroundProbe(ctx context.Context) bool {
 	return isBackgroundProbe(ctx, nil)
 }

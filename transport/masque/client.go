@@ -2,17 +2,23 @@ package masque
 
 import (
 	"context"
+	"io"
 	"net/netip"
 	"slices"
 	"sync"
+	"sync/atomic"
 	"time"
 
+	"github.com/sagernet/sing-box/adapter"
+	"github.com/sagernet/sing-box/common/urltest"
 	C "github.com/sagernet/sing-box/constant"
 	transportHTTP "github.com/sagernet/sing-box/transport/http"
 	"github.com/sagernet/sing-tun"
 	"github.com/sagernet/sing/common/buf"
 	E "github.com/sagernet/sing/common/exceptions"
 	"github.com/sagernet/sing/common/logger"
+	"github.com/sagernet/sing/service"
+	"github.com/sagernet/sing/service/pause"
 )
 
 const (
@@ -40,6 +46,7 @@ type ClientOptions struct {
 	AdvertiseRoutes []netip.Prefix
 	Handler         ClientHandler
 	StartSuspended  bool
+	ScopedProbes    bool
 }
 
 type Client struct {
@@ -52,16 +59,45 @@ type Client struct {
 	handler         ClientHandler
 	access          sync.Mutex
 	current         *clientSession
+	probe           *probeActivation
+	dialCancel      context.CancelFunc
+	probePause      pause.Manager
+	stopProbePause  func()
 	suspended       bool
-	restarting      bool
+	reset           *sessionReset
 	lastError       error
 	stateUpdated    chan struct{}
 	loopDone        chan struct{}
 }
 
+type sessionReset struct {
+	done  chan struct{}
+	apply func()
+}
+
+type probeActivation struct {
+	ctx        context.Context
+	cancel     context.CancelCauseFunc
+	users      sync.Map
+	persistent atomic.Bool
+	count      int
+	err        error
+}
+
+func (p *probeActivation) allBackground(classify func(context.Context) bool) bool {
+	foreground := false
+	p.users.Range(func(_, value any) bool {
+		ctx := value.(context.Context)
+		foreground = ctx.Err() == nil && !classify(ctx) && ctx.Err() == nil
+		return !foreground
+	})
+	return !foreground && !p.persistent.Load()
+}
+
 type clientSession struct {
 	*session
 	client        *Client
+	probe         *probeActivation
 	access        sync.Mutex
 	configuration Configuration
 	ready         bool
@@ -77,6 +113,10 @@ func NewClient(options ClientOptions) (*Client, error) {
 		return nil, E.Cause(err, "build advertised routes")
 	}
 	ctx, cancel := context.WithCancel(options.Context)
+	var probePause pause.Manager
+	if options.ScopedProbes {
+		probePause = service.FromContext[pause.Manager](ctx)
+	}
 	return &Client{
 		ctx:             ctx,
 		cancel:          cancel,
@@ -85,18 +125,35 @@ func NewClient(options ClientOptions) (*Client, error) {
 		template:        template,
 		advertiseRoutes: advertiseRoutes,
 		handler:         options.Handler,
+		probePause:      probePause,
 		suspended:       options.StartSuspended,
 		stateUpdated:    make(chan struct{}),
 	}, nil
 }
 
 func (c *Client) Start() {
+	if c.probePause != nil {
+		callback := c.probePause.RegisterCallback(func(event int) {
+			if event != pause.EventDevicePaused && event != pause.EventNetworkPause {
+				return
+			}
+			c.access.Lock()
+			if c.suspended && c.probe != nil {
+				c.endProbeLocked(c.probe, urltest.ErrProbeNotRun)
+			}
+			c.access.Unlock()
+		})
+		c.stopProbePause = sync.OnceFunc(func() { c.probePause.UnregisterCallback(callback) })
+	}
 	c.loopDone = make(chan struct{})
 	go c.loop()
 }
 
 func (c *Client) Close() error {
 	c.cancel()
+	if c.stopProbePause != nil {
+		c.stopProbePause()
+	}
 	if c.loopDone != nil {
 		<-c.loopDone
 	}
@@ -111,16 +168,28 @@ func (c *Client) notifyStateLocked() {
 func (c *Client) loop() {
 	defer close(c.loopDone)
 	backoff := reconnectBackoffInitial
+	var latestReset *sessionReset
 	for {
 		c.access.Lock()
-		suspended := c.suspended
+		probe := c.probe
+		idle := c.suspended && probe == nil
+		reset := c.reset
 		stateUpdated := c.stateUpdated
-		c.restarting = false
-		if !suspended {
+		if !idle {
 			c.lastError = nil
 		}
 		c.access.Unlock()
-		if suspended {
+		if c.ctx.Err() != nil {
+			return
+		}
+		if reset != latestReset {
+			// Join the exact old pool reset before opening its successor.
+			reset.apply()
+			latestReset = reset
+			backoff = reconnectBackoffInitial
+			continue
+		}
+		if idle {
 			select {
 			case <-stateUpdated:
 				continue
@@ -128,12 +197,12 @@ func (c *Client) loop() {
 				return
 			}
 		}
-		established, err := c.connect()
+		established, err := c.connect(probe, reset)
 		if c.ctx.Err() != nil {
 			return
 		}
 		c.access.Lock()
-		interrupted := c.suspended || c.restarting
+		interrupted := c.reset != reset || (probe != nil && probe.ctx.Err() != nil) || (c.suspended && probe == nil)
 		if !interrupted {
 			c.lastError = err
 		}
@@ -163,38 +232,61 @@ func (c *Client) loop() {
 	}
 }
 
-func (c *Client) connect() (bool, error) {
-	dialCtx, cancelDial := context.WithTimeout(c.ctx, C.TCPTimeout)
-	stream, err := c.httpClient.OpenTunnel(dialCtx, upgradeToken, c.template.Expand())
-	cancelDial()
+func (c *Client) connect(probe *probeActivation, reset *sessionReset) (bool, error) {
+	ownerCtx := c.ctx
+	if probe != nil {
+		ownerCtx = probe.ctx
+	}
+	c.access.Lock()
+	if c.reset != reset || (c.suspended && probe == nil) || ownerCtx.Err() != nil {
+		c.access.Unlock()
+		return false, context.Canceled
+	}
+	attemptCtx, cancelAttempt := context.WithCancel(ownerCtx)
+	c.dialCancel = cancelAttempt
+	c.access.Unlock()
+	dialCtx := attemptCtx
+	if probe != nil {
+		dialCtx = urltest.ContextWithSharedBackgroundProbe(attemptCtx, probe.allBackground)
+	}
+	stream, err := c.openTunnel(dialCtx)
+	c.access.Lock()
+	if probe != nil && adapter.IsOutboundForegroundSlot(err) {
+		if c.probe == probe && c.reset == reset && attemptCtx.Err() == nil {
+			if probe.allBackground(urltest.IsBackgroundProbe) {
+				c.endProbeLocked(probe, err)
+			} else {
+				c.access.Unlock()
+				stream, err = c.openTunnel(urltest.ContextWithSharedBackgroundProbe(attemptCtx, nil))
+				c.access.Lock()
+			}
+		}
+	}
+	c.dialCancel = nil
+	cancelAttempt()
 	if err != nil {
+		c.access.Unlock()
 		return false, err
 	}
-	current := &clientSession{client: c}
-	c.access.Lock()
-	if c.suspended || c.restarting {
-		suspended := c.suspended
+	current := &clientSession{client: c, probe: probe}
+	if (c.suspended && probe == nil) || c.reset != reset || ownerCtx.Err() != nil {
 		c.access.Unlock()
 		stream.Close()
-		if suspended {
-			c.httpClient.ResetConnections()
-		}
 		return false, nil
 	}
-	current.session = newSession(c.ctx, stream, current, c.handler.FrontHeadroom)
+	current.session = newSession(ownerCtx, stream, current, c.handler.FrontHeadroom)
 	c.current = current
 	c.access.Unlock()
-	err = current.writeCapsule(newAddressCapsule(capsuleTypeAddressRequest, []AssignedAddress{
-		{RequestID: 1, Prefix: netip.PrefixFrom(netip.IPv4Unspecified(), 32)},
-		{RequestID: 2, Prefix: netip.PrefixFrom(netip.IPv6Unspecified(), 128)},
-	}))
-	if err == nil && len(c.advertiseRoutes) > 0 {
-		err = current.writeCapsule(newRouteCapsule(c.advertiseRoutes))
-	}
-	if err != nil {
-		current.cancel(err)
-	}
-	err = current.run()
+	err = current.run(func() error {
+		setupErr := current.writeCapsule(newAddressCapsule(capsuleTypeAddressRequest, []AssignedAddress{
+			{RequestID: 1, Prefix: netip.PrefixFrom(netip.IPv4Unspecified(), 32)},
+			{RequestID: 2, Prefix: netip.PrefixFrom(netip.IPv6Unspecified(), 128)},
+		}))
+		if setupErr == nil && len(c.advertiseRoutes) > 0 {
+			setupErr = current.writeCapsule(newRouteCapsule(c.advertiseRoutes))
+		}
+		return setupErr
+	})
 	c.access.Lock()
 	c.current = nil
 	c.access.Unlock()
@@ -205,10 +297,24 @@ func (c *Client) connect() (bool, error) {
 	return established, err
 }
 
+func (c *Client) openTunnel(ctx context.Context) (io.ReadWriteCloser, error) {
+	dialCtx, cancel := context.WithTimeout(ctx, C.TCPTimeout)
+	defer cancel()
+	return c.httpClient.OpenTunnel(dialCtx, upgradeToken, c.template.Expand())
+}
+
 func (c *Client) activeSession() *clientSession {
 	c.access.Lock()
 	defer c.access.Unlock()
-	return c.current
+	return c.activeSessionLocked()
+}
+
+func (c *Client) activeSessionLocked() *clientSession {
+	current := c.current
+	if current != nil && current.ctx.Err() != nil {
+		return nil
+	}
+	return current
 }
 
 func (c *Client) Ready() bool {
@@ -222,22 +328,109 @@ func (c *Client) Ready() bool {
 }
 
 func (c *Client) WaitReady(ctx context.Context) error {
+	return c.waitReady(ctx, nil)
+}
+
+// WaitReadyForProbe holds a scoped on-demand activation until the caller is
+// finished with the connection or packet carrier that uses the tunnel.
+func (c *Client) WaitReadyForProbe(ctx context.Context) (func(), error) {
+	c.access.Lock()
+	if err := ctx.Err(); err != nil {
+		c.access.Unlock()
+		return nil, err
+	}
+	if err := c.ctx.Err(); err != nil {
+		c.access.Unlock()
+		return nil, err
+	}
+	if c.probePause != nil && (c.probePause.IsDevicePaused() || c.probePause.IsNetworkPaused()) {
+		c.access.Unlock()
+		return nil, urltest.ErrProbeNotRun
+	}
+	var release func()
+	probe := c.probe
+	if c.suspended || probe != nil {
+		if probe == nil {
+			ownerCtx, cancel := context.WithCancelCause(c.ctx)
+			probe = &probeActivation{ctx: ownerCtx, cancel: cancel}
+			c.probe = probe
+			c.lastError = nil
+			c.notifyStateLocked()
+		}
+		key := &ctx
+		probe.users.Store(key, ctx)
+		probe.count++
+		release = sync.OnceFunc(func() {
+			c.access.Lock()
+			probe.users.Delete(key)
+			probe.count--
+			if c.probe == probe && c.suspended && probe.count == 0 {
+				c.endProbeLocked(probe, context.Canceled)
+			}
+			c.access.Unlock()
+		})
+	}
+	c.access.Unlock()
+	waitCtx, cancel := context.WithTimeout(ctx, C.TCPTimeout)
+	defer cancel()
+	if err := c.waitReady(waitCtx, probe); err != nil {
+		if release != nil {
+			release()
+		}
+		return nil, err
+	}
+	return release, nil
+}
+
+func (c *Client) endProbeLocked(probe *probeActivation, err error) {
+	probe.err = err
+	probe.cancel(err)
+	c.probe = nil
+	c.requestResetLocked()
+	c.notifyStateLocked()
+}
+
+func (c *Client) requestResetLocked() *sessionReset {
+	if c.reset != nil {
+		select {
+		case <-c.reset.done:
+		default:
+			return c.reset
+		}
+	}
+	reset := &sessionReset{done: make(chan struct{})}
+	reset.apply = sync.OnceFunc(func() {
+		defer close(reset.done)
+		c.httpClient.ResetConnections()
+	})
+	c.reset = reset
+	return reset
+}
+
+func (c *Client) waitReady(ctx context.Context, probe *probeActivation) error {
 	for {
 		c.access.Lock()
-		current := c.current
+		if probe != nil && probe.err != nil {
+			err := probe.err
+			c.access.Unlock()
+			return err
+		}
+		current := c.activeSessionLocked()
 		lastError := c.lastError
 		stateUpdated := c.stateUpdated
-		c.access.Unlock()
-		if current != nil {
+		if current != nil && (probe == nil || probe == current.probe) {
 			current.access.Lock()
 			ready := current.ready
 			current.access.Unlock()
 			if ready {
+				c.access.Unlock()
 				return nil
 			}
 		} else if lastError != nil {
+			c.access.Unlock()
 			return lastError
 		}
+		c.access.Unlock()
 		select {
 		case <-stateUpdated:
 		case <-ctx.Done():
@@ -250,17 +443,27 @@ func (c *Client) WaitReady(ctx context.Context) error {
 
 func (c *Client) Suspend() {
 	c.access.Lock()
-	if c.suspended {
+	probe := c.probe
+	if c.suspended && probe == nil {
 		c.access.Unlock()
 		return
 	}
 	c.suspended = true
+	if c.dialCancel != nil {
+		c.dialCancel()
+	}
 	if c.current != nil {
 		c.current.cancel(E.New("suspended"))
 	}
-	c.notifyStateLocked()
+	if probe != nil {
+		c.endProbeLocked(probe, context.Canceled)
+	} else {
+		c.requestResetLocked()
+		c.notifyStateLocked()
+	}
+	reset := c.reset
 	c.access.Unlock()
-	c.httpClient.ResetConnections()
+	reset.apply()
 }
 
 func (c *Client) Resume() {
@@ -270,20 +473,26 @@ func (c *Client) Resume() {
 		return
 	}
 	c.suspended = false
+	if c.probe != nil {
+		c.probe.persistent.Store(true)
+	}
 	c.lastError = nil
 	c.notifyStateLocked()
 }
 
 func (c *Client) RestartSession() {
 	c.access.Lock()
-	c.restarting = true
+	reset := c.requestResetLocked()
+	if c.dialCancel != nil {
+		c.dialCancel()
+	}
 	if c.current != nil {
 		c.current.cancel(E.New("network changed"))
 	}
 	c.lastError = nil
 	c.notifyStateLocked()
 	c.access.Unlock()
-	c.httpClient.ResetConnections()
+	reset.apply()
 }
 
 func (c *Client) WritePacketBuffers(packetBuffers []*buf.Buffer, forwarded bool) error {
