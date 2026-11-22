@@ -578,22 +578,36 @@ func TestReceiveConnectionEventFrames(t *testing.T) {
 		disconnect  string
 		incremental bool
 	}{
-		{name: "raw", raw: true, frames: []*daemon.ConnectionEvents{first, part, complete, delta}, terminal: io.EOF,
-			want: []delivery{start, next, end, {ConnectionSnapshotNone, false, "delta"}}, disconnect: "EOF", incremental: true},
-		{name: "empty_snapshot", raw: true, frames: []*daemon.ConnectionEvents{{Reset_: true, SnapshotComplete: proto.Bool(false)}, complete},
-			terminal: io.EOF, want: []delivery{{ConnectionSnapshotPart, true, ""}, end}, disconnect: "EOF", incremental: true},
-		{name: "default", frames: []*daemon.ConnectionEvents{first, part, complete, delta}, terminal: io.EOF,
-			want: []delivery{{ConnectionSnapshotNone, true, "first,part"}, {ConnectionSnapshotNone, false, "delta"}}, disconnect: "EOF"},
-		{name: "aborted", raw: true, frames: []*daemon.ConnectionEvents{first}, terminal: aborted,
-			want: []delivery{start}, disconnect: "Aborted", incremental: true},
-		{name: "oversized_reset", raw: true, frames: []*daemon.ConnectionEvents{first}, terminal: oversized,
-			want: []delivery{start, rejected}, disconnect: "ResourceExhausted", incremental: true},
+		{
+			name: "raw", raw: true, frames: []*daemon.ConnectionEvents{first, part, complete, delta}, terminal: io.EOF,
+			want: []delivery{start, next, end, {ConnectionSnapshotNone, false, "delta"}}, disconnect: "EOF", incremental: true,
+		},
+		{
+			name: "empty_snapshot", raw: true, frames: []*daemon.ConnectionEvents{{Reset_: true, SnapshotComplete: proto.Bool(false)}, complete},
+			terminal: io.EOF, want: []delivery{{ConnectionSnapshotPart, true, ""}, end}, disconnect: "EOF", incremental: true,
+		},
+		{
+			name: "default", frames: []*daemon.ConnectionEvents{first, part, complete, delta}, terminal: io.EOF,
+			want: []delivery{{ConnectionSnapshotNone, true, "first,part"}, {ConnectionSnapshotNone, false, "delta"}}, disconnect: "EOF",
+		},
+		{
+			name: "aborted", raw: true, frames: []*daemon.ConnectionEvents{first}, terminal: aborted,
+			want: []delivery{start}, disconnect: "Aborted", incremental: true,
+		},
+		{
+			name: "oversized_reset", raw: true, frames: []*daemon.ConnectionEvents{first}, terminal: oversized,
+			want: []delivery{start, rejected}, disconnect: "ResourceExhausted", incremental: true,
+		},
 		{name: "oversized_first", raw: true, terminal: oversized, want: []delivery{rejected}, disconnect: "ResourceExhausted"},
-		{name: "oversized_delta", raw: true, frames: []*daemon.ConnectionEvents{first, complete}, terminal: oversized,
-			want: []delivery{start, end, rejected}, disconnect: "ResourceExhausted", incremental: true},
+		{
+			name: "oversized_delta", raw: true, frames: []*daemon.ConnectionEvents{first, complete}, terminal: oversized,
+			want: []delivery{start, end, rejected}, disconnect: "ResourceExhausted", incremental: true,
+		},
 		{name: "default_oversized", frames: []*daemon.ConnectionEvents{first}, terminal: oversized, disconnect: "ResourceExhausted"},
-		{name: "other_limit", raw: true, frames: []*daemon.ConnectionEvents{first}, terminal: status.Error(codes.ResourceExhausted, "admission limit"),
-			want: []delivery{start}, disconnect: "ResourceExhausted", incremental: true},
+		{
+			name: "other_limit", raw: true, frames: []*daemon.ConnectionEvents{first}, terminal: status.Error(codes.ResourceExhausted, "admission limit"),
+			want: []delivery{start}, disconnect: "ResourceExhausted", incremental: true,
+		},
 		{name: "legacy_raw", raw: true, frames: []*daemon.ConnectionEvents{{Reset_: true}}, disconnect: "FailedPrecondition"},
 		{name: "missing_complete", raw: true, frames: []*daemon.ConnectionEvents{first, delta}, want: []delivery{start}, disconnect: "DataLoss", incremental: true},
 		{name: "second_reset", raw: true, frames: []*daemon.ConnectionEvents{first, complete, {Reset_: true}}, want: []delivery{start, end}, disconnect: "DataLoss", incremental: true},
