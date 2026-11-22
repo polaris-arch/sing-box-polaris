@@ -288,6 +288,8 @@ func (c *ClientEndpoint) SetKeepIdleConnections(keep bool) {
 	}
 	if keep {
 		c.client.Resume()
+	} else if c.scopedProbes {
+		c.client.SuspendWhenIdle()
 	} else {
 		c.client.Suspend()
 	}

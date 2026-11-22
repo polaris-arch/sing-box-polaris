@@ -216,6 +216,11 @@ func masqueProbeReceive[T any](t *testing.T, ch <-chan T) T {
 func masqueProbeServeTunnel(t *testing.T, dial masqueProbePhysicalDial) <-chan struct{} {
 	t.Helper()
 	conn, server := net.Pipe()
+	return masqueProbeServeTunnelPair(t, dial, conn, server)
+}
+
+func masqueProbeServeTunnelPair(t *testing.T, dial masqueProbePhysicalDial, conn net.Conn, server net.Conn) <-chan struct{} {
+	t.Helper()
 	t.Cleanup(func() { _ = server.Close() })
 	done := make(chan struct{})
 	go func() {
@@ -395,6 +400,122 @@ func TestMasqueProbeLateForegroundAndReferenceKeep(t *testing.T) {
 				endpoint.SetKeepIdleConnections(false)
 			}
 			masqueProbeReceive(t, tunnelDone)
+		})
+	}
+}
+
+func TestMasqueProbeReferenceReleaseFollowsSession(t *testing.T) {
+	for _, mode := range []string{"cold", "warm", "foreground", "device pause", "network pause", "stop", "restart cold", "restart warm", "peer EOF"} {
+		t.Run(mode, func(t *testing.T) {
+			endpoint, dials := fixtureMasqueProbeEndpoint(t)
+			ctx := urltest.ContextWithBackgroundProbe(t.Context())
+			destination := M.ParseSocksaddr("192.0.2.9:80")
+			cold := mode == "cold" || mode == "restart cold"
+			start := func() <-chan masqueProbeDialResult {
+				result := make(chan masqueProbeDialResult, 1)
+				go func() {
+					conn, err := endpoint.DialContext(ctx, N.NetworkTCP, destination)
+					result <- masqueProbeDialResult{conn: conn, err: err}
+				}()
+				return result
+			}
+			var done <-chan struct{}
+			var peer net.Conn
+			var closing <-chan struct{}
+			if !cold {
+				endpoint.SetKeepIdleConnections(true)
+				dial := masqueProbeReceive(t, dials)
+				if mode == "peer EOF" {
+					conn, server := net.Pipe()
+					observed := &masqueBlockedSetupConn{Conn: conn, writing: make(chan struct{}), closing: make(chan struct{}), allowClose: make(chan struct{})}
+					close(observed.allowClose)
+					peer, closing = server, observed.closing
+					done = masqueProbeServeTunnelPair(t, dial, observed, server)
+				} else {
+					done = masqueProbeServeTunnel(t, dial)
+				}
+				if err := endpoint.client.WaitReady(t.Context()); err != nil {
+					t.Fatal(err)
+				}
+			}
+			first := start()
+			if cold {
+				done = masqueProbeServeTunnel(t, masqueProbeReceive(t, dials))
+			}
+			borrowed := masqueProbeReceive(t, first)
+			if borrowed.err != nil {
+				t.Fatal(borrowed.err)
+			}
+			defer borrowed.conn.Close()
+			endpoint.SetKeepIdleConnections(false)
+			if !endpoint.client.Ready() {
+				t.Fatal("withdrawing the reference canceled the borrowed tunnel")
+			}
+			switch mode {
+			case "foreground":
+				conn, err := endpoint.DialContext(t.Context(), N.NetworkTCP, destination)
+				if err != nil {
+					t.Fatal(err)
+				}
+				defer conn.Close()
+				if err := borrowed.conn.Close(); err != nil || !endpoint.client.Ready() {
+					t.Fatalf("scoped release retired the tunnel taken over by foreground, err = %v", err)
+				}
+				endpoint.SetKeepIdleConnections(false)
+			case "device pause":
+				service.FromContext[pause.Manager](endpoint.ctx).DevicePause()
+			case "network pause":
+				service.FromContext[pause.Manager](endpoint.ctx).NetworkPause()
+			case "stop":
+				if err := endpoint.client.Close(); err != nil {
+					t.Fatal(err)
+				}
+			case "restart cold", "restart warm", "peer EOF":
+				if peer != nil {
+					if err := peer.Close(); err != nil {
+						t.Fatal(err)
+					}
+					masqueProbeReceive(t, closing)
+				} else {
+					endpoint.client.RestartSession()
+				}
+				masqueProbeReceive(t, done)
+				second := start()
+				dial := masqueProbeReceive(t, dials)
+				if !urltest.IsBackgroundProbe(dial.ctx) {
+					t.Fatal("the successor inherited durable foreground demand")
+				}
+				done = masqueProbeServeTunnel(t, dial)
+				successor := masqueProbeReceive(t, second)
+				if successor.err != nil {
+					t.Fatal(successor.err)
+				}
+				defer successor.conn.Close()
+				if err := borrowed.conn.Close(); err != nil || !endpoint.client.Ready() {
+					t.Fatalf("the old release canceled the successor, err = %v", err)
+				}
+				if err := successor.conn.Close(); err != nil {
+					t.Fatal(err)
+				}
+			default:
+				packet, err := endpoint.ListenPacket(ctx, destination)
+				if err != nil {
+					t.Fatal(err)
+				}
+				defer packet.Close()
+				if err := borrowed.conn.Close(); err != nil || !endpoint.client.Ready() {
+					t.Fatalf("the first release retired a shared tunnel, err = %v", err)
+				}
+				if err := packet.Close(); err != nil {
+					t.Fatal(err)
+				}
+			}
+			masqueProbeReceive(t, done)
+			select {
+			case <-dials:
+				t.Fatal("borrow or release unnecessarily opened another tunnel")
+			default:
+			}
 		})
 	}
 }
