@@ -9,6 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/sagernet/sing-box/common/urltest"
 	E "github.com/sagernet/sing/common/exceptions"
 
 	mDNS "github.com/miekg/dns"
@@ -101,7 +102,7 @@ func newQueryMultiplexer(options queryMultiplexerOptions) *queryMultiplexer {
 		parent = context.Background()
 	}
 	workerCtx, workerCancel := context.WithCancel(parent)
-	probeCtx, probeCancel := context.WithCancel(workerCtx)
+	probeCtx, probeCancel := context.WithCancel(urltest.ContextWithBackgroundProbe(workerCtx))
 	multiplexer := &queryMultiplexer{
 		workerCtx: workerCtx, workerCancel: workerCancel,
 		probeCtx: probeCtx, probeCancel: probeCancel,
