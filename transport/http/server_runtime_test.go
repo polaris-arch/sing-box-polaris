@@ -97,6 +97,7 @@ func TestHTTP1ProbeConnectHandshake(t *testing.T) {
 		{name: "background capacity busy", probeListener: true, remoteIP: "127.0.0.1", probeHeader: backgroundProbeHeader, dialErr: capacityErr, wantStatus: 503, wantOutcome: "budget-busy", wantBackground: true},
 		{name: "background foreground slot reserved", probeListener: true, remoteIP: "127.0.0.1", probeHeader: backgroundProbeHeader, dialErr: adapter.ErrOutboundForegroundSlot, wantStatus: 503, wantOutcome: "budget-busy", wantBackground: true},
 		{name: "multiple capacity refusals", probeListener: true, remoteIP: "127.0.0.1", probeHeader: backgroundProbeHeader, dialErr: errors.Join(adapter.ErrOutboundForegroundSlot, adapter.ErrOutboundCapacity), wantStatus: 503, wantOutcome: "budget-busy", wantBackground: true},
+		{name: "network failure with hard capacity", probeListener: true, remoteIP: "127.0.0.1", probeHeader: backgroundProbeHeader, dialErr: errors.Join(adapter.ErrOutboundCapacity, net.ErrClosed), wantStatus: 502, wantBackground: true},
 		{name: "network failure with a reserved slot", probeListener: true, remoteIP: "127.0.0.1", probeHeader: backgroundProbeHeader, dialErr: errors.Join(adapter.ErrOutboundForegroundSlot, net.ErrClosed), wantStatus: 502, wantBackground: true},
 		{name: "success", probeListener: true, remoteIP: "::1", probeHeader: probeHeader, wantStatus: 200},
 		{name: "untyped dial error", probeListener: true, remoteIP: "127.0.0.1", probeHeader: probeHeader, dialErr: errors.New(adapter.ErrOutboundCapacity.Error()), wantStatus: 502},
