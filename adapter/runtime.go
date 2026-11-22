@@ -2,6 +2,10 @@ package adapter
 
 import (
 	"context"
+	"encoding/hex"
+	"errors"
+	"strconv"
+	"strings"
 
 	"github.com/sagernet/sing-tun"
 )
@@ -10,6 +14,23 @@ import (
 type RuntimeRevision struct {
 	Incarnation string
 	Revision    uint64
+}
+
+// ErrProbeGraphChanged reports that the graph condition failed before selector mutation.
+var ErrProbeGraphChanged = errors.New("probe graph changed before selection")
+
+// ParseRuntimeRevisionToken reads the canonical runtime graph identifier used by probes.
+func ParseRuntimeRevisionToken(token string) (RuntimeRevision, bool) {
+	incarnation, revision, found := strings.Cut(token, "/")
+	var nonce [32]byte
+	if !found || len(incarnation) != hex.EncodedLen(len(nonce)) || incarnation != strings.ToLower(incarnation) {
+		return RuntimeRevision{}, false
+	}
+	if _, err := hex.Decode(nonce[:], []byte(incarnation)); err != nil || revision == "" || revision[0] < '1' || revision[0] > '9' {
+		return RuntimeRevision{}, false
+	}
+	value, err := strconv.ParseUint(revision, 10, 64)
+	return RuntimeRevision{Incarnation: incarnation, Revision: value}, err == nil
 }
 
 // RuntimeResourceID identifies an allocation, never a user-configured tag.

@@ -273,6 +273,9 @@ func (s *StartedService) GetRuntimeConfigStatus(ctx context.Context, request *Ru
 	if current.Operation != nil {
 		result.Operation = runtimeOperation(*current.Operation)
 	}
+	if current.LookupState == "ACTIVE_ONLY" {
+		_ = grpc.SetHeader(ctx, metadata.Pairs("x-polaris-probe-select-condition", "1"))
+	}
 	return result, nil
 }
 

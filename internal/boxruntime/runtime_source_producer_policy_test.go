@@ -626,6 +626,10 @@ func TestRuntimeSourceProducerRootWatchRefreshesNonPhysicalClosure(t *testing.T)
 	committed := make(chan RuntimeIdentity, 8)
 	f := r3SourceFixture(t, config, nil, func(id RuntimeIdentity, _ []byte) error { committed <- id; return nil }, true)
 	p := runtimeTestProducer(t, f)
+	manager := f.box.Outbound().(*runtimeOutboundManager)
+	if selected, err := manager.SelectOutboundAtGraphContext(t.Context(), f.identity().graphRevision(), "select", "b"); err != nil || !selected {
+		t.Fatalf("select initial member: %v %v", selected, err)
+	}
 	oldLease, old := f.acquire(t)
 	before := f.identity()
 	canonical := r3SourceCanonical(f)
@@ -690,6 +694,16 @@ func TestRuntimeSourceProducerRootWatchRefreshesNonPhysicalClosure(t *testing.T)
 		return problem.Path == "certificate.certificate_path" && problem.Code == "RESTART_REQUIRED"
 	}) {
 		t.Fatal("initial root adapter relaxed the certificate edit boundary", plan, err)
+	}
+	group, _ := manager.Outbound("select")
+	selector := group.(adapter.OutboundGroup)
+	selected, err := manager.SelectOutboundAtGraphContext(t.Context(), before.graphRevision(), "select", "a")
+	if selected || !errors.Is(err, adapter.ErrProbeGraphChanged) || f.identity() != id || selector.Selected("tcp").Tag() != "b" {
+		t.Fatalf("old probe mutated the same-name replacement: %v %v %+v", selected, err, f.identity())
+	}
+	selected, err = manager.SelectOutboundAtGraphContext(t.Context(), id.graphRevision(), "select", "a")
+	if err != nil || !selected || selector.Selected("tcp").Tag() != "a" || f.identity().ControlRevision != id.ControlRevision+1 {
+		t.Fatalf("current probe could not select the replacement: %v %v %+v", selected, err, f.identity())
 	}
 }
 

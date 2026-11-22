@@ -8,38 +8,44 @@ import (
 )
 
 func (c *runtimeCoordinator) SelectRuntimeOutbound(expected adapter.RuntimeResourceID, group, selected string) bool {
-	return c.selectRuntimeOutbound(context.Background(), expected, group, selected)
+	accepted, _ := c.selectRuntimeOutbound(context.Background(), expected, adapter.RuntimeRevision{}, group, selected)
+	return accepted
 }
 
-func (c *runtimeCoordinator) selectRuntimeOutbound(ctx context.Context, expected adapter.RuntimeResourceID, group, selected string) bool {
+func (c *runtimeCoordinator) selectRuntimeOutbound(ctx context.Context, expected adapter.RuntimeResourceID, graph adapter.RuntimeRevision, group, selected string) (bool, error) {
 	if err := c.controlEffects.LockContext(ctx); err != nil {
-		return false
+		return false, err
 	}
 	defer c.controlEffects.Unlock()
 	c.access.Lock()
+	guarded := graph != (adapter.RuntimeRevision{})
+	if !c.stopped && guarded && c.active.graphRevision() != graph {
+		c.access.Unlock()
+		return false, adapter.ErrProbeGraphChanged
+	}
 	if c.stopped || c.active.ControlRevision == math.MaxUint64 {
 		c.access.Unlock()
-		return false
+		return false, nil
 	}
 	lease, err := c.store.Acquire()
 	if err != nil {
 		c.access.Unlock()
-		return false
+		return false, nil
 	}
+	defer lease.Release()
 	view, ok := lease.View().(*runtimeView)
-	if !ok || view.componentIDs["outbound:"+group] != expected {
+	if !ok || (!guarded && view.componentIDs["outbound:"+group] != expected) {
 		c.access.Unlock()
-		lease.Release()
-		return false
+		return false, nil
 	}
+	expected = view.componentIDs["outbound:"+group]
 	outbound, exists := view.outbounds.Outbound(group)
 	selector, selectable := outbound.(interface {
 		RuntimeSelect(string) (bool, bool, func())
 	})
 	if !exists || !selectable || ctx.Err() != nil {
 		c.access.Unlock()
-		lease.Release()
-		return false
+		return false, ctx.Err()
 	}
 	changed, accepted, effect := selector.RuntimeSelect(selected)
 	if changed {
@@ -49,9 +55,8 @@ func (c *runtimeCoordinator) selectRuntimeOutbound(ctx context.Context, expected
 	}
 	revision := c.active.ControlRevision
 	c.access.Unlock()
-	defer lease.Release()
 	if !accepted || effect == nil {
-		return accepted
+		return accepted, nil
 	}
 	// Effects execute outside the coordinator guard. Publication cannot pass
 	// this accepted control operation before its actual persistence tail.
@@ -71,7 +76,7 @@ func (c *runtimeCoordinator) selectRuntimeOutbound(ctx context.Context, expected
 	if current {
 		effect()
 	}
-	return accepted
+	return accepted, nil
 }
 
 func (c *runtimeCoordinator) SetRuntimeClashMode(mode string) bool {

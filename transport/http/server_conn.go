@@ -7,8 +7,6 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"strconv"
-	"strings"
 	"sync/atomic"
 	"time"
 
@@ -128,7 +126,7 @@ func (c *serverConn) serveConnect(ctx context.Context, request *http.Request, so
 		}
 		graph = values[0]
 		var ok bool
-		binding.Graph, ok = parseProbeGraph(graph)
+		binding.Graph, ok = adapter.ParseRuntimeRevisionToken(graph)
 		if !ok {
 			return c.rejectAndClose(request, http.StatusBadRequest, E.New("invalid probe graph"))
 		}
@@ -166,19 +164,6 @@ const (
 	connectSuccess   = " 200 Connection established\r\n"
 	probeGraphHeader = "X-Polaris-Probe-Graph"
 )
-
-func parseProbeGraph(graph string) (adapter.RuntimeRevision, bool) {
-	incarnation, revision, found := strings.Cut(graph, "/")
-	var nonce [32]byte
-	if !found || len(incarnation) != hex.EncodedLen(len(nonce)) || incarnation != strings.ToLower(incarnation) {
-		return adapter.RuntimeRevision{}, false
-	}
-	if _, err := hex.Decode(nonce[:], []byte(incarnation)); err != nil || revision == "" || revision[0] < '1' || revision[0] > '9' {
-		return adapter.RuntimeRevision{}, false
-	}
-	value, err := strconv.ParseUint(revision, 10, 64)
-	return adapter.RuntimeRevision{Incarnation: incarnation, Revision: value}, err == nil
-}
 
 type probeConnectConn struct {
 	net.Conn
