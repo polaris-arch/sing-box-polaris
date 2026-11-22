@@ -485,10 +485,12 @@ func TestReadConnectionEventReset(t *testing.T) {
 		name     string
 		batched  bool
 		complete bool
+		terminal error
 	}{
 		{name: "legacy", complete: true},
 		{name: "batched", batched: true, complete: true},
-		{name: "truncated", batched: true},
+		{name: "truncated", batched: true, terminal: io.EOF},
+		{name: "overflow", batched: true, terminal: status.Error(codes.Aborted, "connection events lost")},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			first := &daemon.ConnectionEvent{Id: "first"}
@@ -508,7 +510,7 @@ func TestReadConnectionEventReset(t *testing.T) {
 			}
 			recv := func() (*daemon.ConnectionEvents, error) {
 				if len(frames) == 0 {
-					return nil, io.EOF
+					return nil, test.terminal
 				}
 				frame := frames[0]
 				frames = frames[1:]
@@ -516,8 +518,8 @@ func TestReadConnectionEventReset(t *testing.T) {
 			}
 			frame, err := readConnectionEventReset(recv)
 			if !test.complete {
-				if frame != nil || !errors.Is(err, io.EOF) {
-					t.Fatalf("truncated reset returned frame %v and error %v", frame, err)
+				if frame != nil || !errors.Is(err, test.terminal) {
+					t.Fatalf("incomplete reset returned frame %v and error %v", frame, err)
 				}
 				return
 			}

@@ -1063,14 +1063,20 @@ func (s *StartedService) SubscribeConnections(request *SubscribeConnectionsReque
 		return status.Error(codes.Unimplemented, "connection tracking not available")
 	}
 
-	subscription, done, err := trafficManager.SubscribeEvents()
+	subscription, err := trafficManager.SubscribeEvents()
 	if err != nil {
 		return err
 	}
-	defer trafficManager.UnSubscribeEvents(subscription)
+	defer subscription.Close()
 
 	connectionSnapshots := make(map[uuid.UUID]connectionSnapshot)
-	batch := connectionEventBatch{server: server, frame: &ConnectionEvents{Reset_: true}}
+	batch := connectionEventBatch{
+		server:       server,
+		frame:        &ConnectionEvents{Reset_: true},
+		subscription: subscription,
+		serviceCtx:   s.ctx,
+		instance:     boxService,
+	}
 	web := server.Context().Value(boundedConnectionEventsKey{}) == true
 	batchedNative := request.GetBatchFrames() && !web
 	if batchedNative {
@@ -1087,13 +1093,7 @@ func (s *StartedService) SubscribeConnections(request *SubscribeConnectionsReque
 		return err
 	}
 	if batchedNative {
-		if err := server.Context().Err(); err != nil {
-			return err
-		}
-		if boxService.closeStarted.Load() || boxService.ctx.Err() != nil {
-			return status.Error(codes.Unavailable, "no active instance")
-		}
-		if err := server.Send(&ConnectionEvents{SnapshotComplete: proto.Bool(true)}); err != nil {
+		if err := batch.sendFrame(&ConnectionEvents{SnapshotComplete: proto.Bool(true)}); err != nil {
 			return err
 		}
 		batch.frame.SnapshotComplete = nil
@@ -1107,18 +1107,22 @@ func (s *StartedService) SubscribeConnections(request *SubscribeConnectionsReque
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
+	events := subscription.Events()
 	for {
+		if err := batch.checkStream(); err != nil {
+			return err
+		}
 		select {
 		case <-s.ctx.Done():
 			return s.ctx.Err()
 		case <-server.Context().Done():
 			return server.Context().Err()
-		case <-done:
-			return nil
+		case <-subscription.Done():
+			return batch.checkStream()
 
-		case event, open := <-subscription:
+		case event := <-events:
 			// Drain only already queued events before checking the ticker and cancellation.
-			for remaining := len(subscription); open; remaining-- {
+			for remaining := len(events); ; remaining-- {
 				if protoEvent := s.applyConnectionEvent(event, connectionSnapshots); protoEvent != nil {
 					if err := batch.add(protoEvent); err != nil {
 						return err
@@ -1127,13 +1131,10 @@ func (s *StartedService) SubscribeConnections(request *SubscribeConnectionsReque
 				if remaining == 0 {
 					break
 				}
-				event, open = <-subscription
+				event = <-events
 			}
 			if err := batch.send(); err != nil {
 				return err
-			}
-			if !open {
-				return nil
 			}
 
 		case <-ticker.C:
@@ -1150,17 +1151,20 @@ func (s *StartedService) SubscribeConnections(request *SubscribeConnectionsReque
 const connectionEventFrameLimit = 1024 * 1024
 
 type connectionEventBatch struct {
-	server grpc.ServerStreamingServer[ConnectionEvents]
-	frame  *ConnectionEvents
-	size   int
-	limit  int
+	server       grpc.ServerStreamingServer[ConnectionEvents]
+	frame        *ConnectionEvents
+	size         int
+	limit        int
+	subscription *trafficcontrol.ConnectionEventSubscription
+	serviceCtx   context.Context
+	instance     *Instance
 }
 
 func (b *connectionEventBatch) add(event *ConnectionEvent) error {
+	if err := b.checkStream(); err != nil {
+		return err
+	}
 	if b.limit > 0 {
-		if err := b.server.Context().Err(); err != nil {
-			return err
-		}
 		size := protowire.SizeTag(1) + protowire.SizeBytes(proto.Size(event))
 		if size > b.limit {
 			return status.Error(codes.ResourceExhausted, "connection event exceeds stream frame limit")
@@ -1183,12 +1187,40 @@ func (b *connectionEventBatch) send() error {
 	if len(b.frame.Events) == 0 && !b.frame.Reset_ {
 		return nil
 	}
-	if err := b.server.Send(b.frame); err != nil {
+	if err := b.sendFrame(b.frame); err != nil {
 		return err
 	}
 	b.frame = &ConnectionEvents{SnapshotComplete: b.frame.SnapshotComplete}
 	b.size = proto.Size(b.frame)
 	return nil
+}
+
+func (b *connectionEventBatch) checkStream() error {
+	if err := b.server.Context().Err(); err != nil {
+		return err
+	}
+	if b.subscription != nil {
+		if err := b.serviceCtx.Err(); err != nil {
+			return err
+		}
+		if b.instance.closeStarted.Load() || b.instance.ctx.Err() != nil {
+			return status.Error(codes.Unavailable, "no active instance")
+		}
+		if b.subscription.Lost() {
+			return status.Error(codes.Aborted, "connection events lost, subscribe again")
+		}
+	}
+	return nil
+}
+
+func (b *connectionEventBatch) sendFrame(frame *ConnectionEvents) error {
+	if err := b.checkStream(); err != nil {
+		return err
+	}
+	if err := b.server.Send(frame); err != nil {
+		return err
+	}
+	return b.checkStream()
 }
 
 const (
