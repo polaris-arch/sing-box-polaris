@@ -2,6 +2,7 @@ package route
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"io"
 	"net"
@@ -149,6 +150,12 @@ func (r *Router) routeConnection(ctx context.Context, conn net.Conn, metadata ad
 		selectedOutbound = r.outbound.Default()
 	}
 	chain, err := resolveOutbound(selectedOutbound, N.NetworkTCP)
+	ctx, probeMember, boundProbe := adapter.TakeProbeMember(ctx)
+	if boundProbe && !probeMemberMatches(metadata.Inbound, chain, probeMember) {
+		buf.ReleaseMulti(buffers)
+		closeRouteHandshakeFailure(conn, onClose, adapter.ErrProbeBindingMismatch)
+		return nil
+	}
 	if err != nil {
 		buf.ReleaseMulti(buffers)
 		return err
@@ -165,7 +172,11 @@ func (r *Router) routeConnection(ctx context.Context, conn net.Conn, metadata ad
 		conn = tracker.RoutedConnection(ctx, conn, metadata, selectedRule, selectedOutbound)
 	}
 	ctx = interrupt.ContextWithIsExternalConnection(ctx)
-	onClose, attached := registerInterrupt(chain, conn, onClose)
+	var staleSelection error = net.ErrClosed
+	if boundProbe {
+		staleSelection = adapter.ErrProbeBindingMismatch
+	}
+	onClose, attached := registerInterrupt(chain, conn, onClose, staleSelection)
 	if !attached {
 		return nil
 	}
@@ -178,6 +189,13 @@ func (r *Router) routeConnection(ctx context.Context, conn net.Conn, metadata ad
 	return nil
 }
 
+func probeMemberMatches(inbound string, chain []adapter.Outbound, member adapter.ProbeMemberDigest) bool {
+	slot, present := strings.CutPrefix(inbound, "probe-in-")
+	return present && slot != "" && len(chain) > 1 &&
+		chain[0].Tag() == "probe-selector-"+slot && sha256.Sum256([]byte(chain[1].Tag())) == member
+}
+
+// resolveOutbound retains the traversed chain on failure for probe member validation.
 func resolveOutbound(outbound adapter.Outbound, network string) ([]adapter.Outbound, error) {
 	chain := []adapter.Outbound{outbound}
 	for {
@@ -187,12 +205,12 @@ func resolveOutbound(outbound adapter.Outbound, network string) ([]adapter.Outbo
 		}
 		outbound = group.Selected(network)
 		if outbound == nil {
-			return nil, E.New(strings.ToUpper(network), " is not supported by outbound: ", group.Tag())
+			return chain, E.New(strings.ToUpper(network), " is not supported by outbound: ", group.Tag())
 		}
 		chain = append(chain, outbound)
 	}
 	if !common.Contains(outbound.Network(), network) {
-		return nil, E.New(strings.ToUpper(network), " is not supported by outbound: ", outbound.Tag())
+		return chain, E.New(strings.ToUpper(network), " is not supported by outbound: ", outbound.Tag())
 	}
 	return chain, nil
 }
@@ -221,7 +239,7 @@ func (c *routeInterruptCloser) Close() error {
 	return nil
 }
 
-func registerInterrupt(chain []adapter.Outbound, closer io.Closer, onClose N.CloseHandlerFunc) (N.CloseHandlerFunc, bool) {
+func registerInterrupt(chain []adapter.Outbound, closer io.Closer, onClose N.CloseHandlerFunc, staleSelection error) (N.CloseHandlerFunc, bool) {
 	if len(chain) == 1 {
 		return onClose, true
 	}
@@ -250,17 +268,17 @@ func registerInterrupt(chain []adapter.Outbound, closer io.Closer, onClose N.Clo
 	}
 	if !current || !interruptCloser.state.CompareAndSwap(routeInterruptPending, routeInterruptArmed) {
 		removeAll(nil)
-		closeStaleSelection(closer, onClose)
+		closeRouteHandshakeFailure(closer, onClose, staleSelection)
 		return nil, false
 	}
 	return N.AppendClose(onClose, removeAll), true
 }
 
-func closeStaleSelection(closer io.Closer, onClose N.CloseHandlerFunc) {
+func closeRouteHandshakeFailure(closer io.Closer, onClose N.CloseHandlerFunc, cause error) {
 	defer closer.Close()
-	err := N.ReportHandshakeFailure(closer, net.ErrClosed)
+	err := N.ReportHandshakeFailure(closer, cause)
 	if err == nil {
-		err = net.ErrClosed
+		err = cause
 	}
 	// A managed connection's Close also finishes the flow. Report the route error first.
 	if onClose != nil {
@@ -389,7 +407,7 @@ func (r *Router) routePacketConnection(ctx context.Context, conn N.PacketConn, m
 		conn = newFakeIPNATPacketConn(bufio.NewNetPacketConn(conn), metadata.OriginDestination, metadata.Destination)
 	}
 	ctx = interrupt.ContextWithIsExternalConnection(ctx)
-	onClose, attached := registerInterrupt(chain, conn, onClose)
+	onClose, attached := registerInterrupt(chain, conn, onClose, net.ErrClosed)
 	if !attached {
 		return nil
 	}

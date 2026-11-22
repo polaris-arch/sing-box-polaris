@@ -3,6 +3,7 @@ package route
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"errors"
 	"io"
 	"net"
@@ -301,10 +302,30 @@ func (t routeSelectionTestTracker) RoutedPacketConnection(_ context.Context, con
 
 type routeSelectionTestOutbound struct {
 	referenceTestOutbound
-	calls int
+	calls   int
+	udpOnly bool
 }
 
-func (*routeSelectionTestOutbound) Network() []string { return []string{N.NetworkTCP, N.NetworkUDP} }
+func newHandshakeTestSelector(t *testing.T, outbounds adapter.OutboundManager, tag string, options option.SelectorOutboundOptions) *group.Selector {
+	t.Helper()
+	ctx := service.ContextWith[adapter.OutboundManager](t.Context(), outbounds)
+	outbound, err := group.NewSelector(ctx, nil, log.NewNOPFactory().Logger(), tag, options)
+	if err != nil {
+		t.Fatal(err)
+	}
+	selector := outbound.(*group.Selector)
+	if err = selector.Start(adapter.StartStateStart, nil); err != nil {
+		t.Fatal(err)
+	}
+	return selector
+}
+
+func (o *routeSelectionTestOutbound) Network() []string {
+	if o.udpOnly {
+		return []string{N.NetworkUDP}
+	}
+	return []string{N.NetworkTCP, N.NetworkUDP}
+}
 
 func (o *routeSelectionTestOutbound) NewConnection(_ context.Context, conn net.Conn, _ adapter.InboundContext, onClose N.CloseHandlerFunc) {
 	o.calls++
@@ -346,18 +367,10 @@ func TestRouteSelectorChangesBeforeLeafDispatch(t *testing.T) {
 					first := &routeSelectionTestOutbound{referenceTestOutbound: referenceTestOutbound{tag: "a"}}
 					second := &routeSelectionTestOutbound{referenceTestOutbound: referenceTestOutbound{tag: "b"}}
 					outbounds := &referenceTestOutbounds{values: []adapter.Outbound{first, second}, defaultTag: "selector"}
-					selectorContext := service.ContextWith[adapter.OutboundManager](ctx, outbounds)
-					outbound, err := group.NewSelector(selectorContext, nil, log.NewNOPFactory().Logger(), "selector", option.SelectorOutboundOptions{
+					selector := newHandshakeTestSelector(t, outbounds, "selector", option.SelectorOutboundOptions{
 						Outbounds:                 []string{"a", "b"},
 						InterruptExistConnections: interrupt,
 					})
-					if err != nil {
-						t.Fatal(err)
-					}
-					selector := outbound.(*group.Selector)
-					if err = selector.Start(adapter.StartStateStart, nil); err != nil {
-						t.Fatal(err)
-					}
 					outbounds.values = append(outbounds.values, selector)
 					return selector, outbounds, first
 				}
@@ -473,7 +486,7 @@ func TestRouteArmedInterruptCloseCanReenter(t *testing.T) {
 		calls++
 		return second.closer.Close()
 	})
-	onClose, attached := registerInterrupt([]adapter.Outbound{first, second, new(referenceTestOutbound)}, closer, nil)
+	onClose, attached := registerInterrupt([]adapter.Outbound{first, second, new(referenceTestOutbound)}, closer, nil, net.ErrClosed)
 	if !attached {
 		t.Fatal("route was rejected before an interrupt")
 	}
@@ -486,6 +499,69 @@ func TestRouteArmedInterruptCloseCanReenter(t *testing.T) {
 	onClose(nil)
 	if calls != 1 {
 		t.Fatalf("physical close calls=%d", calls)
+	}
+}
+
+func TestRouteProbeMemberBinding(t *testing.T) {
+	const (
+		slot    = "probe-selector-0"
+		inbound = "probe-in-0"
+		member  = "节点"
+	)
+	for _, tc := range []struct {
+		name, inbound, routed, expected, selected string
+		change, reject                            bool
+	}{
+		{name: "bound nested member", inbound: inbound, routed: slot, expected: member},
+		{name: "legacy unbound", inbound: inbound, routed: slot},
+		{name: "wrong member", inbound: inbound, routed: slot, expected: "leaf", reject: true},
+		{name: "wrong slot", inbound: "probe-in-1", routed: slot, expected: member, reject: true},
+		{name: "wrong member without TCP", inbound: inbound, routed: slot, expected: member, selected: "udp-only", reject: true},
+		{name: "direct fallback", inbound: inbound, routed: "leaf", expected: member, reject: true},
+		{name: "changed during admission", inbound: inbound, routed: slot, expected: member, change: true, reject: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			leaf := &routeSelectionTestOutbound{referenceTestOutbound: referenceTestOutbound{tag: "leaf"}}
+			packet := &routeSelectionTestOutbound{referenceTestOutbound: referenceTestOutbound{tag: "udp-only"}, udpOnly: true}
+			outbounds := &referenceTestOutbounds{values: []adapter.Outbound{leaf, packet}, defaultTag: tc.routed}
+			nested := newHandshakeTestSelector(t, outbounds, member, option.SelectorOutboundOptions{Outbounds: []string{"leaf"}})
+			outbounds.values = append(outbounds.values, nested)
+			selector := newHandshakeTestSelector(t, outbounds, slot, option.SelectorOutboundOptions{
+				Outbounds: []string{member, "leaf", "udp-only"}, Default: tc.selected, InterruptExistConnections: true,
+			})
+			outbounds.values = append(outbounds.values, selector)
+			ctx := t.Context()
+			if tc.expected != "" {
+				ctx = adapter.ContextWithProbeMember(ctx, sha256.Sum256([]byte(tc.expected)))
+			}
+			router := &Router{ctx: ctx, outbound: outbounds, logger: log.NewNOPFactory().Logger()}
+			if tc.change {
+				router.trackers = []adapter.ConnectionTracker{routeSelectionTestTracker{afterSelection: func() {
+					if !selector.SelectOutbound("leaf") {
+						t.Fatal("could not reassign probe slot")
+					}
+				}}}
+			}
+			var reported, terminal error
+			terminals := 0
+			conn := &handshakeConnReporter{failure: func(err error) error {
+				reported = err
+				return nil
+			}}
+			router.RouteConnectionEx(ctx, conn, adapter.InboundContext{
+				Inbound: tc.inbound, Destination: M.Socksaddr{Fqdn: "example.test", Port: 443}, Domain: "example.test",
+			}, func(err error) { terminal = err; terminals++ })
+			if conn.closeCalls.Load() != 1 || terminals != 1 {
+				t.Fatalf("physical closes=%d terminal calls=%d", conn.closeCalls.Load(), terminals)
+			}
+			if tc.reject {
+				if leaf.calls != 0 || !errors.Is(reported, adapter.ErrProbeBindingMismatch) || !errors.Is(terminal, adapter.ErrProbeBindingMismatch) {
+					t.Fatalf("rejected dispatch=%d handshake=%v terminal=%v", leaf.calls, reported, terminal)
+				}
+			} else if leaf.calls != 1 || reported != nil || terminal != nil {
+				t.Fatalf("admitted dispatch=%d handshake=%v terminal=%v", leaf.calls, reported, terminal)
+			}
+		})
 	}
 }
 

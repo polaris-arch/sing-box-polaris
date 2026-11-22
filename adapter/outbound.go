@@ -2,6 +2,7 @@ package adapter
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"net/netip"
@@ -17,6 +18,27 @@ var ErrOutboundCapacity = errors.New("outbound engine capacity exhausted")
 
 // ErrOutboundForegroundSlot is a local capacity refusal caused by reserving the last slot for foreground work.
 var ErrOutboundForegroundSlot = fmt.Errorf("outbound engine slot reserved for foreground: %w", ErrOutboundCapacity)
+
+// ErrProbeBindingMismatch means a probe's requested selector member did not carry its route.
+var ErrProbeBindingMismatch = errors.New("probe selected a different outbound member")
+
+// ProbeMemberDigest identifies the intended member of a loopback probe selector.
+type ProbeMemberDigest [sha256.Size]byte
+
+type probeMemberKey struct{}
+
+func ContextWithProbeMember(ctx context.Context, member ProbeMemberDigest) context.Context {
+	return context.WithValue(ctx, probeMemberKey{}, member)
+}
+
+// TakeProbeMember consumes the binding at route admission so nested dials do not inherit it.
+func TakeProbeMember(ctx context.Context) (context.Context, ProbeMemberDigest, bool) {
+	member, loaded := ctx.Value(probeMemberKey{}).(ProbeMemberDigest)
+	if loaded {
+		ctx = context.WithValue(ctx, probeMemberKey{}, nil)
+	}
+	return ctx, member, loaded
+}
 
 // IsOutboundForegroundSlot recognizes a refusal with no accompanying failure.
 func IsOutboundForegroundSlot(err error) bool {

@@ -2,6 +2,7 @@ package http
 
 import (
 	"context"
+	"encoding/hex"
 	"errors"
 	"io"
 	"net"
@@ -16,6 +17,7 @@ import (
 	F "github.com/sagernet/sing/common/format"
 	M "github.com/sagernet/sing/common/metadata"
 	N "github.com/sagernet/sing/common/network"
+	"github.com/sagernet/sing/common/uot"
 )
 
 type requestResult uint8
@@ -114,12 +116,27 @@ func (c *serverConn) serveConnect(ctx context.Context, request *http.Request, so
 			return requestClose, E.Cause(err, "write response")
 		}
 	}
-	conn := c.reader.cachedConn(c.conn)
 	if probe {
-		conn = &probeConnectConn{Conn: conn, version: version}
+		if encoded := request.Header.Get("X-Polaris-Probe-Member"); encoded != "" {
+			if destination.Fqdn == uot.MagicAddress || destination.Fqdn == uot.LegacyMagicAddress {
+				return c.rejectAndClose(request, http.StatusBadRequest, E.New("probe member binding requires a TCP target"))
+			}
+			var member adapter.ProbeMemberDigest
+			if len(encoded) != hex.EncodedLen(len(member)) {
+				return c.rejectAndClose(request, http.StatusBadRequest, E.New("invalid probe member digest"))
+			}
+			if _, err := hex.Decode(member[:], []byte(encoded)); err != nil {
+				return c.rejectAndClose(request, http.StatusBadRequest, E.Cause(err, "invalid probe member digest"))
+			}
+			ctx = adapter.ContextWithProbeMember(ctx, member)
+		}
 		if probeMode == "background" {
 			ctx = urltest.ContextWithBackgroundProbe(ctx)
 		}
+	}
+	conn := c.reader.cachedConn(c.conn)
+	if probe {
+		conn = &probeConnectConn{Conn: conn, version: version}
 	}
 	c.handler.NewConnectionEx(ctx, conn, source, destination, c.onClose)
 	return requestHandedOff, nil
@@ -138,6 +155,9 @@ func (c *probeConnectConn) HandshakeSuccess() error {
 }
 
 func (c *probeConnectConn) HandshakeFailure(err error) error {
+	if errors.Is(err, adapter.ErrProbeBindingMismatch) {
+		return c.writeResponse(" 502 Bad Gateway\r\nX-Polaris-Probe-Outcome: binding-mismatch\r\nConnection: close\r\nContent-Length: 0\r\n\r\n")
+	}
 	if adapter.IsOutboundCapacity(err) {
 		return c.writeResponse(" 503 Service Unavailable\r\nX-Polaris-Probe-Outcome: budget-busy\r\nConnection: close\r\nContent-Length: 0\r\n\r\n")
 	}
