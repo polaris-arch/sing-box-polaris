@@ -10,6 +10,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -516,7 +517,7 @@ func TestReadConnectionEventReset(t *testing.T) {
 				frames = frames[1:]
 				return frame, nil
 			}
-			frame, err := readConnectionEventReset(recv)
+			frame, err := readConnectionEventReset(recv, nil)
 			if !test.complete {
 				if frame != nil || !errors.Is(err, test.terminal) {
 					t.Fatalf("incomplete reset returned frame %v and error %v", frame, err)
@@ -526,6 +527,185 @@ func TestReadConnectionEventReset(t *testing.T) {
 			if err != nil || !frame.Reset_ || frame.SnapshotComplete != nil ||
 				len(frame.Events) != 2 || frame.Events[0] != first || frame.Events[1] != second {
 				t.Fatalf("invalid completed reset, frame %v and error %v", frame, err)
+			}
+		})
+	}
+}
+
+type connectionFrameTestHandler struct {
+	CommandClientHandler
+	frames  []*ConnectionEvents
+	err     string
+	onFrame func(*ConnectionEvents)
+}
+
+func (h *connectionFrameTestHandler) WriteConnectionEvents(frame *ConnectionEvents) {
+	h.frames = append(h.frames, frame)
+	if h.onFrame != nil {
+		h.onFrame(frame)
+	}
+}
+
+func (h *connectionFrameTestHandler) Disconnected(message string) { h.err = message }
+
+func TestReceiveConnectionEventFrames(t *testing.T) {
+	first := &daemon.ConnectionEvents{
+		Reset_: true, SnapshotComplete: proto.Bool(false),
+		Events: []*daemon.ConnectionEvent{{Id: "first"}},
+	}
+	part := &daemon.ConnectionEvents{
+		SnapshotComplete: proto.Bool(false), Events: []*daemon.ConnectionEvent{{Id: "part"}},
+	}
+	complete := &daemon.ConnectionEvents{SnapshotComplete: proto.Bool(true)}
+	delta := &daemon.ConnectionEvents{Events: []*daemon.ConnectionEvent{{Id: "delta"}}}
+	oversized := status.Error(codes.ResourceExhausted, "connection event exceeds stream frame limit")
+	aborted := status.Error(codes.Aborted, "connection events lost")
+	type delivery struct {
+		state int32
+		reset bool
+		ids   string
+	}
+	start := delivery{ConnectionSnapshotPart, true, "first"}
+	next := delivery{ConnectionSnapshotPart, false, "part"}
+	end := delivery{ConnectionSnapshotComplete, false, ""}
+	rejected := delivery{ConnectionSnapshotTooLarge, false, ""}
+	for _, test := range []struct {
+		name        string
+		raw         bool
+		frames      []*daemon.ConnectionEvents
+		terminal    error
+		want        []delivery
+		disconnect  string
+		incremental bool
+	}{
+		{name: "raw", raw: true, frames: []*daemon.ConnectionEvents{first, part, complete, delta}, terminal: io.EOF,
+			want: []delivery{start, next, end, {ConnectionSnapshotNone, false, "delta"}}, disconnect: "EOF", incremental: true},
+		{name: "empty_snapshot", raw: true, frames: []*daemon.ConnectionEvents{{Reset_: true, SnapshotComplete: proto.Bool(false)}, complete},
+			terminal: io.EOF, want: []delivery{{ConnectionSnapshotPart, true, ""}, end}, disconnect: "EOF", incremental: true},
+		{name: "default", frames: []*daemon.ConnectionEvents{first, part, complete, delta}, terminal: io.EOF,
+			want: []delivery{{ConnectionSnapshotNone, true, "first,part"}, {ConnectionSnapshotNone, false, "delta"}}, disconnect: "EOF"},
+		{name: "aborted", raw: true, frames: []*daemon.ConnectionEvents{first}, terminal: aborted,
+			want: []delivery{start}, disconnect: "Aborted", incremental: true},
+		{name: "oversized_reset", raw: true, frames: []*daemon.ConnectionEvents{first}, terminal: oversized,
+			want: []delivery{start, rejected}, disconnect: "ResourceExhausted", incremental: true},
+		{name: "oversized_first", raw: true, terminal: oversized, want: []delivery{rejected}, disconnect: "ResourceExhausted"},
+		{name: "oversized_delta", raw: true, frames: []*daemon.ConnectionEvents{first, complete}, terminal: oversized,
+			want: []delivery{start, end, rejected}, disconnect: "ResourceExhausted", incremental: true},
+		{name: "default_oversized", frames: []*daemon.ConnectionEvents{first}, terminal: oversized, disconnect: "ResourceExhausted"},
+		{name: "other_limit", raw: true, frames: []*daemon.ConnectionEvents{first}, terminal: status.Error(codes.ResourceExhausted, "admission limit"),
+			want: []delivery{start}, disconnect: "ResourceExhausted", incremental: true},
+		{name: "legacy_raw", raw: true, frames: []*daemon.ConnectionEvents{{Reset_: true}}, disconnect: "FailedPrecondition"},
+		{name: "missing_complete", raw: true, frames: []*daemon.ConnectionEvents{first, delta}, want: []delivery{start}, disconnect: "DataLoss", incremental: true},
+		{name: "second_reset", raw: true, frames: []*daemon.ConnectionEvents{first, complete, {Reset_: true}}, want: []delivery{start, end}, disconnect: "DataLoss", incremental: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			handler := new(connectionFrameTestHandler)
+			client := &CommandClient{handler: handler, options: CommandClientOptions{ConnectionEventFrames: test.raw}}
+			read := 0
+			client.receiveConnectionEvents(t.Context(), func() (*daemon.ConnectionEvents, error) {
+				if test.incremental && read != len(handler.frames) {
+					t.Fatalf("the first %d frames produced %d callbacks before the next read", read, len(handler.frames))
+				}
+				if read == len(test.frames) {
+					if test.terminal == nil {
+						t.Fatal("received another frame after a protocol failure")
+					}
+					return nil, test.terminal
+				}
+				frame := proto.CloneOf(test.frames[read])
+				read++
+				return frame, nil
+			})
+			var got []delivery
+			for _, frame := range handler.frames {
+				var ids []string
+				for _, event := range frame.events {
+					ids = append(ids, event.ID)
+				}
+				got = append(got, delivery{frame.SnapshotState, frame.Reset, strings.Join(ids, ",")})
+			}
+			if !slices.Equal(got, test.want) || !strings.Contains(handler.err, test.disconnect) {
+				t.Fatalf("delivered %v with terminal %q; want %v and %s", got, handler.err, test.want, test.disconnect)
+			}
+		})
+	}
+}
+
+func TestReceiveConnectionEventFramesSizeLimit(t *testing.T) {
+	start := &daemon.ConnectionEvents{Reset_: true, SnapshotComplete: proto.Bool(false)}
+	// Reuse one sub-limit frame to cross the cumulative limit without allocating a large snapshot.
+	part := &daemon.ConnectionEvents{
+		SnapshotComplete: proto.Bool(false),
+		Events:           []*daemon.ConnectionEvent{{Id: strings.Repeat("x", (1<<20)-1024)}},
+	}
+	partsWithinLimit := ((64 << 20) - proto.Size(start)) / proto.Size(part)
+	handler := new(connectionFrameTestHandler)
+	client := &CommandClient{handler: handler, options: CommandClientOptions{ConnectionEventFrames: true}}
+	reads := 0
+	client.receiveConnectionEvents(t.Context(), func() (*daemon.ConnectionEvents, error) {
+		reads++
+		switch {
+		case reads == 1:
+			return start, nil
+		case reads <= partsWithinLimit+2:
+			return part, nil
+		default:
+			t.Fatal("received another frame after exceeding the cumulative limit")
+			return nil, io.EOF
+		}
+	})
+	if len(handler.frames) != partsWithinLimit+2 || !strings.Contains(handler.err, "connection snapshot exceeds its byte limit") {
+		t.Fatalf("size limit delivered %d callbacks and terminal %q", len(handler.frames), handler.err)
+	}
+	for _, frame := range handler.frames[:len(handler.frames)-1] {
+		if frame.SnapshotState != ConnectionSnapshotPart {
+			t.Fatalf("unexpected state %d before size limit", frame.SnapshotState)
+		}
+	}
+	last := handler.frames[len(handler.frames)-1]
+	if last.SnapshotState != ConnectionSnapshotTooLarge || last.Reset || len(last.events) != 0 {
+		t.Fatal("oversized snapshot did not end with an empty size-limit marker")
+	}
+}
+
+func TestReceiveConnectionEventFramesCancellation(t *testing.T) {
+	start := &daemon.ConnectionEvents{Reset_: true, SnapshotComplete: proto.Bool(false)}
+	complete := &daemon.ConnectionEvents{SnapshotComplete: proto.Bool(true)}
+	delta := &daemon.ConnectionEvents{Events: []*daemon.ConnectionEvent{{Id: "buffered"}}}
+	for _, test := range []struct {
+		name            string
+		cancelInReceive bool
+		wantReads       int
+	}{
+		{name: "cancel_from_completion_callback", wantReads: 2},
+		{name: "cancel_during_buffered_receive", cancelInReceive: true, wantReads: 3},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+			handler := &connectionFrameTestHandler{onFrame: func(frame *ConnectionEvents) {
+				if frame.SnapshotState == ConnectionSnapshotComplete && !test.cancelInReceive {
+					cancel()
+				}
+			}}
+			client := &CommandClient{handler: handler, options: CommandClientOptions{ConnectionEventFrames: true}}
+			reads := 0
+			client.receiveConnectionEvents(ctx, func() (*daemon.ConnectionEvents, error) {
+				reads++
+				switch reads {
+				case 1:
+					return start, nil
+				case 2:
+					return complete, nil
+				case 3:
+					cancel()
+					return delta, nil
+				default:
+					return nil, io.EOF
+				}
+			})
+			if reads != test.wantReads || len(handler.frames) != 2 || handler.err != "" {
+				t.Fatalf("after cancellation: %d reads, %d callbacks, terminal %q", reads, len(handler.frames), handler.err)
 			}
 		})
 	}
