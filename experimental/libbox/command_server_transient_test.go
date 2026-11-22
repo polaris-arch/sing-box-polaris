@@ -598,6 +598,11 @@ func TestReceiveConnectionEventFrames(t *testing.T) {
 			name: "oversized_reset", raw: true, frames: []*daemon.ConnectionEvents{first}, terminal: oversized,
 			want: []delivery{start, rejected}, disconnect: "ResourceExhausted", incremental: true,
 		},
+		{
+			name: "oversized_snapshot_total", raw: true, frames: []*daemon.ConnectionEvents{first},
+			terminal: status.FromProto(status.Convert(daemon.ErrConnectionEventSnapshotTooLarge).Proto()).Err(),
+			want:     []delivery{start, rejected}, disconnect: "ResourceExhausted", incremental: true,
+		},
 		{name: "oversized_first", raw: true, terminal: oversized, want: []delivery{rejected}, disconnect: "ResourceExhausted"},
 		{
 			name: "oversized_delta", raw: true, frames: []*daemon.ConnectionEvents{first, complete}, terminal: oversized,

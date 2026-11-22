@@ -513,6 +513,42 @@ func TestSubscribeConnectionsResetFraming(t *testing.T) {
 			}
 		})
 	}
+	t.Run("oversized_batched_native", func(t *testing.T) {
+		for range ConnectionEventSnapshotLimit / len(wide) {
+			snapshotTestConnection(t, manager, "outbound").Metadata().Metadata.Domain = wide
+		}
+		ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
+		defer cancel()
+		var sentBytes int
+		stream := &admissionSendStream[ConnectionEvents]{ctx: ctx, send: func(frame *ConnectionEvents) error {
+			if frame.GetSnapshotComplete() {
+				t.Fatal("oversized snapshot must not complete")
+			}
+			sentBytes += proto.Size(frame)
+			if sentBytes > ConnectionEventSnapshotLimit {
+				t.Fatal("oversized snapshot data was sent")
+			}
+			return nil
+		}}
+		err := service.SubscribeConnections(&SubscribeConnectionsRequest{BatchFrames: true}, stream)
+		if sentBytes <= ConnectionEventSnapshotLimit-connectionEventFrameLimit || !errors.Is(err, ErrConnectionEventSnapshotTooLarge) {
+			t.Fatalf("sent %d snapshot bytes and returned %v", sentBytes, err)
+		}
+	})
+	t.Run("retired_oversized_snapshot", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(t.Context())
+		frame := &ConnectionEvents{SnapshotComplete: proto.Bool(false), Events: []*ConnectionEvent{{Id: "retired"}}}
+		batch := connectionEventBatch{
+			server:       &admissionSendStream[ConnectionEvents]{ctx: ctx},
+			frame:        frame,
+			size:         proto.Size(frame),
+			snapshotSize: ConnectionEventSnapshotLimit,
+		}
+		cancel()
+		if err := batch.send(); !errors.Is(err, context.Canceled) {
+			t.Fatalf("oversized retired snapshot returned %v", err)
+		}
+	})
 }
 
 func TestSubscribeConnectionsAbortsOnIngressOverflow(t *testing.T) {

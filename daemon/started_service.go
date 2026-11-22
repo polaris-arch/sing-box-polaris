@@ -1148,13 +1148,21 @@ func (s *StartedService) SubscribeConnections(request *SubscribeConnectionsReque
 	}
 }
 
-const connectionEventFrameLimit = 1024 * 1024
+const (
+	connectionEventFrameLimit = 1024 * 1024
+	// ConnectionEventSnapshotLimit bounds the cumulative size of batched reset data.
+	ConnectionEventSnapshotLimit = 64 * 1024 * 1024
+)
+
+// ErrConnectionEventSnapshotTooLarge ends a batched reset before completion.
+var ErrConnectionEventSnapshotTooLarge = status.Error(codes.ResourceExhausted, "connection snapshot exceeds its byte limit")
 
 type connectionEventBatch struct {
 	server       grpc.ServerStreamingServer[ConnectionEvents]
 	frame        *ConnectionEvents
 	size         int
 	limit        int
+	snapshotSize int
 	subscription *trafficcontrol.ConnectionEventSubscription
 	serviceCtx   context.Context
 	instance     *Instance
@@ -1186,6 +1194,15 @@ func (b *connectionEventBatch) add(event *ConnectionEvent) error {
 func (b *connectionEventBatch) send() error {
 	if len(b.frame.Events) == 0 && !b.frame.Reset_ {
 		return nil
+	}
+	if b.frame.SnapshotComplete != nil {
+		b.snapshotSize += b.size
+		if b.snapshotSize > ConnectionEventSnapshotLimit {
+			if err := b.checkStream(); err != nil {
+				return err
+			}
+			return ErrConnectionEventSnapshotTooLarge
+		}
 	}
 	if err := b.sendFrame(b.frame); err != nil {
 		return err

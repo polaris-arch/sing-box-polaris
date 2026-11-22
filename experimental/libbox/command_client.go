@@ -2,6 +2,7 @@ package libbox
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net"
 	"os"
@@ -612,8 +613,6 @@ func (c *CommandClient) receiveConnectionEvents(ctx context.Context, recv func()
 	}
 }
 
-var errConnectionSnapshotSizeLimit = status.Error(codes.ResourceExhausted, "connection snapshot exceeds its byte limit")
-
 func (c *CommandClient) connectionEventsDisconnected(ctx context.Context, err error, operation string) {
 	if c.options.ConnectionEventFrames {
 		if ctx.Err() != nil {
@@ -621,7 +620,7 @@ func (c *CommandClient) connectionEventsDisconnected(ctx context.Context, err er
 		}
 		failure := status.Convert(err)
 		// Other ResourceExhausted statuses may describe transport or admission limits.
-		if err == errConnectionSnapshotSizeLimit ||
+		if errors.Is(err, daemon.ErrConnectionEventSnapshotTooLarge) ||
 			failure.Code() == codes.ResourceExhausted && failure.Message() == "connection event exceeds stream frame limit" {
 			c.handler.WriteConnectionEvents(&ConnectionEvents{SnapshotState: ConnectionSnapshotTooLarge})
 		}
@@ -645,7 +644,6 @@ func readConnectionEventReset(recv func() (*daemon.ConnectionEvents, error), emi
 	if !reset.Reset_ || reset.GetSnapshotComplete() {
 		return nil, status.Error(codes.DataLoss, "invalid connection snapshot start")
 	}
-	const maxSnapshotBytes = 64 * 1024 * 1024
 	size := proto.Size(reset)
 	if emitFrame != nil {
 		emitFrame(reset)
@@ -671,8 +669,8 @@ func readConnectionEventReset(recv func() (*daemon.ConnectionEvents, error), emi
 			return nil, status.Error(codes.DataLoss, "invalid connection snapshot data")
 		}
 		size += proto.Size(frame)
-		if size > maxSnapshotBytes {
-			return nil, errConnectionSnapshotSizeLimit
+		if size > daemon.ConnectionEventSnapshotLimit {
+			return nil, daemon.ErrConnectionEventSnapshotTooLarge
 		}
 		if emitFrame != nil {
 			emitFrame(frame)
