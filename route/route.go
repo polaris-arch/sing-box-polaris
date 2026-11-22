@@ -90,6 +90,14 @@ func (r *Router) routeConnection(ctx context.Context, conn net.Conn, metadata ad
 		injectable.NewConnection(ctx, conn, metadata, onClose)
 		return nil
 	}
+	ctx, probeBinding, boundProbe := adapter.TakeProbeBinding(ctx)
+	if probeBinding.Graph.Incarnation != "" {
+		lease, ok := adapter.RuntimeLeaseFromContext(ctx)
+		if !ok || lease.View().Identity() != probeBinding.Graph {
+			closeRouteHandshakeFailure(conn, onClose, adapter.ErrProbeBindingMismatch)
+			return nil
+		}
+	}
 	metadata.Network = N.NetworkTCP
 	switch metadata.Destination.Fqdn {
 	case mux.Destination.Fqdn:
@@ -150,8 +158,7 @@ func (r *Router) routeConnection(ctx context.Context, conn net.Conn, metadata ad
 		selectedOutbound = r.outbound.Default()
 	}
 	chain, err := resolveOutbound(selectedOutbound, N.NetworkTCP)
-	ctx, probeMember, boundProbe := adapter.TakeProbeMember(ctx)
-	if boundProbe && !probeMemberMatches(metadata.Inbound, chain, probeMember) {
+	if boundProbe && !probeMemberMatches(metadata.Inbound, chain, probeBinding.Member) {
 		buf.ReleaseMulti(buffers)
 		closeRouteHandshakeFailure(conn, onClose, adapter.ErrProbeBindingMismatch)
 		return nil
@@ -183,9 +190,15 @@ func (r *Router) routeConnection(ctx context.Context, conn net.Conn, metadata ad
 	outbound := chain[len(chain)-1]
 	if outboundHandler, isHandler := outbound.(adapter.ConnectionHandler); isHandler {
 		outboundHandler.NewConnection(ctx, conn, metadata, onClose)
-	} else {
-		r.connection.NewConnection(ctx, outbound, conn, metadata, onClose)
+		return nil
 	}
+	if probeBinding.OnVerified != nil {
+		if manager, ok := r.connection.(*ConnectionManager); ok {
+			manager.newConnection(ctx, outbound, conn, metadata, onClose, probeBinding.OnVerified)
+			return nil
+		}
+	}
+	r.connection.NewConnection(ctx, outbound, conn, metadata, onClose)
 	return nil
 }
 

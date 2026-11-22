@@ -7,6 +7,8 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"strconv"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -112,63 +114,104 @@ func (c *serverConn) serveConnect(ctx context.Context, request *http.Request, so
 	probe := c.server.probeConnect && (probeMode == "1" || probeMode == "background") &&
 		M.SocksaddrFromNet(c.conn.RemoteAddr()).Addr.Unmap().IsLoopback()
 	if !probe {
-		if _, err := io.WriteString(c.conn, version+connectSuccess); err != nil {
+		if _, err := io.WriteString(c.conn, version+connectSuccess+"\r\n"); err != nil {
 			return requestClose, E.Cause(err, "write response")
 		}
+		c.handler.NewConnectionEx(ctx, c.reader.cachedConn(c.conn), source, destination, c.onClose)
+		return requestHandedOff, nil
 	}
-	if probe {
-		if encoded := request.Header.Get("X-Polaris-Probe-Member"); encoded != "" {
-			if destination.Fqdn == uot.MagicAddress || destination.Fqdn == uot.LegacyMagicAddress {
-				return c.rejectAndClose(request, http.StatusBadRequest, E.New("probe member binding requires a TCP target"))
-			}
-			var member adapter.ProbeMemberDigest
-			if len(encoded) != hex.EncodedLen(len(member)) {
-				return c.rejectAndClose(request, http.StatusBadRequest, E.New("invalid probe member digest"))
-			}
-			if _, err := hex.Decode(member[:], []byte(encoded)); err != nil {
-				return c.rejectAndClose(request, http.StatusBadRequest, E.Cause(err, "invalid probe member digest"))
-			}
-			ctx = adapter.ContextWithProbeMember(ctx, member)
+	var binding adapter.ProbeBinding
+	var graph string
+	if values := request.Header.Values(probeGraphHeader); len(values) > 0 {
+		if len(values) != 1 {
+			return c.rejectAndClose(request, http.StatusBadRequest, E.New("expected one probe graph"))
 		}
-		if probeMode == "background" {
-			ctx = urltest.ContextWithBackgroundProbe(ctx)
+		graph = values[0]
+		var ok bool
+		binding.Graph, ok = parseProbeGraph(graph)
+		if !ok {
+			return c.rejectAndClose(request, http.StatusBadRequest, E.New("invalid probe graph"))
 		}
 	}
-	conn := c.reader.cachedConn(c.conn)
-	if probe {
-		conn = &probeConnectConn{Conn: conn, version: version}
+	encodedMember := request.Header.Get("X-Polaris-Probe-Member")
+	if encodedMember != "" {
+		if destination.Fqdn == uot.MagicAddress || destination.Fqdn == uot.LegacyMagicAddress {
+			return c.rejectAndClose(request, http.StatusBadRequest, E.New("probe member binding requires a TCP target"))
+		}
+		if len(encodedMember) != hex.EncodedLen(len(binding.Member)) {
+			return c.rejectAndClose(request, http.StatusBadRequest, E.New("invalid probe member digest"))
+		}
+		if _, err := hex.Decode(binding.Member[:], []byte(encodedMember)); err != nil {
+			return c.rejectAndClose(request, http.StatusBadRequest, E.Cause(err, "invalid probe member digest"))
+		}
+	} else if graph != "" {
+		conn := probeConnectConn{Conn: c.conn, version: version}
+		return requestClose, E.Errors(adapter.ErrProbeBindingMismatch, conn.HandshakeFailure(adapter.ErrProbeBindingMismatch))
+	}
+	conn := &probeConnectConn{Conn: c.reader.cachedConn(c.conn), version: version, graph: graph}
+	if graph != "" {
+		binding.OnVerified = conn.verifyGraph
+	}
+	if encodedMember != "" {
+		ctx = adapter.ContextWithProbeBinding(ctx, binding)
+	}
+	if probeMode == "background" {
+		ctx = urltest.ContextWithBackgroundProbe(ctx)
 	}
 	c.handler.NewConnectionEx(ctx, conn, source, destination, c.onClose)
 	return requestHandedOff, nil
 }
 
-const connectSuccess = " 200 Connection established\r\n\r\n"
+const (
+	connectSuccess   = " 200 Connection established\r\n"
+	probeGraphHeader = "X-Polaris-Probe-Graph"
+)
+
+func parseProbeGraph(graph string) (adapter.RuntimeRevision, bool) {
+	incarnation, revision, found := strings.Cut(graph, "/")
+	var nonce [32]byte
+	if !found || len(incarnation) != hex.EncodedLen(len(nonce)) || incarnation != strings.ToLower(incarnation) {
+		return adapter.RuntimeRevision{}, false
+	}
+	if _, err := hex.Decode(nonce[:], []byte(incarnation)); err != nil || revision == "" || revision[0] < '1' || revision[0] > '9' {
+		return adapter.RuntimeRevision{}, false
+	}
+	value, err := strconv.ParseUint(revision, 10, 64)
+	return adapter.RuntimeRevision{Incarnation: incarnation, Revision: value}, err == nil
+}
 
 type probeConnectConn struct {
 	net.Conn
-	version   string
-	responded atomic.Bool
+	version       string
+	graph         string
+	graphVerified atomic.Bool
+	responded     atomic.Bool
 }
 
+func (c *probeConnectConn) verifyGraph() { c.graphVerified.Store(true) }
+
 func (c *probeConnectConn) HandshakeSuccess() error {
-	return c.writeResponse(connectSuccess)
+	return c.writeResponse(connectSuccess, true)
 }
 
 func (c *probeConnectConn) HandshakeFailure(err error) error {
 	if errors.Is(err, adapter.ErrProbeBindingMismatch) {
-		return c.writeResponse(" 502 Bad Gateway\r\nX-Polaris-Probe-Outcome: binding-mismatch\r\nConnection: close\r\nContent-Length: 0\r\n\r\n")
+		return c.writeResponse(" 502 Bad Gateway\r\nX-Polaris-Probe-Outcome: binding-mismatch\r\nConnection: close\r\nContent-Length: 0\r\n", false)
 	}
 	if adapter.IsOutboundCapacity(err) {
-		return c.writeResponse(" 503 Service Unavailable\r\nX-Polaris-Probe-Outcome: budget-busy\r\nConnection: close\r\nContent-Length: 0\r\n\r\n")
+		return c.writeResponse(" 503 Service Unavailable\r\nX-Polaris-Probe-Outcome: budget-busy\r\nConnection: close\r\nContent-Length: 0\r\n", true)
 	}
-	return c.writeResponse(" 502 Bad Gateway\r\nConnection: close\r\nContent-Length: 0\r\n\r\n")
+	return c.writeResponse(" 502 Bad Gateway\r\nConnection: close\r\nContent-Length: 0\r\n", true)
 }
 
-func (c *probeConnectConn) writeResponse(response string) error {
+func (c *probeConnectConn) writeResponse(response string, includeGraph bool) error {
 	if !c.responded.CompareAndSwap(false, true) {
 		return nil
 	}
-	_, err := io.WriteString(c.Conn, c.version+response)
+	if includeGraph && c.graphVerified.Load() {
+		response += probeGraphHeader + ": " + c.graph + "\r\n"
+	}
+	_, err := io.WriteString(c.Conn, c.version+response+"\r\n")
 	return err
 }
 

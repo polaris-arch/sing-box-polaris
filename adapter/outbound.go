@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"net"
 	"net/netip"
 
 	"github.com/sagernet/sing-box/log"
@@ -19,25 +20,32 @@ var ErrOutboundCapacity = errors.New("outbound engine capacity exhausted")
 // ErrOutboundForegroundSlot is a local capacity refusal caused by reserving the last slot for foreground work.
 var ErrOutboundForegroundSlot = fmt.Errorf("outbound engine slot reserved for foreground: %w", ErrOutboundCapacity)
 
-// ErrProbeBindingMismatch means a probe's requested selector member did not carry its route.
-var ErrProbeBindingMismatch = errors.New("probe selected a different outbound member")
+// ErrProbeBindingMismatch means the route did not match the probe's member or graph.
+var ErrProbeBindingMismatch = errors.New("probe route binding mismatch")
 
 // ProbeMemberDigest identifies the intended member of a loopback probe selector.
 type ProbeMemberDigest [sha256.Size]byte
 
-type probeMemberKey struct{}
-
-func ContextWithProbeMember(ctx context.Context, member ProbeMemberDigest) context.Context {
-	return context.WithValue(ctx, probeMemberKey{}, member)
+// ProbeBinding pins a loopback probe to a member and optionally to one runtime graph.
+type ProbeBinding struct {
+	Member     ProbeMemberDigest
+	Graph      RuntimeRevision
+	OnVerified func()
 }
 
-// TakeProbeMember consumes the binding at route admission so nested dials do not inherit it.
-func TakeProbeMember(ctx context.Context) (context.Context, ProbeMemberDigest, bool) {
-	member, loaded := ctx.Value(probeMemberKey{}).(ProbeMemberDigest)
+type probeBindingKey struct{}
+
+func ContextWithProbeBinding(ctx context.Context, binding ProbeBinding) context.Context {
+	return context.WithValue(ctx, probeBindingKey{}, binding)
+}
+
+// TakeProbeBinding consumes the binding at route admission so nested dials do not inherit it.
+func TakeProbeBinding(ctx context.Context) (context.Context, ProbeBinding, bool) {
+	binding, loaded := ctx.Value(probeBindingKey{}).(ProbeBinding)
 	if loaded {
-		ctx = context.WithValue(ctx, probeMemberKey{}, nil)
+		ctx = context.WithValue(ctx, probeBindingKey{}, nil)
 	}
-	return ctx, member, loaded
+	return ctx, binding, loaded
 }
 
 // IsOutboundForegroundSlot recognizes a refusal with no accompanying failure.
@@ -48,6 +56,11 @@ func IsOutboundForegroundSlot(err error) bool {
 // IsOutboundCapacity recognizes a capacity refusal with no accompanying failure.
 func IsOutboundCapacity(err error) bool {
 	return isOnlyOutboundError(err, ErrOutboundCapacity)
+}
+
+// IsOutboundClosed recognizes a closed outbound with no accompanying failure.
+func IsOutboundClosed(err error) bool {
+	return isOnlyOutboundError(err, net.ErrClosed)
 }
 
 func isOnlyOutboundError(err, target error) bool {

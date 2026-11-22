@@ -1,21 +1,26 @@
 package route
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"crypto/sha256"
 	"errors"
+	"fmt"
 	"io"
 	"net"
+	"net/http"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/sagernet/sing-box/adapter"
+	"github.com/sagernet/sing-box/common/urltest"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing-box/protocol/group"
+	proxyhttp "github.com/sagernet/sing-box/transport/http"
 	"github.com/sagernet/sing/common"
 	M "github.com/sagernet/sing/common/metadata"
 	N "github.com/sagernet/sing/common/network"
@@ -510,9 +515,18 @@ func TestRouteProbeMemberBinding(t *testing.T) {
 	)
 	for _, tc := range []struct {
 		name, inbound, routed, expected, selected string
+		wantGraph, activeGraph                    uint64
+		otherIncarnation, publishReplacement      bool
 		change, reject                            bool
 	}{
 		{name: "bound nested member", inbound: inbound, routed: slot, expected: member},
+		{name: "bound member on the admitted graph", inbound: inbound, routed: slot, expected: member, wantGraph: 1, activeGraph: 1},
+		{name: "admitted graph retained through publication", inbound: inbound, routed: slot, expected: member, wantGraph: 1, activeGraph: 1, publishReplacement: true},
+		{name: "same member tag on a replacement graph", inbound: inbound, routed: slot, expected: member, wantGraph: 1, activeGraph: 2, reject: true},
+		{name: "same revision in another incarnation", inbound: inbound, routed: slot, expected: member, wantGraph: 1, activeGraph: 1, otherIncarnation: true, reject: true},
+		{name: "missing graph lease", inbound: inbound, routed: slot, expected: member, wantGraph: 1, reject: true},
+		{name: "same graph with the wrong member", inbound: inbound, routed: slot, expected: "leaf", wantGraph: 1, activeGraph: 1, reject: true},
+		{name: "same graph with changed selection", inbound: inbound, routed: slot, expected: member, wantGraph: 1, activeGraph: 1, change: true, reject: true},
 		{name: "legacy unbound", inbound: inbound, routed: slot},
 		{name: "wrong member", inbound: inbound, routed: slot, expected: "leaf", reject: true},
 		{name: "wrong slot", inbound: "probe-in-1", routed: slot, expected: member, reject: true},
@@ -531,8 +545,17 @@ func TestRouteProbeMemberBinding(t *testing.T) {
 			})
 			outbounds.values = append(outbounds.values, selector)
 			ctx := t.Context()
+			verified := 0
 			if tc.expected != "" {
-				ctx = adapter.ContextWithProbeMember(ctx, sha256.Sum256([]byte(tc.expected)))
+				binding := adapter.ProbeBinding{Member: sha256.Sum256([]byte(tc.expected))}
+				if tc.wantGraph != 0 {
+					binding.Graph = adapter.RuntimeRevision{Incarnation: "reference-test", Revision: tc.wantGraph}
+					if tc.otherIncarnation {
+						binding.Graph.Incarnation = "different-run"
+					}
+					binding.OnVerified = func() { verified++ }
+				}
+				ctx = adapter.ContextWithProbeBinding(ctx, binding)
 			}
 			router := &Router{ctx: ctx, outbound: outbounds, logger: log.NewNOPFactory().Logger()}
 			if tc.change {
@@ -542,13 +565,27 @@ func TestRouteProbeMemberBinding(t *testing.T) {
 					}
 				}}}
 			}
+			var dispatch adapter.Router = router
+			if tc.activeGraph != 0 {
+				graph := newReferenceTestGraph(tc.activeGraph, outbounds.values, nil)
+				root := handshakeRouterLease{RuntimeLease: graph.acquire(), view: handshakeRouterView{RuntimeView: graph.view, router: router}}
+				defer root.Release()
+				active := root
+				if tc.publishReplacement {
+					replacement := newReferenceTestGraph(tc.activeGraph+1, nil, nil)
+					next := handshakeRouterLease{RuntimeLease: replacement.acquire(), view: handshakeRouterView{RuntimeView: replacement.view, router: router}}
+					defer next.Release()
+					router.trackers = []adapter.ConnectionTracker{routeSelectionTestTracker{afterSelection: func() { active = next }}}
+				}
+				dispatch = NewRuntimeRouter(routeSelectionTestAdmission(func() (adapter.RuntimeLease, error) { return active.Fork() }), RuntimeRouterStructure{})
+			}
 			var reported, terminal error
 			terminals := 0
 			conn := &handshakeConnReporter{failure: func(err error) error {
 				reported = err
 				return nil
 			}}
-			router.RouteConnectionEx(ctx, conn, adapter.InboundContext{
+			dispatch.RouteConnectionEx(ctx, conn, adapter.InboundContext{
 				Inbound: tc.inbound, Destination: M.Socksaddr{Fqdn: "example.test", Port: 443}, Domain: "example.test",
 			}, func(err error) { terminal = err; terminals++ })
 			if conn.closeCalls.Load() != 1 || terminals != 1 {
@@ -561,8 +598,154 @@ func TestRouteProbeMemberBinding(t *testing.T) {
 			} else if leaf.calls != 1 || reported != nil || terminal != nil {
 				t.Fatalf("admitted dispatch=%d handshake=%v terminal=%v", leaf.calls, reported, terminal)
 			}
+			if verified != 0 {
+				t.Fatalf("specialized handler produced %d graph proofs", verified)
+			}
 		})
 	}
+}
+
+func TestRouteProbeConnectProofAfterFlowAdmission(t *testing.T) {
+	const (
+		slot        = "probe-selector-0"
+		member      = "candidate"
+		incarnation = "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"
+		graphToken  = incarnation + "/1"
+	)
+	dialFailure := errors.New("outbound dial failed")
+	for _, tc := range []struct {
+		name       string
+		stopBefore bool
+		cancelDial bool
+		stopInDial bool
+		dialErr    error
+		background bool
+		wantStatus int
+		wantProof  bool
+	}{
+		{name: "final close rejects before dial", stopBefore: true, dialErr: dialFailure},
+		{name: "real dial failure", dialErr: dialFailure, wantProof: true},
+		{name: "closed outbound without another failure", dialErr: fmt.Errorf("outbound fence: %w", net.ErrClosed)},
+		{name: "closed outbound with a real dial failure", dialErr: errors.Join(net.ErrClosed, dialFailure), wantProof: true},
+		{name: "foreground probe not run", dialErr: urltest.ErrProbeNotRun},
+		{name: "background probe not run with capacity cause", background: true, dialErr: errors.Join(urltest.ErrProbeNotRun, adapter.ErrOutboundForegroundSlot)},
+		{name: "pure capacity refusal", background: true, dialErr: adapter.ErrOutboundForegroundSlot, wantStatus: http.StatusServiceUnavailable, wantProof: true},
+		{name: "local context cancelled during dial", cancelDial: true, dialErr: dialFailure},
+		{name: "local context cancelled before a successful dial returns", cancelDial: true},
+		{name: "final close prevents publishing dialed connection", stopInDial: true},
+		{name: "published outbound connection", wantProof: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+			logger := log.NewNOPFactory().Logger()
+			manager := NewConnectionManager(logger)
+			defer func() {
+				manager.StopFinal()
+				if err := finalAwaitClose(t, manager); err != nil {
+					t.Error(err)
+				}
+			}()
+			if tc.stopBefore {
+				manager.StopFinal()
+			}
+			var dialCalls atomic.Int32
+			leaf := &probeGraphTestOutbound{referenceTestOutbound: referenceTestOutbound{tag: member}, dial: func() (net.Conn, error) {
+				dialCalls.Add(1)
+				if tc.cancelDial {
+					cancel()
+				}
+				if tc.stopInDial {
+					manager.StopFinal()
+				}
+				if tc.dialErr != nil {
+					return nil, tc.dialErr
+				}
+				out, peer := net.Pipe()
+				t.Cleanup(func() { peer.Close() })
+				return out, nil
+			}}
+			outbounds := &referenceTestOutbounds{values: []adapter.Outbound{leaf}, defaultTag: slot}
+			selector := newHandshakeTestSelector(t, outbounds, slot, option.SelectorOutboundOptions{Outbounds: []string{member}})
+			outbounds.values = append(outbounds.values, selector)
+			router := &Router{ctx: ctx, logger: logger, outbound: outbounds, connection: manager}
+			graph := newReferenceTestGraph(1, outbounds.values, nil)
+			graph.view.identity.Incarnation = incarnation
+			root := handshakeRouterLease{RuntimeLease: graph.acquire(), view: handshakeRouterView{RuntimeView: graph.view, router: router}}
+			defer root.Release()
+			stable := NewRuntimeRouter(routeSelectionTestAdmission(root.Fork), RuntimeRouterStructure{})
+			server, client := finalTCPPair(t)
+			if err := client.SetDeadline(time.Now().Add(3 * time.Second)); err != nil {
+				t.Fatal(err)
+			}
+			proxy := proxyhttp.NewServer(proxyhttp.ServerOptions{HTTP1: true, ProbeConnect: true, Logger: logger})
+			handler := adapter.NewUpstreamHandler(adapter.InboundContext{Inbound: "probe-in-0", Domain: "example.test"}, stable.RouteConnectionEx, nil)
+			handled := make(chan struct{})
+			go func() {
+				defer close(handled)
+				proxy.ServeConnection(ctx, server, proxyhttp.NewReader(server), handler, M.SocksaddrFromNet(server.RemoteAddr()), nil)
+			}()
+			probeMode := "1"
+			if tc.background {
+				probeMode = "background"
+			}
+			if _, err := fmt.Fprintf(client, "CONNECT example.test:443 HTTP/1.1\r\nHost: example.test:443\r\nX-Polaris-Probe: %s\r\nX-Polaris-Probe-Member: %x\r\nX-Polaris-Probe-Graph: %s\r\n\r\n", probeMode, sha256.Sum256([]byte(member)), graphToken); err != nil {
+				t.Fatal(err)
+			}
+			var wireResponse bytes.Buffer
+			response, err := http.ReadResponse(bufio.NewReader(io.TeeReader(client, &wireResponse)), &http.Request{Method: http.MethodConnect})
+			if err != nil {
+				if !tc.stopInDial || (!errors.Is(err, io.EOF) && !errors.Is(err, io.ErrUnexpectedEOF)) {
+					t.Fatal(err)
+				}
+				// StopFinal can close the socket before the failure response is complete.
+				wire := bytes.ToLower(wireResponse.Bytes())
+				if bytes.HasPrefix(wire, []byte("http/1.1 200")) || bytes.Contains(wire, []byte("\r\nx-polaris-probe-graph:")) {
+					t.Fatalf("final close emitted a success or graph proof: %q", wireResponse.Bytes())
+				}
+			} else {
+				wantStatus, wantProof := http.StatusBadGateway, ""
+				if tc.dialErr == nil && !tc.stopInDial {
+					wantStatus = http.StatusOK
+				}
+				if tc.wantStatus != 0 {
+					wantStatus = tc.wantStatus
+				}
+				if tc.wantProof {
+					wantProof = graphToken
+				}
+				if got := response.Header.Get("X-Polaris-Probe-Graph"); response.StatusCode != wantStatus || got != wantProof {
+					t.Fatalf("CONNECT status=%d graph=%q, want status=%d graph=%q", response.StatusCode, got, wantStatus, wantProof)
+				}
+			}
+			managerAwait(t, handled)
+			if tc.stopInDial {
+				manager.access.Lock()
+				sealed := manager.closed
+				manager.access.Unlock()
+				if !sealed {
+					t.Fatal("final close did not seal flow admission")
+				}
+			}
+			var wantDials int32 = 1
+			if tc.stopBefore {
+				wantDials = 0
+			}
+			if got := dialCalls.Load(); got != wantDials {
+				t.Fatalf("outbound dial calls=%d want %d", got, wantDials)
+			}
+		})
+	}
+}
+
+type probeGraphTestOutbound struct {
+	referenceTestOutbound
+	dial func() (net.Conn, error)
+}
+
+func (o *probeGraphTestOutbound) Network() []string { return []string{N.NetworkTCP} }
+func (o *probeGraphTestOutbound) DialContext(context.Context, string, M.Socksaddr) (net.Conn, error) {
+	return o.dial()
 }
 
 type handshakeSynchronousLeaf struct {
