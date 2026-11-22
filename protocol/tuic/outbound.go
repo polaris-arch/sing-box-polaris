@@ -9,6 +9,7 @@ import (
 	"github.com/sagernet/sing-box/adapter/outbound"
 	"github.com/sagernet/sing-box/common/dialer"
 	"github.com/sagernet/sing-box/common/tls"
+	"github.com/sagernet/sing-box/common/urltest"
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
@@ -30,9 +31,14 @@ func RegisterOutbound(registry *outbound.Registry) {
 }
 
 var (
-	_ adapter.InterfaceUpdateListener = (*Outbound)(nil)
-	_ adapter.IdleConnectionKeeper    = (*Outbound)(nil)
-	_ adapter.OutboundWithMultiplex   = (*Outbound)(nil)
+	_                      adapter.InterfaceUpdateListener = (*Outbound)(nil)
+	_                      adapter.IdleConnectionKeeper    = (*Outbound)(nil)
+	_                      adapter.OutboundWithMultiplex   = (*Outbound)(nil)
+	outboundProbeAdmission                                 = qtls.ClientProbeAdmission{
+		IsBackground:     urltest.IsBackgroundProbe,
+		Context:          urltest.ContextWithSharedBackgroundProbe,
+		IsForegroundSlot: adapter.IsOutboundForegroundSlot,
+	}
 )
 
 type Outbound struct {
@@ -101,6 +107,7 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 		UDPStream:         tuicUDPStream,
 		ZeroRTTHandshake:  options.ZeroRTTHandshake,
 		Heartbeat:         time.Duration(options.Heartbeat),
+		ProbeAdmission:    &outboundProbeAdmission,
 	})
 	if err != nil {
 		return nil, err

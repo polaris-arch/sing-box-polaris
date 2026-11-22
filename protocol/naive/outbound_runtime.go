@@ -60,14 +60,15 @@ func reserveNativeEngines(ctx context.Context, count int) (func(int), error) {
 func (b *nativeEngineBudget) reserve(count int, keepHandoffSlot bool) (func(int), error) {
 	// A Cronet socket callback may dial through another Naive outbound. Waiting
 	// for capacity there can deadlock the engine that is already holding it.
-	var headroom int64
-	if keepHandoffSlot {
-		headroom = 1
-	}
 	b.mu.Lock()
-	if int64(count) > b.limit-b.used-headroom {
+	available := b.limit - b.used
+	if int64(count) > available {
 		b.mu.Unlock()
 		return nil, errNativeEngineCapacity
+	}
+	if keepHandoffSlot && int64(count) == available {
+		b.mu.Unlock()
+		return nil, adapter.ErrOutboundForegroundSlot
 	}
 	b.used += int64(count)
 	b.mu.Unlock()

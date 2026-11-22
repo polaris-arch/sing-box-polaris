@@ -138,7 +138,11 @@ func (c *probeConnectConn) HandshakeSuccess() error {
 }
 
 func (c *probeConnectConn) HandshakeFailure(err error) error {
-	if errors.Is(err, adapter.ErrOutboundCapacity) {
+	capacity := errors.Is(err, adapter.ErrOutboundCapacity)
+	if errors.Is(err, adapter.ErrOutboundForegroundSlot) {
+		capacity = adapter.IsOutboundCapacity(err)
+	}
+	if capacity {
 		return c.writeResponse(" 503 Service Unavailable\r\nX-Polaris-Probe-Outcome: budget-busy\r\nConnection: close\r\nContent-Length: 0\r\n\r\n")
 	}
 	return c.writeResponse(" 502 Bad Gateway\r\nConnection: close\r\nContent-Length: 0\r\n\r\n")

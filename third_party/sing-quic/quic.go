@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"net"
 	"net/http"
+	"sync"
 	"syscall"
 	"time"
 
@@ -328,4 +329,38 @@ func ContextWithKeepSession(ctx context.Context) context.Context {
 func KeepSessionFromContext(ctx context.Context) bool {
 	keep, _ := ctx.Value((*keepSessionKey)(nil)).(bool)
 	return keep
+}
+
+// ClientProbeAdmission lets the owner classify a shared dial without passing
+// a caller's cancellation or ownership to the worker. Context's nil check
+// marks a foreground attempt admitted while a foreground waiter was live.
+type ClientProbeAdmission struct {
+	IsBackground     func(context.Context) bool
+	Context          func(context.Context, func(func(context.Context) bool) bool) context.Context
+	IsForegroundSlot func(error) bool
+}
+
+type ClientProbeWaiters struct {
+	contexts sync.Map
+}
+
+func (w *ClientProbeWaiters) Add(ctx context.Context) func() {
+	key := &ctx
+	w.contexts.Store(key, ctx)
+	return func() { w.contexts.Delete(key) }
+}
+
+// AllBackground takes no client lock, including when checking an outer dial's
+// waiters. Check cancellation even if a waiter has not unwound yet.
+func (w *ClientProbeWaiters) AllBackground(isBackground func(context.Context) bool) bool {
+	background := true
+	w.contexts.Range(func(_, value any) bool {
+		ctx := value.(context.Context)
+		if ctx.Err() == nil && !isBackground(ctx) && ctx.Err() == nil {
+			background = false
+			return false
+		}
+		return true
+	})
+	return background
 }

@@ -13,6 +13,7 @@ import (
 	"github.com/sagernet/sing-box/adapter/outbound"
 	"github.com/sagernet/sing-box/common/dialer"
 	"github.com/sagernet/sing-box/common/tls"
+	"github.com/sagernet/sing-box/common/urltest"
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
@@ -188,6 +189,11 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 		BBRProfile:   options.BBRProfile,
 		ChromeParrot: !options.DisableChromeParrot,
 		RealmOptions: realmOptions,
+		ProbeAdmission: &qtls.ClientProbeAdmission{
+			IsBackground:     urltest.IsBackgroundProbe,
+			Context:          urltest.ContextWithSharedBackgroundProbe,
+			IsForegroundSlot: adapter.IsOutboundForegroundSlot,
+		},
 	})
 	if err != nil {
 		return nil, err

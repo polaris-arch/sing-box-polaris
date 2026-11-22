@@ -1,12 +1,18 @@
 package urltest
 
 import (
+	"bufio"
 	"context"
+	"errors"
+	"io"
+	"net"
+	"net/http"
 	"testing"
 	"time"
 
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/internal/runtimegraph"
+	M "github.com/sagernet/sing/common/metadata"
 	"github.com/sagernet/sing/common/observable"
 	"github.com/sagernet/sing/service"
 	"github.com/sagernet/sing/service/pause"
@@ -15,6 +21,87 @@ import (
 type runtimeHistoryOutbound struct {
 	adapter.Outbound
 	tag string
+}
+
+func TestSharedBackgroundProbeChecksDistinctWaitersAcrossACycle(t *testing.T) {
+	var outer context.Context
+	inner := ContextWithSharedBackgroundProbe(t.Context(), func(check func(context.Context) bool) bool {
+		return check(outer)
+	})
+	outer = ContextWithSharedBackgroundProbe(t.Context(), func(check func(context.Context) bool) bool {
+		return check(inner)
+	})
+	if !IsBackgroundProbe(inner) {
+		t.Fatal("a cycle fabricated a foreground waiter")
+	}
+	outer = ContextWithSharedBackgroundProbe(t.Context(), func(check func(context.Context) bool) bool {
+		return check(inner) && check(t.Context())
+	})
+	if IsBackgroundProbe(inner) {
+		t.Fatal("a cycle hid a real foreground waiter")
+	}
+}
+
+type runtimeCapacityProbeDialer struct {
+	adapter.Outbound
+	multiplex bool
+	dial      func() (net.Conn, error)
+}
+
+func (d runtimeCapacityProbeDialer) MultiplexEnabled() bool { return d.multiplex }
+
+func (d runtimeCapacityProbeDialer) DialContext(context.Context, string, M.Socksaddr) (net.Conn, error) {
+	return d.dial()
+}
+
+func (d runtimeCapacityProbeDialer) ListenPacket(context.Context, M.Socksaddr) (net.PacketConn, error) {
+	return nil, net.ErrClosed
+}
+
+func TestURLTestDefersPureForegroundReservationAtTargetDial(t *testing.T) {
+	reserved := adapter.ErrOutboundForegroundSlot
+	for _, test := range []struct {
+		name     string
+		fail     error
+		warm     bool
+		deferred bool
+	}{
+		{name: "pure foreground reservation", fail: errors.Join(reserved, reserved), deferred: true},
+		{name: "reservation with real error", fail: errors.Join(reserved, net.ErrClosed)},
+		{name: "hard physical limit", fail: adapter.ErrOutboundCapacity},
+		{name: "reservation after a warm request", fail: reserved, warm: true, deferred: true},
+		{name: "reservation with real error after a warm request", fail: errors.Join(reserved, net.ErrClosed), warm: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			var first net.Conn
+			if test.warm {
+				client, server := net.Pipe()
+				defer client.Close()
+				defer server.Close()
+				first = client
+				go func() {
+					defer server.Close()
+					if _, err := http.ReadRequest(bufio.NewReader(server)); err == nil {
+						_, _ = io.WriteString(server, "HTTP/1.1 204 No Content\r\nConnection: close\r\n\r\n")
+					}
+				}()
+			}
+			dialer := runtimeCapacityProbeDialer{multiplex: test.warm, dial: func() (net.Conn, error) {
+				if first != nil {
+					conn := first
+					first = nil
+					return conn, nil
+				}
+				return nil, test.fail
+			}}
+			ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+			defer cancel()
+			_, err := URLTest(ctx, "http://example.test", dialer)
+			if !errors.Is(err, test.fail) || errors.Is(err, ErrProbeNotRun) != test.deferred {
+				t.Fatalf("probe result = %v, want %v with deferred=%t", err, test.fail, test.deferred)
+			}
+		})
+	}
 }
 
 func (o *runtimeHistoryOutbound) Tag() string { return o.tag }

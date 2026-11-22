@@ -10,13 +10,15 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"testing"
+	"time"
 
+	qtls "github.com/sagernet/sing-quic"
+	"github.com/sagernet/sing-quic/hysteria"
 	"github.com/sagernet/sing-quic/hysteria2/realm"
 	"github.com/sagernet/sing/common/logger"
 	M "github.com/sagernet/sing/common/metadata"
 	aTLS "github.com/sagernet/sing/common/tls"
-	"testing"
-	"time"
 )
 
 func TestClientRuntimeJoinsActualWorkerAndRejectsNewWork(t *testing.T) {
@@ -76,6 +78,114 @@ func TestClientRuntimeCancelsPendingOfferBeforeJoin(t *testing.T) {
 	}
 }
 
+func TestClientRuntimeProbeAdmissionOnFirstCarrier(t *testing.T) {
+	for _, protocol := range []string{"hysteria", "hysteria2-port-hop"} {
+		t.Run(protocol, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+			defer cancel()
+			type probeKey struct{}
+			isBackground := func(ctx context.Context) bool {
+				background, _ := ctx.Value(probeKey{}).(bool)
+				return background
+			}
+			refused := errors.New("reserved foreground slot")
+			admission := &qtls.ClientProbeAdmission{
+				IsBackground:     isBackground,
+				IsForegroundSlot: func(err error) bool { return err == refused },
+				Context: func(ctx context.Context, allBackground func(func(context.Context) bool) bool) context.Context {
+					return context.WithValue(ctx, probeKey{}, allBackground != nil && allBackground(isBackground))
+				},
+			}
+			firstDial, release := make(chan struct{}), make(chan struct{})
+			var calls atomic.Int32
+			dialer := realmRuntimeDialer{
+				dial: func(dialCtx context.Context, _ string, _ M.Socksaddr) (net.Conn, error) {
+					initial := calls.Add(1) == 1
+					if isBackground(dialCtx) != initial {
+						t.Error("initial UDP dial must be background and its retry foreground")
+					}
+					if initial {
+						close(firstDial)
+						select {
+						case <-release:
+						case <-dialCtx.Done():
+							return nil, dialCtx.Err()
+						}
+					}
+					return nil, refused
+				},
+			}
+			type offerClient interface {
+				DialConn(context.Context, M.Socksaddr) (net.Conn, error)
+				RuntimeCloseAndWait() error
+			}
+			var client offerClient
+			var err error
+			if protocol == "hysteria" {
+				client, err = hysteria.NewClient(hysteria.ClientOptions{Context: ctx, Dialer: dialer, TLSConfig: realmRuntimeTLS{}, ProbeAdmission: admission,
+					SendBPS: hysteria.MinSpeedBPS, ReceiveBPS: hysteria.MinSpeedBPS})
+			} else {
+				client, err = NewClient(ClientOptions{Context: ctx, Dialer: dialer, TLSConfig: realmRuntimeTLS{}, ProbeAdmission: admission,
+					ServerPorts: []string{"443:443"}})
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { _ = client.RuntimeCloseAndWait() })
+			canceled, cancelWaiter := context.WithCancel(ctx)
+			cancelWaiter()
+			if _, err := client.DialConn(canceled, M.Socksaddr{}); err != context.Canceled {
+				t.Fatalf("canceled waiter result = %v", err)
+			}
+			results := make(chan error, 2)
+			offer := func(ctx context.Context) {
+				_, err := client.DialConn(ctx, M.Socksaddr{})
+				results <- err
+			}
+			go offer(context.WithValue(ctx, probeKey{}, true))
+			select {
+			case <-firstDial:
+			case <-ctx.Done():
+				t.Fatal("background offer did not dial")
+			}
+			waiting := make(chan struct{}, 1)
+			go offer(probeOfferWaiter{Context: ctx, waiting: waiting})
+			select {
+			case <-waiting:
+			case <-ctx.Done():
+				t.Fatal("foreground offer did not join")
+			}
+			close(release)
+			for range 2 {
+				select {
+				case err := <-results:
+					if err != refused {
+						t.Fatalf("unexpected offer result: %v", err)
+					}
+				case <-ctx.Done():
+					t.Fatal("shared offer did not finish")
+				}
+			}
+			if calls.Load() != 2 {
+				t.Fatalf("UDP dial count = %d, want one foreground retry", calls.Load())
+			}
+		})
+	}
+}
+
+type probeOfferWaiter struct {
+	context.Context
+	waiting chan struct{}
+}
+
+func (w probeOfferWaiter) Done() <-chan struct{} {
+	select {
+	case w.waiting <- struct{}{}:
+	default:
+	}
+	return w.Context.Done()
+}
+
 func realmRuntimeWait(t *testing.T, ch <-chan struct{}) {
 	t.Helper()
 	select {
@@ -121,12 +231,16 @@ func (*realmRuntimePacket) SetWriteDeadline(time.Time) error { return nil }
 
 type realmRuntimeDialer struct {
 	listen func(context.Context, M.Socksaddr) (net.PacketConn, error)
+	dial   func(context.Context, string, M.Socksaddr) (net.Conn, error)
 }
 
 func (d realmRuntimeDialer) ListenPacket(ctx context.Context, addr M.Socksaddr) (net.PacketConn, error) {
 	return d.listen(ctx, addr)
 }
-func (realmRuntimeDialer) DialContext(context.Context, string, M.Socksaddr) (net.Conn, error) {
+func (d realmRuntimeDialer) DialContext(ctx context.Context, network string, addr M.Socksaddr) (net.Conn, error) {
+	if d.dial != nil {
+		return d.dial(ctx, network, addr)
+	}
 	return nil, errors.New("unexpected connected dial")
 }
 

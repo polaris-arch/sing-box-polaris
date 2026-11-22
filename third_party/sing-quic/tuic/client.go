@@ -33,6 +33,7 @@ type ClientOptions struct {
 	UDPStream         bool
 	ZeroRTTHandshake  bool
 	Heartbeat         time.Duration
+	ProbeAdmission    *qtls.ClientProbeAdmission
 }
 
 type Client struct {
@@ -49,6 +50,7 @@ type Client struct {
 	udpStream         bool
 	zeroRTTHandshake  bool
 	heartbeat         time.Duration
+	probeAdmission    *qtls.ClientProbeAdmission
 
 	connAccess sync.Mutex
 	conn       *clientQUICConnection
@@ -85,6 +87,7 @@ func NewClient(options ClientOptions) (*Client, error) {
 		udpStream:         options.UDPStream,
 		zeroRTTHandshake:  options.ZeroRTTHandshake,
 		heartbeat:         options.Heartbeat,
+		probeAdmission:    options.ProbeAdmission,
 	}
 	client.initRuntime()
 	return client, nil
@@ -92,42 +95,47 @@ func NewClient(options ClientOptions) (*Client, error) {
 
 func (c *Client) offer(ctx context.Context) (*clientQUICConnection, error) {
 	c.connAccess.Lock()
-	if c.runtime.closed.Load() { c.connAccess.Unlock(); return nil, net.ErrClosed }
+	if c.runtime.closed.Load() {
+		c.connAccess.Unlock()
+		return nil, net.ErrClosed
+	}
+	if err := ctx.Err(); err != nil {
+		c.connAccess.Unlock()
+		return nil, err
+	}
 	conn := c.conn
 	if conn != nil && conn.active() {
 		c.connAccess.Unlock()
 		return conn, nil
 	}
 	pending := c.pending
-	if pending != nil {
-		c.connAccess.Unlock()
-		select {
-		case <-pending.done:
-			return pending.conn, pending.err
-		case <-ctx.Done():
-			return nil, ctx.Err()
+	var offerCtx context.Context
+	if pending == nil {
+		// The client owns the attempt even when a caller stops waiting.
+		ownerCtx := c.ctx
+		if ownerCtx == nil {
+			ownerCtx = context.Background()
 		}
+		var cancel context.CancelCauseFunc
+		offerCtx, cancel = context.WithCancelCause(ownerCtx)
+		pending = &clientOffer{done: make(chan struct{}), cancel: cancel}
+		c.pending = pending
 	}
-	// A pending offer is shared by concurrent callers. Do not derive offerCtx
-	// from the foreground request ctx: a timed-out request must stop waiting for
-	// the shared result, but it must not tear down the background QUIC dial that
-	// may still be reused by later requests. The connection attempt is owned by
-	// the client lifetime context instead.
-	offerCtx := c.ctx
-	if offerCtx == nil {
-		offerCtx = context.Background()
+	if c.probeAdmission != nil {
+		leave := pending.probeWaiters.Add(ctx)
+		defer leave()
 	}
-	offerCtx, cancel := context.WithCancelCause(offerCtx)
-	pending = &clientOffer{
-		done:   make(chan struct{}),
-		cancel: cancel,
-	}
-	c.pending = pending
 	c.connAccess.Unlock()
 
-	if !c.runtime.run(func() { c.completeOffer(pending, offerCtx) }) {
+	if offerCtx != nil && !c.runtime.run(func() { c.completeOffer(pending, offerCtx) }) {
 		pending.cancel(net.ErrClosed)
-		c.connAccess.Lock(); pending.err = net.ErrClosed; if c.pending == pending { c.pending = nil }; close(pending.done); c.connAccess.Unlock()
+		c.connAccess.Lock()
+		pending.err = net.ErrClosed
+		if c.pending == pending {
+			c.pending = nil
+		}
+		close(pending.done)
+		c.connAccess.Unlock()
 	}
 
 	select {
@@ -151,12 +159,23 @@ func (c *Client) offerWithStream(ctx context.Context) (*clientQUICConnection, er
 }
 
 func (c *Client) completeOffer(pending *clientOffer, offerCtx context.Context) {
-	conn, err := c.offerNew(offerCtx)
-	pending.cancel(nil)
-
+	policy := c.probeAdmission
+	dialCtx := offerCtx
+	if policy != nil {
+		dialCtx = policy.Context(offerCtx, pending.probeWaiters.AllBackground)
+	}
+	conn, err := c.offerNew(dialCtx)
+	c.connAccess.Lock()
+	if policy != nil && !pending.discarded && !c.runtime.closed.Load() && offerCtx.Err() == nil &&
+		policy.IsForegroundSlot(err) && !pending.probeWaiters.AllBackground(policy.IsBackground) {
+		// Admit one foreground attempt while that demand is live. After this
+		// point, caller cancellation just stops waiting, as for any owned dial.
+		c.connAccess.Unlock()
+		conn, err = c.offerNew(policy.Context(offerCtx, nil))
+		c.connAccess.Lock()
+	}
 	discardErr := err
 	shouldDiscard := false
-	c.connAccess.Lock()
 	if pending.discarded {
 		shouldDiscard = true
 		if pending.cause != nil {
@@ -173,8 +192,9 @@ func (c *Client) completeOffer(pending *clientOffer, offerCtx context.Context) {
 	if c.pending == pending {
 		c.pending = nil
 	}
-	close(pending.done)
 	c.connAccess.Unlock()
+	pending.cancel(nil)
+	close(pending.done)
 
 	if shouldDiscard && conn != nil {
 		conn.closeWithError(discardErr)
@@ -339,12 +359,13 @@ func (c *Client) CloseIdleConnections() {
 }
 
 type clientOffer struct {
-	done      chan struct{}
-	cancel    func(error)
-	conn      *clientQUICConnection
-	err       error
-	discarded bool
-	cause     error
+	done         chan struct{}
+	cancel       func(error)
+	conn         *clientQUICConnection
+	err          error
+	discarded    bool
+	cause        error
+	probeWaiters qtls.ClientProbeWaiters
 }
 
 type clientQUICConnection struct {

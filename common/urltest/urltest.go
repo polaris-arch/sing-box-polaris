@@ -188,18 +188,50 @@ func (s *HistoryStorage) Close() error {
 	return nil
 }
 
-// ErrProbeNotRun reports that no network attempt was made. Keep the last result.
+// ErrProbeNotRun reports that the probe did not start its latency measurement. Keep the last result.
 var ErrProbeNotRun = errors.New("URL test was not run")
 
-type backgroundProbeKey struct{}
+type (
+	backgroundProbeKey    struct{}
+	sharedBackgroundProbe struct {
+		check func(func(context.Context) bool) bool
+	}
+)
 
 func ContextWithBackgroundProbe(ctx context.Context) context.Context {
 	return context.WithValue(ctx, backgroundProbeKey{}, true)
 }
 
+// ContextWithSharedBackgroundProbe borrows only the classification of live
+// waiters. A nil check marks an already admitted foreground dial. Both keep
+// the cancellation and ownership of ctx.
+func ContextWithSharedBackgroundProbe(ctx context.Context, check func(func(context.Context) bool) bool) context.Context {
+	if check == nil {
+		return context.WithValue(ctx, backgroundProbeKey{}, false)
+	}
+	return context.WithValue(ctx, backgroundProbeKey{}, &sharedBackgroundProbe{check: check})
+}
+
 func IsBackgroundProbe(ctx context.Context) bool {
-	background, _ := ctx.Value(backgroundProbeKey{}).(bool)
-	return background
+	return isBackgroundProbe(ctx, nil)
+}
+
+func isBackgroundProbe(ctx context.Context, seen map[*sharedBackgroundProbe]bool) bool {
+	switch background := ctx.Value(backgroundProbeKey{}).(type) {
+	case bool:
+		return background
+	case *sharedBackgroundProbe:
+		if seen == nil {
+			seen = make(map[*sharedBackgroundProbe]bool)
+		} else if seen[background] {
+			// Re-entering the same shared dial supplies no foreground waiter.
+			return true
+		}
+		seen[background] = true
+		return background.check(func(waiter context.Context) bool { return isBackgroundProbe(waiter, seen) })
+	default:
+		return false
+	}
 }
 
 // ScopedDialer admits a dialer before the network measurement starts.
@@ -256,6 +288,9 @@ func urlTest(ctx context.Context, link string, detour N.Dialer) (t uint16, err e
 	start := time.Now()
 	instance, err := detour.DialContext(ctx, "tcp", M.ParseSocksaddrHostPortStr(hostname, port))
 	if err != nil {
+		if adapter.IsOutboundForegroundSlot(err) {
+			err = errors.Join(ErrProbeNotRun, err)
+		}
 		return
 	}
 	defer instance.Close()
