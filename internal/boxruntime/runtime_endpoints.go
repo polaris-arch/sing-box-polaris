@@ -50,6 +50,22 @@ func runtimeWireGuardParticipants(resources []*runtimeResource) []*protocolWG.En
 // Call after logical construction and before graph sealing. Even on failure,
 // retain the returned transaction and candidate owners until cleanup joins.
 func (s *Box) stageRuntimeEndpoints(ctx context.Context, g *preparedRuntimeGraph) (*runtimeEndpointTransaction, error) {
+	// Later graphs borrow these components, so they must carry the start
+	// failure placeholders; selector intents are already applied here.
+	for _, resource := range g.created {
+		for _, component := range resource.components {
+			if component.outbound == nil {
+				continue
+			}
+			if current, loaded := g.outboundManager.Outbound(component.outbound.Tag()); loaded && current != component.outbound {
+				g.view.referenceResources[current] = resource.id
+				component.outbound = current
+			}
+		}
+	}
+	if err := g.outboundManager.SelectedFailure(); err != nil {
+		return nil, err
+	}
 	t := &runtimeEndpointTransaction{next: runtimeWireGuardParticipants(g.created), clients: runtimeClientEndpointTransaction{next: runtimeClientEndpointParticipants(g.created)}}
 	s.runtime.access.Lock()
 	s.runtime.pruneRuntimeCatalogLocked()
