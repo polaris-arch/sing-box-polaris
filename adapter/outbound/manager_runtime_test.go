@@ -3,12 +3,16 @@ package outbound
 import (
 	"context"
 	"errors"
+	"io"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/sagernet/sing-box/adapter"
 	endpointmanager "github.com/sagernet/sing-box/adapter/endpoint"
 	"github.com/sagernet/sing-box/log"
+	M "github.com/sagernet/sing/common/metadata"
+	N "github.com/sagernet/sing/common/network"
 )
 
 type runtimeOutbound struct {
@@ -253,5 +257,93 @@ func TestRuntimeFallbackRequiresExplicitNode(t *testing.T) {
 	}
 	if calls != 0 {
 		t.Fatal("Freeze allocated fallback")
+	}
+}
+
+// Groups resolve members through the manager, as selector and urltest do.
+type runtimeGroup struct {
+	*runtimeOutbound
+	manager  *Manager
+	selected string
+}
+
+func (g *runtimeGroup) All() []string { return g.dependencies }
+func (g *runtimeGroup) Selected(string) adapter.Outbound {
+	selected, _ := g.manager.Outbound(g.selected)
+	return selected
+}
+func (g *runtimeGroup) AttachConnection(io.Closer) func() { return func() {} }
+
+type runtimeURLTestGroup struct{ *runtimeGroup }
+
+func (g *runtimeURLTestGroup) URLTest(context.Context) (map[string]uint16, error) { return nil, nil }
+func (g *runtimeURLTestGroup) PerformUpdateCheck()                                {}
+
+func runtimeFailingMember(tag string) *runtimeOutbound {
+	member := runtimeMember(tag)
+	member.failure = errors.New("start failed")
+	return member
+}
+
+func runtimeStartMembers(t *testing.T, manager *Manager, members ...adapter.Outbound) {
+	t.Helper()
+	for _, member := range members {
+		if err := manager.Insert(member, runtimeScope(t)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := manager.Freeze(); err != nil {
+		t.Fatal(err)
+	}
+	if err := manager.Start(adapter.StartStateStart, nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestRuntimeUnselectedStartFailureIsIsolated(t *testing.T) {
+	manager := NewRuntimeManager(nil, runtimeEndpointManager(t), "select")
+	runtimeStartMembers(t, manager, runtimeMember("good"), runtimeFailingMember("bad"), &runtimeGroup{runtimeMember("select", "good", "bad"), manager, "good"})
+	if err := manager.SelectedFailure(); err != nil {
+		t.Fatal(err)
+	}
+	failed, _ := manager.Outbound("bad")
+	if manager.Outbounds()[1] != failed {
+		t.Fatal("inventory views diverged")
+	}
+	if _, err := failed.DialContext(context.Background(), N.NetworkTCP, M.Socksaddr{}); err == nil || !strings.Contains(err.Error(), "[bad]: start failed") {
+		t.Fatalf("dial error: %v", err)
+	}
+	if _, err := failed.ListenPacket(context.Background(), M.Socksaddr{}); err == nil || !strings.Contains(err.Error(), "[bad]: start failed") {
+		t.Fatalf("listen error: %v", err)
+	}
+}
+
+func TestRuntimeSelectedStartFailureNamesNode(t *testing.T) {
+	for _, test := range []struct {
+		name    string
+		members func(*Manager) []adapter.Outbound
+		fails   bool
+	}{
+		{"selector", func(m *Manager) []adapter.Outbound {
+			return []adapter.Outbound{runtimeMember("good"), runtimeFailingMember("bad"), &runtimeGroup{runtimeMember("default", "good", "bad"), m, "bad"}}
+		}, true},
+		{"urltest all failed", func(m *Manager) []adapter.Outbound {
+			return []adapter.Outbound{runtimeFailingMember("bad"), runtimeFailingMember("bad2"), &runtimeURLTestGroup{&runtimeGroup{runtimeMember("default", "bad", "bad2"), m, "bad"}}}
+		}, true},
+		{"urltest partially failed", func(m *Manager) []adapter.Outbound {
+			return []adapter.Outbound{runtimeFailingMember("bad"), runtimeMember("good"), &runtimeURLTestGroup{&runtimeGroup{runtimeMember("default", "bad", "good"), m, "bad"}}}
+		}, false},
+		{"detour", func(m *Manager) []adapter.Outbound {
+			return []adapter.Outbound{runtimeFailingMember("bad"), runtimeMember("default", "bad")}
+		}, true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			manager := NewRuntimeManager(nil, runtimeEndpointManager(t), "default")
+			runtimeStartMembers(t, manager, test.members(manager)...)
+			err := manager.SelectedFailure()
+			if test.fails != (err != nil) || err != nil && !strings.Contains(err.Error(), "start outbound/test[bad") {
+				t.Fatalf("selected failure: %v", err)
+			}
+		})
 	}
 }
