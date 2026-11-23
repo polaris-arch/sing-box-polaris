@@ -32,19 +32,20 @@ func RegisterOutbound(registry *outbound.Registry) {
 	outbound.Register[option.NaiveOutboundOptions](registry, C.TypeNaive, NewOutbound)
 }
 
-const RuntimeClientSharing = false
+const RuntimeClientSharing = true
 
 type runtimeClientKey struct{}
 
 type poolProbeResolver interface{ PoolProbeResolverEligible() bool }
 
 // NewRuntimeClientGroup constructs the shared slot with the physical node's
-// context and scope. The returned binding is used only by its cohort's aliases.
+// context and scope. The returned binding is used by the members of each graph
+// retaining the node; each registers its server with the slot's registry.
 func NewRuntimeClientGroup(ctx context.Context, logger log.ContextLogger, options option.NaiveOutboundOptions) (func(context.Context) context.Context, error) {
 	if _, bound := adapter.RuntimeResourceSourceFromContext(ctx); !bound {
 		return nil, errors.New("shared Naive client requires a runtime owner")
 	}
-	clients, err := newNaiveClientSlot(ctx, logger, options)
+	clients, err := newNaiveClientSlot(ctx, logger, options, new(cronet.NaiveServerRegistry))
 	if err != nil {
 		return nil, err
 	}
@@ -59,21 +60,46 @@ type Outbound struct {
 	ctx       context.Context
 	logger    logger.ContextLogger
 	clients   *naiveClientSlot
+	server    *naiveServer
 	uotClient *uot.Client
 }
 
 func NewOutbound(ctx context.Context, _ adapter.Router, logger log.ContextLogger, tag string, options option.NaiveOutboundOptions) (adapter.Outbound, error) {
 	clients, _ := ctx.Value(runtimeClientKey{}).(*naiveClientSlot)
-	var runtime *outboundRuntime
-	if clients == nil {
-		var err error
-		clients, err = newNaiveClientSlot(ctx, logger, options)
+	var server *naiveServer
+	if clients != nil {
+		server = &naiveServer{slot: clients, options: clients.options}
+		server.options.Registry = nil
+		err := setNaiveServerOptions(ctx, options, &server.options)
 		if err != nil {
 			return nil, err
 		}
-		runtime = clients.owner
+		server.NaiveServer, err = clients.options.Registry.Register(server.options)
+		if err != nil {
+			// The name is registered for another address, e.g. by a retiring member.
+			logger.Debug("use a dedicated engine: ", err)
+			clients, server = nil, nil
+		}
+	}
+	var runtime *outboundRuntime
+	var dialer N.Dialer
+	if clients == nil {
+		var err error
+		clients, err = newNaiveClientSlot(ctx, logger, options, nil)
+		if err != nil {
+			return nil, err
+		}
+		runtime, dialer = clients.owner, clients
 	} else {
-		runtime = newOutboundRuntime(ctx)
+		runtime, dialer = newOutboundRuntime(ctx), server
+		runtime.client = server
+		clients.mu.Lock()
+		if clients.servers == nil {
+			clients.servers = make(map[*naiveServer]bool)
+		}
+		clients.servers[server] = true
+		clients.keep = true
+		clients.mu.Unlock()
 		if err := runtime.install(ctx); err != nil {
 			return nil, errors.Join(err, runtime.close())
 		}
@@ -82,7 +108,7 @@ func NewOutbound(ctx context.Context, _ adapter.Router, logger log.ContextLogger
 	var uotClient *uot.Client
 	uotOptions := common.PtrValueOrDefault(options.UDPOverTCP)
 	if uotOptions.Enabled {
-		uotClient = &uot.Client{Dialer: clients, Version: uotOptions.Version}
+		uotClient = &uot.Client{Dialer: dialer, Version: uotOptions.Version}
 		networks = append(networks, N.NetworkUDP)
 	}
 	return &Outbound{
@@ -91,11 +117,12 @@ func NewOutbound(ctx context.Context, _ adapter.Router, logger log.ContextLogger
 		ctx:       ctx,
 		logger:    logger,
 		clients:   clients,
+		server:    server,
 		uotClient: uotClient,
 	}, nil
 }
 
-func newNaiveClientSlot(ctx context.Context, logger log.ContextLogger, options option.NaiveOutboundOptions) (result *naiveClientSlot, resultErr error) {
+func newNaiveClientSlot(ctx context.Context, logger log.ContextLogger, options option.NaiveOutboundOptions, registry *cronet.NaiveServerRegistry) (result *naiveClientSlot, resultErr error) {
 	if options.TLS == nil || !options.TLS.Enabled {
 		return nil, C.ErrTLSRequired
 	}
@@ -147,15 +174,6 @@ func newNaiveClientSlot(ctx context.Context, logger log.ContextLogger, options o
 		}
 	}()
 
-	serverAddress := options.ServerOptions.Build()
-
-	var serverName string
-	if options.TLS.ServerName != "" {
-		serverName = options.TLS.ServerName
-	} else {
-		serverName = serverAddress.AddrString()
-	}
-
 	outboundDialer, err := dialer.NewWithOptions(dialer.Options{
 		Context:          ctx,
 		Options:          options.DialerOptions,
@@ -178,13 +196,6 @@ func newNaiveClientSlot(ctx context.Context, logger log.ContextLogger, options o
 		trustedRootCertificates = string(content)
 	}
 
-	extraHeaders := make(map[string]string)
-	for key, values := range options.ExtraHeaders.Build() {
-		if len(values) > 0 {
-			extraHeaders[key] = values[0]
-		}
-	}
-
 	dnsRouter := service.FromContext[adapter.DNSRouter](ctx)
 	var resolverForLogger func(log.ContextLogger) cronet.DNSResolverFunc
 	var probeResolver poolProbeResolver
@@ -200,30 +211,6 @@ func newNaiveClientSlot(ctx context.Context, logger log.ContextLogger, options o
 		}
 	}
 
-	var echEnabled bool
-	var echConfigList []byte
-	var echQueryServerName string
-	if options.TLS.ECH != nil && options.TLS.ECH.Enabled {
-		echEnabled = true
-		echQueryServerName = options.TLS.ECH.QueryServerName
-		var echConfig []byte
-		if len(options.TLS.ECH.Config) > 0 {
-			echConfig = []byte(strings.Join(options.TLS.ECH.Config, "\n"))
-		} else if options.TLS.ECH.ConfigPath != "" {
-			content, err := filemanager.ReadFile(ctx, options.TLS.ECH.ConfigPath)
-			if err != nil {
-				return nil, E.Cause(err, "read ECH config")
-			}
-			echConfig = content
-		}
-		if len(echConfig) > 0 {
-			block, rest := pem.Decode(echConfig)
-			if block == nil || block.Type != "ECH CONFIGS" || len(rest) > 0 {
-				return nil, E.New("invalid ECH configs pem")
-			}
-			echConfigList = block.Bytes
-		}
-	}
 	var quicCongestionControl cronet.QUICCongestionControl
 	switch options.QUICCongestionControl {
 	case "":
@@ -242,21 +229,17 @@ func newNaiveClientSlot(ctx context.Context, logger log.ContextLogger, options o
 	clientOptions := cronet.NaiveClientOptions{
 		Context:                  ctx,
 		Logger:                   logger,
-		ServerAddress:            serverAddress,
-		ServerName:               serverName,
-		Username:                 options.Username,
-		Password:                 options.Password,
 		InsecureConcurrency:      options.InsecureConcurrency,
-		ExtraHeaders:             extraHeaders,
 		ReceiveWindow:            options.ReceiveWindow.Value(),
 		TrustedRootCertificates:  trustedRootCertificates,
 		Dialer:                   outboundDialer,
-		ECHEnabled:               echEnabled,
-		ECHConfigList:            echConfigList,
-		ECHQueryServerName:       echQueryServerName,
 		QUIC:                     options.QUIC,
 		QUICCongestionControl:    quicCongestionControl,
 		QUICSessionReceiveWindow: options.QUICSessionReceiveWindow.Value(),
+		Registry:                 registry,
+	}
+	if err = setNaiveServerOptions(ctx, options, &clientOptions); err != nil {
+		return nil, err
 	}
 	if resolverForLogger != nil {
 		clientOptions.DNSResolver = resolverForLogger(logger)
@@ -276,6 +259,45 @@ func newNaiveClientSlot(ctx context.Context, logger log.ContextLogger, options o
 	clients.current.runtime.begin = runtime.begin
 	constructed = true
 	return clients, nil
+}
+
+// setNaiveServerOptions sets the server identity of clientOptions.
+func setNaiveServerOptions(ctx context.Context, options option.NaiveOutboundOptions, clientOptions *cronet.NaiveClientOptions) error {
+	clientOptions.ServerAddress = options.ServerOptions.Build()
+	clientOptions.ServerName = options.TLS.ServerName
+	if clientOptions.ServerName == "" {
+		clientOptions.ServerName = clientOptions.ServerAddress.AddrString()
+	}
+	clientOptions.Username = options.Username
+	clientOptions.Password = options.Password
+	clientOptions.ExtraHeaders = make(map[string]string)
+	for key, values := range options.ExtraHeaders.Build() {
+		if len(values) > 0 {
+			clientOptions.ExtraHeaders[key] = values[0]
+		}
+	}
+	if options.TLS.ECH != nil && options.TLS.ECH.Enabled {
+		clientOptions.ECHEnabled = true
+		clientOptions.ECHQueryServerName = options.TLS.ECH.QueryServerName
+		var echConfig []byte
+		if len(options.TLS.ECH.Config) > 0 {
+			echConfig = []byte(strings.Join(options.TLS.ECH.Config, "\n"))
+		} else if options.TLS.ECH.ConfigPath != "" {
+			content, err := filemanager.ReadFile(ctx, options.TLS.ECH.ConfigPath)
+			if err != nil {
+				return E.Cause(err, "read ECH config")
+			}
+			echConfig = content
+		}
+		if len(echConfig) > 0 {
+			block, rest := pem.Decode(echConfig)
+			if block == nil || block.Type != "ECH CONFIGS" || len(rest) > 0 {
+				return E.New("invalid ECH configs pem")
+			}
+			clientOptions.ECHConfigList = block.Bytes
+		}
+	}
+	return nil
 }
 
 func (h *Outbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
@@ -318,6 +340,9 @@ func (h *Outbound) PoolProbeNaiveEligible() bool {
 		return false
 	}
 	options := &h.clients.options
+	if h.server != nil {
+		options = &h.server.options
+	}
 	if !options.ServerAddress.IsIP() || options.ECHEnabled || h.clients.poolProbeResolver == nil {
 		return false
 	}
@@ -339,6 +364,9 @@ func (h *Outbound) dialContextOwned(ctx context.Context, network string, destina
 	switch N.NetworkName(network) {
 	case N.NetworkTCP:
 		h.logger.InfoContext(ctx, "outbound connection to ", destination)
+		if h.server != nil {
+			return h.server.DialContext(ctx, network, destination)
+		}
 		return h.clients.DialContext(ctx, network, destination)
 	case N.NetworkUDP:
 		if h.uotClient == nil {
@@ -377,7 +405,7 @@ func (h *Outbound) SetKeepIdleConnections(keep bool) {
 		return
 	}
 	defer leave()
-	h.clients.setKeep(keep)
+	h.clients.setKeep(h.server, keep)
 }
 
 func (h *Outbound) RuntimeSharedConnectionOwner() (adapter.RuntimeResourceID, bool) {

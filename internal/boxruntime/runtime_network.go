@@ -29,16 +29,20 @@ func (c *runtimeCoordinator) VisitRuntimeNetwork(ctx context.Context, visit func
 			entry.lease.Release()
 		}
 	}()
+	// Members of one shared owner span resources.
+	var seenShared map[adapter.RuntimeResourceID]bool
 	for _, entry := range entries {
 		bound := adapter.ContextWithRuntimeResourceLease(ctx, entry.lease)
-		seenShared := false
 		for _, component := range entry.resource.components {
 			if member, ok := component.outbound.(adapter.RuntimeSharedConnectionOwner); ok {
-				if _, shared := member.RuntimeSharedConnectionOwner(); shared {
-					if seenShared {
+				if owner, shared := member.RuntimeSharedConnectionOwner(); shared {
+					if seenShared[owner] {
 						continue
 					}
-					seenShared = true
+					if seenShared == nil {
+						seenShared = make(map[adapter.RuntimeResourceID]bool)
+					}
+					seenShared[owner] = true
 				}
 			}
 			// Pass a literal nil: a nil *route.Router would become a non-nil adapter.Router.

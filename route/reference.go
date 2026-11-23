@@ -264,7 +264,7 @@ func (m *ReferenceManager) updateInventory(inventory referenceInventory) {
 
 	devicePaused := inventory.devicePaused
 	keepIdle := make(map[any]bool)
-	var sharedIdle map[adapter.RuntimeResourceID]idleTarget
+	// A shared client stays alive while any of its members keeps idle connections.
 	for _, outbound := range outboundManager.Outbounds() {
 		keeper, isKeeper := outbound.(adapter.IdleConnectionKeeper)
 		if !isKeeper {
@@ -279,21 +279,6 @@ func (m *ReferenceManager) updateInventory(inventory referenceInventory) {
 			tag:      outbound.Tag(),
 			keep:     referencedOutbounds[outbound.Tag()],
 		}
-		if member, ok := outbound.(adapter.RuntimeSharedConnectionOwner); ok {
-			if owner, shared := member.RuntimeSharedConnectionOwner(); shared {
-				target.value = owner
-				if sharedIdle == nil {
-					sharedIdle = make(map[adapter.RuntimeResourceID]idleTarget)
-				}
-				if previous, tracked := sharedIdle[owner]; !tracked || target.keep && !previous.keep {
-					sharedIdle[owner] = target
-				}
-				continue
-			}
-		}
-		m.applyKeepIdle(keepIdle, target)
-	}
-	for _, target := range sharedIdle {
 		m.applyKeepIdle(keepIdle, target)
 	}
 	for _, endpoint := range onDemandEndpoints {

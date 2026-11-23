@@ -6,7 +6,6 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
-	"reflect"
 	"slices"
 	"sort"
 	"strings"
@@ -674,11 +673,21 @@ func runtimeShareNaiveClients(ctx context.Context, nodes []runtimegraph.Dependen
 		if !ok || !runtimeNaiveClientShareable(options) {
 			continue
 		}
-		encoded, err := json.MarshalContext(ctx, options)
+		// Members register their server identity with the client. Everything
+		// else, including the outgoing edges, selects the client.
+		projection, tls := *options, *options.TLS
+		projection.ServerOptions, projection.Username, projection.Password = option.ServerOptions{}, "", ""
+		projection.ExtraHeaders, projection.UDPOverTCP, projection.TLS = nil, nil, &tls
+		tls.ServerName = ""
+		if tls.ECH != nil {
+			tls.ECH = &option.OutboundECHOptions{Enabled: tls.ECH.Enabled}
+		}
+		encoded, err := json.MarshalContext(ctx, &projection)
 		if err != nil {
 			return nil, err
 		}
-		key := runtimeDigest(append(append(encoded, '\n'), defaults...))
+		encoded = append(append(append(encoded, '\n'), strings.Join(node.Dependencies, "\n")...), '\n')
+		key := runtimeDigest(append(encoded, defaults...))
 		groups[key] = append(groups[key], i)
 	}
 	var cyclic map[string]bool
@@ -700,37 +709,28 @@ func runtimeShareNaiveClients(ctx context.Context, nodes []runtimegraph.Dependen
 				}
 			}
 		}
-		first := nodes[members[0]]
-		options := configs[first.Name].outbound.Options.(*option.NaiveOutboundOptions)
-		compatible := true
-		for _, i := range members {
-			node := nodes[i]
-			if cyclic[node.Name] || slices.Contains(node.Dependencies, node.Name) ||
-				!slices.Equal(node.Dependencies, first.Dependencies) ||
-				!reflect.DeepEqual(configs[node.Name].outbound.Options, options) {
-				compatible = false
-				break
-			}
-		}
-		if !compatible {
+		// A cyclic member would pull the client into its cohort.
+		members = slices.DeleteFunc(members, func(i int) bool {
+			return cyclic[nodes[i].Name] || slices.Contains(nodes[i].Dependencies, nodes[i].Name)
+		})
+		if len(members) < 2 {
 			continue
 		}
-		// The client and its aliases retire as one allocation. Identical outgoing
-		// edges and acyclic members keep this from merging any other cohort.
+		// The client depends only on the members' common edges and survives
+		// their changes. Each graph's members bind the client it retains.
 		name := "naive-client:" + key
-		deps := slices.Clone(first.Dependencies)
+		first := nodes[members[0]]
 		for _, i := range members {
 			node := &nodes[i]
-			deps = append(deps, node.Name)
 			node.Dependencies = append(slices.Clone(node.Dependencies), name)
 			config := configs[node.Name]
 			config.node = *node
 			config.naiveClient = name
 			configs[node.Name] = config
 		}
-		node := runtimegraph.DependencyNode{Name: name, Fingerprint: key, Dependencies: deps}
+		node := runtimegraph.DependencyNode{Name: name, Fingerprint: key, Dependencies: slices.Clone(first.Dependencies)}
 		nodes = append(nodes, node)
-		configs[name] = runtimeNodeOptions{node: node, naiveOptions: options}
+		configs[name] = runtimeNodeOptions{node: node, naiveOptions: configs[first.Name].outbound.Options.(*option.NaiveOutboundOptions)}
 	}
 	return nodes, nil
 }
@@ -747,13 +747,14 @@ func runtimeNaiveClientShareable(options *option.NaiveOutboundOptions) bool {
 	}
 	// Header.Build merges case aliases in map iteration order. The first value
 	// could differ between two clients constructed with the same options.
+	// Control headers could replace the isolation key of a shared stream.
 	headers := make(map[string]bool)
 	for key, values := range options.ExtraHeaders {
 		if len(values) == 0 {
 			continue
 		}
 		key = strings.ToLower(key)
-		if headers[key] {
+		if headers[key] || key == "" || key[0] == '-' || key[0] == ':' || key == "host" {
 			return false
 		}
 		headers[key] = true

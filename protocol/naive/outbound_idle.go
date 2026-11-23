@@ -36,6 +36,9 @@ type naiveClientSlot struct {
 	closed            bool
 	retiring          chan struct{}
 	closeErr          error
+	// Servers registered with options.Registry, each with whether it keeps
+	// idle connections. Then keep is whether any of them does.
+	servers map[*naiveServer]bool
 }
 
 func (s *naiveClientSlot) start() error {
@@ -96,11 +99,55 @@ func (s *naiveClientSlot) retireIdleLocked(explicit bool) <-chan struct{} {
 	return done
 }
 
-func (s *naiveClientSlot) setKeep(keep bool) {
+// naiveServer is an outbound's server registered with a shared slot. Its
+// options are the slot's with this server's identity, for dedicated probes.
+type naiveServer struct {
+	*cronet.NaiveServer
+	slot    *naiveClientSlot
+	options cronet.NaiveClientOptions
+}
+
+func (s *naiveServer) DialContext(ctx context.Context, _ string, destination M.Socksaddr) (net.Conn, error) {
+	instance, err := s.slot.acquire(ctx, true)
+	if err != nil {
+		return nil, err
+	}
+	defer s.slot.release()
+	return instance.client.DialServerEarly(ctx, s.NaiveServer, "", destination)
+}
+
+func (s *naiveServer) ListenPacket(context.Context, M.Socksaddr) (net.PacketConn, error) {
+	return nil, os.ErrInvalid
+}
+
+// Close unregisters the server. Its name stays registered until its last
+// stream ends.
+func (s *naiveServer) Close() error {
+	s.slot.mu.Lock()
+	delete(s.slot.servers, s)
+	s.slot.mu.Unlock()
+	s.NaiveServer.Close()
+	s.slot.setKeep(s, false)
+	return nil
+}
+
+// setKeep sets the slot's own server when server is nil.
+func (s *naiveClientSlot) setKeep(server *naiveServer, keep bool) {
 	s.mu.Lock()
-	s.keep = keep
+	if server == nil {
+		s.keep = keep
+	} else {
+		if _, registered := s.servers[server]; registered {
+			server.SetKeep(keep)
+			s.servers[server] = keep
+		}
+		s.keep = false
+		for _, keep := range s.servers {
+			s.keep = s.keep || keep
+		}
+	}
 	var done <-chan struct{}
-	if !keep {
+	if !s.keep {
 		done = s.retireIdleLocked(false)
 	}
 	s.mu.Unlock()
@@ -111,7 +158,11 @@ func (s *naiveClientSlot) setKeep(keep bool) {
 
 func (s *naiveClientSlot) closeIdle() {
 	s.mu.Lock()
-	// Pause and memory reclamation can release even a referenced idle client.
+	// Pause and memory reclamation can release even a referenced idle client,
+	// and the connections of each registered server without a stream.
+	for server := range s.servers {
+		server.CloseIdleConnections()
+	}
 	done := s.retireIdleLocked(true)
 	s.mu.Unlock()
 	if done != nil {
