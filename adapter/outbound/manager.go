@@ -5,12 +5,15 @@ import (
 	"errors"
 	"net"
 	"os"
+	"reflect"
 	"slices"
 	"strings"
 	"sync"
 
 	"github.com/sagernet/sing-box/adapter"
+	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/log"
+	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing/common"
 	E "github.com/sagernet/sing/common/exceptions"
 	M "github.com/sagernet/sing/common/metadata"
@@ -170,7 +173,7 @@ func (m *Manager) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 		if err := m.startOutbounds(scope, append(outbounds, common.Map(m.endpoint.Endpoints(), func(it adapter.Endpoint) adapter.Outbound { return it })...)); err != nil {
 			return err
 		}
-		return m.SelectedFailure()
+		return m.SelectedFailure(nil, "")
 	}
 	for _, outbound := range outbounds {
 		lifecycle, isLifecycle := outbound.(adapter.Lifecycle)
@@ -297,8 +300,10 @@ func (m *Manager) startOutbounds(scope *adapter.Scope, outbounds []adapter.Outbo
 
 // SelectedFailure returns the start error of a failed outbound on the default
 // outbound chain: selected selector members, urltest groups whose members all
-// failed, and detours.
-func (m *Manager) SelectedFailure() error {
+// failed, and detours. The chain starts at the default outbound and at routes
+// whose only condition is the current clash mode, which stand in for
+// route.final in mode-compiled configurations.
+func (m *Manager) SelectedFailure(rules []option.Rule, mode string) error {
 	var failure func(tag string) error
 	failure = func(tag string) error {
 		outbound, _ := m.Outbound(tag)
@@ -327,7 +332,18 @@ func (m *Manager) SelectedFailure() error {
 		return nil
 	}
 	if defaultOutbound := m.Default(); defaultOutbound != nil {
-		return failure(defaultOutbound.Tag())
+		if err := failure(defaultOutbound.Tag()); err != nil {
+			return err
+		}
+	}
+	for _, rule := range rules {
+		raw := rule.DefaultOptions.RawDefaultRule
+		if rule.Type == C.RuleTypeDefault && rule.DefaultOptions.Action == C.RuleActionTypeRoute &&
+			strings.EqualFold(raw.ClashMode, mode) && reflect.DeepEqual(raw, option.RawDefaultRule{ClashMode: raw.ClashMode}) {
+			if err := failure(rule.DefaultOptions.RouteOptions.Outbound); err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }

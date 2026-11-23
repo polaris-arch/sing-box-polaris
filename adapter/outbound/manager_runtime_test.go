@@ -303,7 +303,7 @@ func runtimeStartMembers(t *testing.T, manager *Manager, members ...adapter.Outb
 func TestRuntimeUnselectedStartFailureIsIsolated(t *testing.T) {
 	manager := NewRuntimeManager(nil, runtimeEndpointManager(t), "select")
 	runtimeStartMembers(t, manager, runtimeMember("good"), runtimeFailingMember("bad"), &runtimeGroup{runtimeMember("select", "good", "bad"), manager, "good"})
-	if err := manager.SelectedFailure(); err != nil {
+	if err := manager.SelectedFailure(nil, ""); err != nil {
 		t.Fatal(err)
 	}
 	failed, _ := manager.Outbound("bad")
@@ -340,7 +340,7 @@ func TestRuntimeSelectedStartFailureNamesNode(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			manager := NewRuntimeManager(nil, runtimeEndpointManager(t), "default")
 			runtimeStartMembers(t, manager, test.members(manager)...)
-			err := manager.SelectedFailure()
+			err := manager.SelectedFailure(nil, "")
 			if test.fails != (err != nil) || err != nil && !strings.Contains(err.Error(), "start outbound/test[bad") {
 				t.Fatalf("selected failure: %v", err)
 			}

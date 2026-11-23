@@ -10,6 +10,7 @@ import (
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/option"
 	protocolWG "github.com/sagernet/sing-box/protocol/wireguard"
+	"github.com/sagernet/sing/common"
 )
 
 // This transaction owns only newly constructed userspace children. Old children
@@ -63,7 +64,7 @@ func (s *Box) stageRuntimeEndpoints(ctx context.Context, g *preparedRuntimeGraph
 			}
 		}
 	}
-	if err := g.outboundManager.SelectedFailure(); err != nil {
+	if err := g.outboundManager.SelectedFailure(common.PtrValueOrDefault(g.options.Route).Rules, s.runtime.clashMode.Mode()); err != nil {
 		return nil, err
 	}
 	t := &runtimeEndpointTransaction{next: runtimeWireGuardParticipants(g.created), clients: runtimeClientEndpointTransaction{next: runtimeClientEndpointParticipants(g.created)}}
