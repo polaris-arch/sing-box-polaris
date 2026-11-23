@@ -36,6 +36,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
@@ -262,6 +263,21 @@ func TestRuntimeDesktopDefaultAPIUsesOwningGraphAndExistingRPCs(t *testing.T) {
 				t.Fatalf("attached outbound lookup failed: %+v %v", list, err)
 			}
 			mark("Outbounds first frame")
+			var activeHeaders metadata.MD
+			active, err := runtimeClient.GetRuntimeConfigStatus(request, &daemon.RuntimeConfigStatusRequest{ContractVersion: 1}, grpc.Header(&activeHeaders))
+			if err != nil || active.GetLookupState() != daemon.RuntimeLookupState_ACTIVE_ONLY || !slices.Equal(activeHeaders.Get("x-polaris-probe-select-condition"), []string{"1"}) {
+				t.Fatalf("active status did not advertise probe selection: %+v %v %v", active, activeHeaders, err)
+			}
+			graphToken := fmt.Sprintf("%s/%d", active.GetActive().GetIncarnation(), active.GetActive().GetAppliedRevision())
+			conditionalSelect := &daemon.SelectOutboundRequest{GroupTag: "select", OutboundTag: "a"}
+			for _, invalid := range []context.Context{
+				metadata.AppendToOutgoingContext(request, "x-polaris-probe-graph", active.GetActive().GetIncarnation()+"/01"),
+				metadata.AppendToOutgoingContext(request, "x-polaris-probe-graph", graphToken, "x-polaris-probe-graph", graphToken),
+			} {
+				if _, err := client.SelectOutbound(invalid, conditionalSelect); status.Code(err) != codes.InvalidArgument {
+					t.Fatalf("invalid graph condition accepted: %v", err)
+				}
+			}
 			if _, err := client.SelectOutbound(request, &daemon.SelectOutboundRequest{GroupTag: "select", OutboundTag: "b"}); err != nil {
 				t.Fatal(err)
 			}
@@ -323,6 +339,20 @@ func TestRuntimeDesktopDefaultAPIUsesOwningGraphAndExistingRPCs(t *testing.T) {
 				t.Fatalf("public replay repeated publication/persistence: %+v %v", replay, err)
 			}
 			mark("replay complete")
+			stale := metadata.AppendToOutgoingContext(request, "x-polaris-probe-graph", graphToken)
+			if _, err := client.SelectOutbound(stale, conditionalSelect); status.Code(err) != codes.FailedPrecondition {
+				t.Fatalf("stale probe selection was not rejected: %v", err)
+			}
+			selector, _ := instance.Outbound().Outbound("select")
+			group := selector.(adapter.OutboundGroup)
+			if got := group.Selected("tcp").Tag(); got != "b" {
+				t.Fatalf("stale probe changed selection to %q", got)
+			}
+			currentGraph := fmt.Sprintf("%s/%d", operation.Active.Incarnation, operation.Active.AppliedRevision)
+			conditioned := metadata.AppendToOutgoingContext(request, "x-polaris-probe-graph", currentGraph)
+			if _, err := client.SelectOutbound(conditioned, conditionalSelect); err != nil || group.Selected("tcp").Tag() != "a" {
+				t.Fatalf("probe with the current graph could not select its target: %v", err)
+			}
 			owner := api.runtime
 			owner.mu.Lock()
 			generations := append([]*apiGeneration(nil), owner.generations...)

@@ -122,11 +122,9 @@ func (b *RuntimeTransportBoundary) record(err error) {
 // is admitted. It preserves TLS state but exposes no raw fast-path escape.
 func (b *RuntimeTransportBoundary) GuardConnection(conn net.Conn) (net.Conn, error) {
 	guarded, fence := outbound.WrapRuntimeOwnedConn(conn)
-	creation, err := b.connections.Begin()
+	creation, err := b.beginCarrierRegistration(fence)
 	if err != nil {
-		closeErr := fence.RuntimeCloseAndWait()
-		b.record(closeErr)
-		return nil, errors.Join(err, closeErr)
+		return nil, err
 	}
 	defer creation.Done()
 	if err = creation.Register(fence); err != nil {
@@ -138,12 +136,43 @@ func (b *RuntimeTransportBoundary) GuardConnection(conn net.Conn) (net.Conn, err
 	return guarded, nil
 }
 
+// RegisterCarrier transfers an already wrapped physical carrier from an admitted
+// dial. Only successful completion removes its fence from the boundary.
+func (b *RuntimeTransportBoundary) RegisterCarrier(fence *outbound.RuntimeIOFence) error {
+	b.mu.Lock()
+	closed := b.closed
+	b.mu.Unlock()
+	if closed {
+		return b.rejectCarrier(fence, net.ErrClosed)
+	}
+	creation, err := b.beginCarrierRegistration(fence)
+	if err != nil {
+		return err
+	}
+	defer creation.Done()
+	return creation.Register(fence)
+}
+
+func (b *RuntimeTransportBoundary) beginCarrierRegistration(fence *outbound.RuntimeIOFence) (*outbound.RuntimeIOCreation, error) {
+	creation, err := b.connections.Begin()
+	if err != nil {
+		return nil, b.rejectCarrier(fence, err)
+	}
+	return creation, nil
+}
+
+func (b *RuntimeTransportBoundary) rejectCarrier(fence *outbound.RuntimeIOFence, err error) error {
+	closeErr := fence.RuntimeCloseAndWait()
+	b.record(closeErr)
+	return errors.Join(err, closeErr)
+}
+
 // The non-zero size gives concurrent dial reservations distinct pointer identities.
 type runtimeDialBoundary struct{ _ byte }
 
 // BeginDial reserves and makes cancellation visible before calling any external
-// dial/handshake. A late result must transfer to GuardConnection/RegisterResource
-// before release. There is no background idle self-lease.
+// dial/handshake. A late result must transfer to the boundary before release.
+// There is no background idle self-lease.
 func (b *RuntimeTransportBoundary) BeginDial(ctx context.Context) (context.Context, func(), error) {
 	leave, err := b.fence.Acquire()
 	if err != nil {

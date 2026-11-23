@@ -98,6 +98,7 @@ type clientSession struct {
 	*session
 	client        *Client
 	probe         *probeActivation
+	borrowers     int // guarded by client.access
 	access        sync.Mutex
 	configuration Configuration
 	ready         bool
@@ -138,8 +139,10 @@ func (c *Client) Start() {
 				return
 			}
 			c.access.Lock()
-			if c.suspended && c.probe != nil {
-				c.endProbeLocked(c.probe, urltest.ErrProbeNotRun)
+			if c.suspended {
+				c.suspendLocked(urltest.ErrProbeNotRun)
+			} else {
+				c.notifyStateLocked()
 			}
 			c.access.Unlock()
 		})
@@ -289,6 +292,17 @@ func (c *Client) connect(probe *probeActivation, reset *sessionReset) (bool, err
 	})
 	c.access.Lock()
 	c.current = nil
+	if c.suspended && c.ctx.Err() == nil && (probe == nil || (c.probe == probe && probe.count == 0)) {
+		// A finished carrier's borrowers do not own the next physical dial.
+		if probe != nil {
+			c.cancelProbeLocked(probe, context.Canceled)
+		}
+		// Discard idle HTTP connections from the finished carrier. An explicit
+		// reset replacing this attempt has already taken ownership of that pool.
+		if c.reset == reset {
+			c.requestResetLocked()
+		}
+	}
 	c.access.Unlock()
 	current.access.Lock()
 	established := current.ready
@@ -328,66 +342,44 @@ func (c *Client) Ready() bool {
 }
 
 func (c *Client) WaitReady(ctx context.Context) error {
-	return c.waitReady(ctx, nil)
+	_, err := c.waitReady(ctx, false)
+	return err
 }
 
 // WaitReadyForProbe holds a scoped on-demand activation until the caller is
 // finished with the connection or packet carrier that uses the tunnel.
 func (c *Client) WaitReadyForProbe(ctx context.Context) (func(), error) {
+	return c.waitReady(ctx, true)
+}
+
+func (c *Client) probesPaused() bool {
+	return c.probePause != nil && (c.probePause.IsDevicePaused() || c.probePause.IsNetworkPaused())
+}
+
+func (c *Client) hasScopedDemandLocked() bool {
+	current := c.activeSessionLocked()
+	return (current != nil && current.borrowers != 0) || (c.probe != nil && c.probe.count != 0)
+}
+
+func (c *Client) releaseProbeSession(current *clientSession) {
 	c.access.Lock()
-	if err := ctx.Err(); err != nil {
-		c.access.Unlock()
-		return nil, err
+	defer c.access.Unlock()
+	current.borrowers--
+	if current == c.activeSessionLocked() && c.suspended && !c.hasScopedDemandLocked() {
+		c.suspendLocked(context.Canceled)
 	}
-	if err := c.ctx.Err(); err != nil {
-		c.access.Unlock()
-		return nil, err
-	}
-	if c.probePause != nil && (c.probePause.IsDevicePaused() || c.probePause.IsNetworkPaused()) {
-		c.access.Unlock()
-		return nil, urltest.ErrProbeNotRun
-	}
-	var release func()
-	probe := c.probe
-	if c.suspended || probe != nil {
-		if probe == nil {
-			ownerCtx, cancel := context.WithCancelCause(c.ctx)
-			probe = &probeActivation{ctx: ownerCtx, cancel: cancel}
-			c.probe = probe
-			c.lastError = nil
-			c.notifyStateLocked()
-		}
-		key := &ctx
-		probe.users.Store(key, ctx)
-		probe.count++
-		release = sync.OnceFunc(func() {
-			c.access.Lock()
-			probe.users.Delete(key)
-			probe.count--
-			if c.probe == probe && c.suspended && probe.count == 0 {
-				c.endProbeLocked(probe, context.Canceled)
-			}
-			c.access.Unlock()
-		})
-	}
-	c.access.Unlock()
-	waitCtx, cancel := context.WithTimeout(ctx, C.TCPTimeout)
-	defer cancel()
-	if err := c.waitReady(waitCtx, probe); err != nil {
-		if release != nil {
-			release()
-		}
-		return nil, err
-	}
-	return release, nil
 }
 
 func (c *Client) endProbeLocked(probe *probeActivation, err error) {
+	c.cancelProbeLocked(probe, err)
+	c.requestResetLocked()
+	c.notifyStateLocked()
+}
+
+func (c *Client) cancelProbeLocked(probe *probeActivation, err error) {
 	probe.err = err
 	probe.cancel(err)
 	c.probe = nil
-	c.requestResetLocked()
-	c.notifyStateLocked()
 }
 
 func (c *Client) requestResetLocked() *sessionReset {
@@ -407,46 +399,133 @@ func (c *Client) requestResetLocked() *sessionReset {
 	return reset
 }
 
-func (c *Client) waitReady(ctx context.Context, probe *probeActivation) error {
+func (c *Client) waitReady(ctx context.Context, scoped bool) (func(), error) {
+	waitCtx := ctx
+	var cancelWait context.CancelFunc
+	var probe *probeActivation
+	var key *byte
+	releaseWaiterLocked := func() {
+		probe.users.Delete(key)
+		probe.count--
+		if probe == c.probe && c.suspended && !c.hasScopedDemandLocked() {
+			c.suspendLocked(context.Canceled)
+		}
+		probe = nil
+	}
+	defer func() {
+		if cancelWait != nil {
+			cancelWait()
+		}
+		if probe != nil {
+			c.access.Lock()
+			releaseWaiterLocked()
+			c.access.Unlock()
+		}
+	}()
 	for {
 		c.access.Lock()
+		if err := waitCtx.Err(); err != nil {
+			c.access.Unlock()
+			return nil, err
+		}
+		if err := c.ctx.Err(); err != nil {
+			c.access.Unlock()
+			return nil, err
+		}
 		if probe != nil && probe.err != nil {
 			err := probe.err
 			c.access.Unlock()
-			return err
+			return nil, err
+		}
+		if scoped && c.probesPaused() {
+			c.access.Unlock()
+			return nil, urltest.ErrProbeNotRun
 		}
 		current := c.activeSessionLocked()
-		lastError := c.lastError
-		stateUpdated := c.stateUpdated
 		if current != nil && (probe == nil || probe == current.probe) {
 			current.access.Lock()
 			ready := current.ready
 			current.access.Unlock()
 			if ready {
+				if scoped {
+					current.borrowers++
+					if probe != nil {
+						releaseWaiterLocked()
+					}
+					c.access.Unlock()
+					return sync.OnceFunc(func() { c.releaseProbeSession(current) }), nil
+				}
 				c.access.Unlock()
-				return nil
+				return nil, nil
 			}
-		} else if lastError != nil {
-			c.access.Unlock()
-			return lastError
 		}
+		if scoped && probe == nil && (c.probe != nil || (c.suspended && current == nil)) {
+			if c.probe == nil {
+				ownerCtx, cancel := context.WithCancelCause(c.ctx)
+				c.probe = &probeActivation{ctx: ownerCtx, cancel: cancel}
+				c.lastError = nil
+				c.notifyStateLocked()
+			}
+			probe = c.probe
+			key = new(byte)
+			probe.users.Store(key, ctx)
+			probe.count++
+		}
+		if lastError := c.lastError; current == nil && lastError != nil {
+			c.access.Unlock()
+			return nil, lastError
+		}
+		stateUpdated := c.stateUpdated
 		c.access.Unlock()
+		if scoped && cancelWait == nil {
+			waitCtx, cancelWait = context.WithTimeout(ctx, C.TCPTimeout)
+		}
 		select {
 		case <-stateUpdated:
-		case <-ctx.Done():
-			return ctx.Err()
+		case <-waitCtx.Done():
+			return nil, waitCtx.Err()
 		case <-c.ctx.Done():
-			return c.ctx.Err()
+			return nil, c.ctx.Err()
 		}
 	}
 }
 
 func (c *Client) Suspend() {
+	c.suspend(false)
+}
+
+// SuspendWhenIdle withdraws durable demand from a userspace session. Existing
+// scoped callers still own their exact carrier until their last release.
+func (c *Client) SuspendWhenIdle() {
+	c.suspend(true)
+}
+
+func (c *Client) suspend(allowBorrowers bool) {
 	c.access.Lock()
+	var probeErr error = context.Canceled
+	if allowBorrowers {
+		if c.probesPaused() {
+			probeErr = urltest.ErrProbeNotRun
+		} else if c.hasScopedDemandLocked() {
+			c.suspended = true
+			if c.probe != nil {
+				c.probe.persistent.Store(false)
+			}
+			c.access.Unlock()
+			return
+		}
+	}
+	reset := c.suspendLocked(probeErr)
+	c.access.Unlock()
+	if reset != nil {
+		reset.apply()
+	}
+}
+
+func (c *Client) suspendLocked(probeErr error) *sessionReset {
 	probe := c.probe
-	if c.suspended && probe == nil {
-		c.access.Unlock()
-		return
+	if c.ctx.Err() != nil || (c.suspended && probe == nil && c.activeSessionLocked() == nil) {
+		return nil
 	}
 	c.suspended = true
 	if c.dialCancel != nil {
@@ -456,14 +535,12 @@ func (c *Client) Suspend() {
 		c.current.cancel(E.New("suspended"))
 	}
 	if probe != nil {
-		c.endProbeLocked(probe, context.Canceled)
+		c.endProbeLocked(probe, probeErr)
 	} else {
 		c.requestResetLocked()
 		c.notifyStateLocked()
 	}
-	reset := c.reset
-	c.access.Unlock()
-	reset.apply()
+	return c.reset
 }
 
 func (c *Client) Resume() {

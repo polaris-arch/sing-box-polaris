@@ -94,6 +94,7 @@ type runtimeFakeIPPublication struct {
 	logPublication func()
 	log            *log.RuntimeLogPublication
 	apiHandoffs    []adapter.RuntimeAPIHandoff
+	probeResets    []func()
 	endpoints      *runtimeEndpointTransaction
 	dnsStores      []*cachefile.DNSRuntimeView
 	tun            *protocolTun.RuntimeTunPublication
@@ -114,6 +115,9 @@ func (p runtimeFakeIPPublication) abort() {
 }
 
 func (p runtimeFakeIPPublication) Publish() {
+	for _, reset := range p.probeResets {
+		reset()
+	}
 	if p.log != nil {
 		p.log.Publish()
 	}
@@ -143,7 +147,7 @@ func (p runtimeFakeIPPublication) Publish() {
 }
 
 func (p runtimeFakeIPPublication) publish(store *runtimegraph.Store, expected adapter.RuntimeRevision, graph *runtimegraph.Graph) (*runtimegraph.Graph, error) {
-	if p.logPublication == nil && p.log == nil && len(p.apiHandoffs) == 0 && p.endpoints == nil && p.commit == nil && p.listeners == nil && p.tun == nil && len(p.dnsStores) == 0 {
+	if p.logPublication == nil && p.log == nil && len(p.apiHandoffs) == 0 && p.endpoints == nil && p.commit == nil && p.listeners == nil && p.tun == nil && len(p.dnsStores) == 0 && len(p.probeResets) == 0 {
 		return store.Publish(expected, graph)
 	}
 	return store.PublishPrepared(expected, graph, p)

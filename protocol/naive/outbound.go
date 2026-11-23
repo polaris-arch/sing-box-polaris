@@ -36,6 +36,8 @@ const RuntimeClientSharing = true
 
 type runtimeClientKey struct{}
 
+type poolProbeResolver interface{ PoolProbeResolverEligible() bool }
+
 // NewRuntimeClientGroup constructs the shared slot with the physical node's
 // context and scope. The returned binding is used only by its cohort's aliases.
 func NewRuntimeClientGroup(ctx context.Context, logger log.ContextLogger, options option.NaiveOutboundOptions) (func(context.Context) context.Context, error) {
@@ -185,8 +187,14 @@ func newNaiveClientSlot(ctx context.Context, logger log.ContextLogger, options o
 
 	dnsRouter := service.FromContext[adapter.DNSRouter](ctx)
 	var resolverForLogger func(log.ContextLogger) cronet.DNSResolverFunc
+	var probeResolver poolProbeResolver
 	if dnsRouter != nil {
 		queryOptions := outboundDialer.(dialer.ResolveDialer).QueryOptions()
+		// Native queries outside the synthetic proxy address must use a
+		// resolver whose exact dial path can be verified after graph startup.
+		if !queryOptions.UseRules && queryOptions.Policy == "" {
+			probeResolver, _ = queryOptions.Transport.(poolProbeResolver)
+		}
 		resolverForLogger = func(logger log.ContextLogger) cronet.DNSResolverFunc {
 			return newDNSResolver(dnsRouter, queryOptions, logger)
 		}
@@ -253,7 +261,10 @@ func newNaiveClientSlot(ctx context.Context, logger log.ContextLogger, options o
 	if resolverForLogger != nil {
 		clientOptions.DNSResolver = resolverForLogger(logger)
 	}
-	clients := &naiveClientSlot{owner: runtime, options: clientOptions, resolverForLogger: resolverForLogger, keep: true}
+	clients := &naiveClientSlot{
+		owner: runtime, options: clientOptions, resolverForLogger: resolverForLogger,
+		poolProbeResolver: probeResolver, keep: true,
+	}
 	runtime.client = clients
 	clients.current, err = clients.newIncarnation()
 	if err != nil {
@@ -294,6 +305,34 @@ func (h *Outbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 
 func (h *Outbound) DialContext(ctx context.Context, network string, destination M.Socksaddr) (net.Conn, error) {
 	return outbound.DialRuntimeConn(ctx, h.runtime.source, func(ctx context.Context) (net.Conn, error) { return h.dialContextOwned(ctx, network, destination) })
+}
+
+// PoolProbeNaiveEligible checks the physical proxy path of a graph-owned Naive
+// outbound. Cronet sends the tunnel target as the remote CONNECT authority.
+func (h *Outbound) PoolProbeNaiveEligible() bool {
+	if h.runtime == nil || h.runtime.source == nil || !h.runtime.registered || h.clients == nil {
+		return false
+	}
+	owner := h.clients.owner
+	if owner == nil || owner.source == nil || !owner.registered {
+		return false
+	}
+	options := &h.clients.options
+	if !options.ServerAddress.IsIP() || options.ECHEnabled || h.clients.poolProbeResolver == nil {
+		return false
+	}
+	for header := range options.ExtraHeaders {
+		// Extra headers are applied after Cronet's CONNECT controls.
+		if strings.HasPrefix(header, "-") || strings.HasPrefix(header, ":") || strings.EqualFold(header, "Host") {
+			return false
+		}
+	}
+	resolveDialer, ok := options.Dialer.(interface{ Upstream() any })
+	if !ok {
+		return false
+	}
+	_, direct := resolveDialer.Upstream().(*dialer.DefaultDialer)
+	return direct && h.clients.poolProbeResolver.PoolProbeResolverEligible()
 }
 
 func (h *Outbound) dialContextOwned(ctx context.Context, network string, destination M.Socksaddr) (net.Conn, error) {

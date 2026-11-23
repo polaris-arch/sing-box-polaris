@@ -903,7 +903,7 @@ func (c *RuntimeIOCreation) Register(fence *RuntimeIOFence) error {
 	if s.sealed || c.finished {
 		s.mu.Unlock()
 		err := fence.RuntimeCloseAndWait()
-		s.Record(err)
+		s.finishCarrier(fence, err)
 		if err != nil {
 			return err
 		}
@@ -914,16 +914,20 @@ func (c *RuntimeIOCreation) Register(fence *RuntimeIOFence) error {
 	s.mu.Unlock()
 	go func() {
 		defer s.pending.Done()
-		err := fence.Wait()
-		s.mu.Lock()
-		if err == nil {
-			delete(s.fences, fence)
-		} else {
-			s.err = errors.Join(s.err, fmt.Errorf("owned carrier completion unknown: %v", err))
-		}
-		s.mu.Unlock()
+		s.finishCarrier(fence, fence.Wait())
 	}()
 	return nil
+}
+
+func (s *RuntimeIOFenceSet) finishCarrier(fence *RuntimeIOFence, err error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if err == nil {
+		delete(s.fences, fence)
+	} else {
+		// Wait returns a runtimeCleanupError that already hides completion sentinels.
+		s.err = errors.Join(s.err, fmt.Errorf("owned carrier completion unknown: %w", err))
+	}
 }
 
 // Stop seals registration and starts each sole close independently. A blocked

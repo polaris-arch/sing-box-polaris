@@ -18,10 +18,12 @@ import (
 	"github.com/sagernet/sing-box/common/badhttp"
 	"github.com/sagernet/sing-box/common/dialer"
 	"github.com/sagernet/sing-box/common/tls"
+	"github.com/sagernet/sing-box/common/urltest"
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/dns"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
+	"github.com/sagernet/sing-box/protocol/direct"
 	"github.com/sagernet/sing/common"
 	"github.com/sagernet/sing/common/buf"
 	E "github.com/sagernet/sing/common/exceptions"
@@ -51,6 +53,7 @@ type HTTPSTransport struct {
 	destination       *url.URL
 	headers           http.Header
 	serverAddr        M.Socksaddr
+	poolProbeResolver bool
 	fallback          *atomic.Bool
 	keepIdle          atomic.Bool
 	transportAccess   sync.Mutex
@@ -62,6 +65,7 @@ type HTTPSTransport struct {
 	constructionOwned bool
 	stopOnce          sync.Once
 	transports        []*HTTPSTransportWrapper
+	probeTransports   map[*HTTPSTransportWrapper]context.CancelCauseFunc
 	closeErr          error
 }
 
@@ -124,6 +128,8 @@ func NewHTTPS(ctx context.Context, logger log.ContextLogger, tag string, options
 		serverAddr,
 		tlsConfig,
 	)
+	result.poolProbeResolver = serverAddr.IsIP() && options.DomainResolver == nil &&
+		(tlsOptions.ECH == nil || !tlsOptions.ECH.Enabled)
 	if adapter.HasConstructionScope(ctx) {
 		result.constructionOwned = true
 		if err = adapter.DeferConstructionCleanup(ctx, result.RuntimeCloseAndWait); err != nil {
@@ -137,6 +143,28 @@ func NewHTTPS(ctx context.Context, logger log.ContextLogger, tag string, options
 		return nil, err
 	}
 	return result, nil
+}
+
+// PoolProbeResolverEligible reports a constructor-proven terminal DNS path.
+func (t *HTTPSTransport) PoolProbeResolverEligible() bool {
+	if !t.poolProbeResolver {
+		return false
+	}
+	upstream, ok := t.dialer.(interface{ Upstream() any })
+	if !ok {
+		return false
+	}
+	switch physical := upstream.Upstream().(type) {
+	case *dialer.DefaultDialer:
+		return true
+	case *dialer.DetourDialer:
+		member, err := physical.Dialer()
+		_, terminal := member.(*direct.Outbound)
+		// A literal destination does not enter the direct outbound's resolver.
+		return err == nil && terminal
+	default:
+		return false
+	}
 }
 
 func NewHTTPSRaw(
@@ -203,8 +231,20 @@ func (t *HTTPSTransport) resetAfter(start time.Time) {
 	t.transport = NewHTTPSTransportWrapper(t.dialer, t.serverAddr, t.fallback)
 	t.transports = append(t.transports, t.transport)
 	t.transportResetAt = time.Now()
+	var stoppedProbes []*HTTPSTransportWrapper
+	if start.IsZero() {
+		for probeTransport, cancel := range t.probeTransports {
+			cancel(urltest.ErrProbeNotRun)
+			probeTransport.boundary.StopRuntimeOperations()
+			stoppedProbes = append(stoppedProbes, probeTransport)
+		}
+	}
 	t.transportAccess.Unlock()
 	t.recordClose(old.RuntimeCloseAndWait())
+	for _, probeTransport := range stoppedProbes {
+		// The exchange records any terminal error in its deferred cleanup.
+		_ = probeTransport.RuntimeCloseAndWait()
+	}
 }
 
 func (t *HTTPSTransport) SetKeepIdleConnections(keep bool) {
@@ -257,13 +297,51 @@ func (t *HTTPSTransport) Exchange(ctx context.Context, message *mDNS.Msg) (*mDNS
 }
 
 func (t *HTTPSTransport) exchangeOwned(ctx context.Context, message *mDNS.Msg) (*mDNS.Msg, error) {
+	if urltest.IsLegacyPoolProbeDNS(ctx, t.Tag()) {
+		return t.exchangeProbe(ctx, message)
+	}
 	start := time.Now()
-	response, err := t.exchange(ctx, message)
+	response, err := t.exchange(ctx, message, nil)
 	if !t.keepIdle.Load() {
 		t.CloseIdleConnections()
 	}
 	if errors.Is(err, context.DeadlineExceeded) {
 		t.resetAfter(start)
+	}
+	return response, err
+}
+
+func (t *HTTPSTransport) exchangeProbe(ctx context.Context, message *mDNS.Msg) (*mDNS.Msg, error) {
+	t.transportAccess.Lock()
+	if t.closed {
+		t.transportAccess.Unlock()
+		return nil, urltest.ErrProbeNotRun
+	}
+	// An idle HTTP/2 carrier from another choice would bypass the selector's
+	// dial-time check. Hold this private transport until its workers finish.
+	current := NewHTTPSTransportWrapper(t.dialer, t.serverAddr, new(atomic.Bool))
+	probeCtx, cancel := context.WithCancelCause(ctx)
+	if t.probeTransports == nil {
+		t.probeTransports = make(map[*HTTPSTransportWrapper]context.CancelCauseFunc)
+	}
+	t.probeTransports[current] = cancel
+	t.transportAccess.Unlock()
+	defer cancel(nil)
+	defer func() {
+		closeErr := current.RuntimeCloseAndWait()
+		t.transportAccess.Lock()
+		delete(t.probeTransports, current)
+		if closeErr != nil {
+			t.transports = append(t.transports, current)
+			t.closeErr = errors.Join(t.closeErr, closeErr)
+		}
+		t.transportAccess.Unlock()
+	}()
+	response, err := t.exchange(probeCtx, message, current)
+	if context.Cause(probeCtx) == urltest.ErrProbeNotRun {
+		// A local reset invalidates this sample. Retain any completed network
+		// or cleanup error for diagnostics.
+		return nil, E.Errors(urltest.ErrProbeNotRun, err)
 	}
 	return response, err
 }
@@ -291,6 +369,10 @@ func (t *HTTPSTransport) closeOwned() error {
 	t.transportAccess.Lock()
 	t.closed = true
 	all := append([]*HTTPSTransportWrapper(nil), t.transports...)
+	for probeTransport, cancel := range t.probeTransports {
+		cancel(urltest.ErrProbeNotRun)
+		probeTransport.boundary.StopRuntimeOperations()
+	}
 	t.transportAccess.Unlock()
 	for _, current := range all {
 		current.boundary.StopRuntimeOperations()
@@ -311,7 +393,7 @@ func (t *HTTPSTransport) RuntimeCloseAndWait() error {
 	return err
 }
 
-func (t *HTTPSTransport) exchange(ctx context.Context, message *mDNS.Msg) (*mDNS.Msg, error) {
+func (t *HTTPSTransport) exchange(ctx context.Context, message *mDNS.Msg, currentTransport *HTTPSTransportWrapper) (*mDNS.Msg, error) {
 	exMessage := *message
 	exMessage.Id = 0
 	exMessage.Compress = true
@@ -328,9 +410,11 @@ func (t *HTTPSTransport) exchange(ctx context.Context, message *mDNS.Msg) (*mDNS
 	request.Header = t.headers.Clone()
 	request.Header.Set("Content-Type", MimeType)
 	request.Header.Set("Accept", MimeType)
-	t.transportAccess.Lock()
-	currentTransport := t.transport
-	t.transportAccess.Unlock()
+	if currentTransport == nil {
+		t.transportAccess.Lock()
+		currentTransport = t.transport
+		t.transportAccess.Unlock()
+	}
 	response, err := currentTransport.RoundTrip(request)
 	if err != nil {
 		return nil, err

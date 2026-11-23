@@ -39,6 +39,17 @@ type runtimeNodeOptions struct {
 	index        int
 }
 
+func runtimeCertificateProviderHTTPClient(value any) (*option.HTTPClientOptions, bool) {
+	switch options := value.(type) {
+	case *option.ACMECertificateProviderOptions:
+		return options.HTTPClient, true
+	case *option.CloudflareOriginCACertificateProviderOptions:
+		return options.HTTPClient, true
+	default:
+		return nil, false
+	}
+}
+
 func runtimeConfigNodes(ctx context.Context, options option.Options) ([]runtimegraph.DependencyNode, map[string]runtimeNodeOptions, error) {
 	configs := make(map[string]runtimeNodeOptions)
 	routeOptions := common.PtrValueOrDefault(options.Route)
@@ -83,15 +94,11 @@ func runtimeConfigNodes(ctx context.Context, options option.Options) ([]runtimeg
 		return nil, nil, err
 	}
 	providerDependencies := func(value any) ([]string, bool) {
-		var client *option.HTTPClientOptions
-		switch options := value.(type) {
-		case *option.ACMECertificateProviderOptions:
-			client = options.HTTPClient
-		case *option.CloudflareOriginCACertificateProviderOptions:
-			client = options.HTTPClient
-		case *option.TailscaleCertificateProviderOptions:
+		if options, ok := value.(*option.TailscaleCertificateProviderOptions); ok {
 			return []string{"endpoint:" + options.Endpoint, "dns-router"}, true
-		default:
+		}
+		client, hasHTTP := runtimeCertificateProviderHTTPClient(value)
+		if !hasHTTP {
 			return nil, false
 		}
 		resolved := common.PtrValueOrDefault(client)
@@ -356,6 +363,9 @@ func runtimeConfigNodes(ctx context.Context, options option.Options) ([]runtimeg
 		node, err := makeNode(name, &outbound, deps, capturesDialerDefaults)
 		if err != nil {
 			return nil, nil, err
+		}
+		if selector, ok := outbound.Options.(*option.SelectorOutboundOptions); ok && selector.EphemeralPoolProbe {
+			node.Fingerprint = runtimeDigest([]byte(node.Fingerprint + ":ephemeral-pool-probe"))
 		}
 		if _, exists := configs[name]; exists {
 			return nil, nil, fmt.Errorf("duplicate runtime outbound")

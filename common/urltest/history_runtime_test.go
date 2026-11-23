@@ -3,10 +3,12 @@ package urltest
 import (
 	"bufio"
 	"context"
+	"crypto/sha256"
 	"errors"
 	"io"
 	"net"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -17,6 +19,54 @@ import (
 	"github.com/sagernet/sing/service"
 	"github.com/sagernet/sing/service/pause"
 )
+
+func TestPoolProbeTicketAuthenticatesScopedConnect(t *testing.T) {
+	now := time.Unix(1700000000, 0)
+	graph := strings.Repeat("a", 64) + "/1"
+	member := "节点 Naive ③"
+	digest := sha256.Sum256([]byte(member))
+	target := "probe.example:443"
+	ticket, ok := issuePoolProbeTicket(graph, 7, member, "Probe.Example:0443", true, now)
+	if !ok {
+		t.Fatal("ticket issuance rejected a valid normalized authority")
+	}
+	if tag, slot, ok := verifyPoolProbeTicket(ticket, graph, digest, target, true, now.Add(time.Second)); !ok || tag != member || slot != 7 {
+		t.Fatalf("verified member / slot = %q / %d, accepted = %t", tag, slot, ok)
+	}
+	for _, test := range []struct {
+		name       string
+		ticket     string
+		graph      string
+		digest     adapter.ProbeMemberDigest
+		target     string
+		background bool
+		now        time.Time
+	}{
+		{"another graph", ticket, strings.Repeat("a", 64) + "/2", digest, target, true, now},
+		{"another member", ticket, graph, sha256.Sum256([]byte("other")), target, true, now},
+		{"another authority", ticket, graph, digest, "probe.example:80", true, now},
+		{"foreground", ticket, graph, digest, target, false, now},
+		{"expired", ticket, graph, digest, target, true, now.Add(poolProbeTicketLifetime)},
+		{"future", ticket, graph, digest, target, true, now.Add(-time.Second)},
+		{"tampered MAC", ticket[:len(ticket)-8] + strings.Repeat("A", 8), graph, digest, target, true, now},
+		{"newline", ticket + "\n", graph, digest, target, true, now},
+		{"oversized", strings.Repeat("A", PoolProbeTicketMaxBytes+1), graph, digest, target, true, now},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if _, _, ok := verifyPoolProbeTicket(test.ticket, test.graph, test.digest, test.target, test.background, test.now); ok {
+				t.Fatal("out-of-scope ticket verified")
+			}
+		})
+	}
+	for _, authority := range []string{"probe.example", "probe.example:0", "probe.example:+443", "probe.example:65536", "user@probe.example:443", "probe.example:443/", "[probe.example]:443", "[fe80::1%lo]:443"} {
+		if _, ok := NormalizePoolProbeAuthority(authority); ok {
+			t.Fatalf("invalid CONNECT authority accepted: %q", authority)
+		}
+	}
+	if got, ok := NormalizePoolProbeAuthority("[2001:0db8::1]:443"); !ok || got != "[2001:db8::1]:443" {
+		t.Fatalf("canonical IPv6 authority = %q, accepted = %t", got, ok)
+	}
+}
 
 type runtimeHistoryOutbound struct {
 	adapter.Outbound

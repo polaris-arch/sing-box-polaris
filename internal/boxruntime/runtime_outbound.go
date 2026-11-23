@@ -49,6 +49,10 @@ func (m *runtimeOutboundManager) Outbound(tag string) (adapter.Outbound, bool) {
 	return m.wrap(lease.View(), outbound), true
 }
 
+func (m *runtimeOutboundManager) SelectOutboundAtGraphContext(ctx context.Context, graph adapter.RuntimeRevision, group, tag string) (bool, error) {
+	return m.coordinator.selectRuntimeOutbound(ctx, adapter.RuntimeResourceID{}, graph, group, tag)
+}
+
 func (m *runtimeOutboundManager) Default() adapter.Outbound {
 	lease, err := m.coordinator.store.Acquire()
 	if err != nil {
@@ -171,7 +175,8 @@ func (s *runtimeSelector) SelectOutbound(tag string) bool {
 }
 
 func (s *runtimeSelector) SelectOutboundContext(ctx context.Context, tag string) bool {
-	return s.manager.coordinator.selectRuntimeOutbound(ctx, s.id, s.tag, tag)
+	accepted, _ := s.manager.coordinator.selectRuntimeOutbound(ctx, s.id, adapter.RuntimeRevision{}, s.tag, tag)
+	return accepted
 }
 
 type runtimeURLTest struct{ *runtimeOutboundGroup }

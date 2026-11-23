@@ -32,6 +32,7 @@ import (
 	"github.com/gofrs/uuid/v5"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/encoding/protowire"
 	"google.golang.org/protobuf/proto"
@@ -1007,6 +1008,32 @@ func (s *StartedService) SelectOutbound(ctx context.Context, request *SelectOutb
 	s.serviceAccess.RUnlock()
 	if boxService == nil {
 		return nil, os.ErrInvalid
+	}
+	if values := metadata.ValueFromIncomingContext(ctx, "x-polaris-probe-graph"); len(values) > 0 {
+		if len(values) != 1 {
+			return nil, status.Error(codes.InvalidArgument, "expected one probe graph")
+		}
+		graph, valid := adapter.ParseRuntimeRevisionToken(values[0])
+		if !valid {
+			return nil, status.Error(codes.InvalidArgument, "invalid probe graph")
+		}
+		manager, supported := boxService.outboundManager.(interface {
+			SelectOutboundAtGraphContext(context.Context, adapter.RuntimeRevision, string, string) (bool, error)
+		})
+		if !supported {
+			return nil, status.Error(codes.Unimplemented, "probe graph selection unavailable")
+		}
+		selected, err := manager.SelectOutboundAtGraphContext(ctx, graph, request.GetGroupTag(), request.GetOutboundTag())
+		if errors.Is(err, adapter.ErrProbeGraphChanged) {
+			return nil, status.Error(codes.FailedPrecondition, err.Error())
+		}
+		if err != nil {
+			return nil, status.FromContextError(err).Err()
+		}
+		if !selected {
+			return nil, status.Error(codes.NotFound, "outbound not found in selector: "+request.GetOutboundTag())
+		}
+		return &emptypb.Empty{}, nil
 	}
 	outboundGroup, isLoaded := boxService.outboundManager.Outbound(request.GroupTag)
 	if !isLoaded {

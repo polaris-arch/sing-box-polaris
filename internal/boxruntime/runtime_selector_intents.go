@@ -33,6 +33,9 @@ func cloneRuntimeSelectorIntents(values []RuntimeSelectorIntent) []RuntimeSelect
 }
 
 func runtimeValidateSelectorIntents(options option.Options, intents []RuntimeSelectorIntent) error {
+	if len(intents) == 0 {
+		return nil
+	}
 	if len(intents) > 256 {
 		return errors.New("selector intent budget exceeded")
 	}
@@ -41,9 +44,13 @@ func runtimeValidateSelectorIntents(options option.Options, intents []RuntimeSel
 		return errors.New("selector intent byte budget exceeded")
 	}
 	seen := make(map[string]bool)
+	probeSlots := appProbeSelectors(options)
 	for _, intent := range intents {
 		if intent.Group == "" || intent.Selected == "" || seen[intent.Group] || len(intent.ExpectedSelectionPath) > 64 {
 			return errors.New("invalid or duplicate selector intent")
+		}
+		if probeSlots[intent.Group] {
+			return errors.New("selector intent cannot persist an ephemeral pool probe slot")
 		}
 		seen[intent.Group] = true
 		if intent.PinCurrentTCP {

@@ -9,7 +9,9 @@ import (
 	"testing"
 
 	"github.com/sagernet/sing-box/adapter"
+	"github.com/sagernet/sing-box/adapter/outbound"
 	"github.com/sagernet/sing-box/common/interrupt"
+	"github.com/sagernet/sing-box/common/urltest"
 	M "github.com/sagernet/sing/common/metadata"
 	N "github.com/sagernet/sing/common/network"
 )
@@ -36,12 +38,13 @@ func (o *selectorDelayedOutbound) ListenPacket(context.Context, M.Socksaddr) (ne
 
 type selectorTrackedConn struct {
 	net.Conn
-	closed bool
+	closed   bool
+	closeErr error
 }
 
 func (c *selectorTrackedConn) Close() error {
 	c.closed = true
-	return nil
+	return c.closeErr
 }
 
 type selectorTrackedPacketConn struct {
@@ -62,12 +65,17 @@ func TestSelectorLateDialAfterSwitch(t *testing.T) {
 			interruptExternal bool
 			switchNode        bool
 			wantClosed        bool
+			scoped            bool
 		}{
 			{name: "internal", switchNode: true, wantClosed: true},
 			{name: "external-preserved", external: true, switchNode: true},
 			{name: "external-interrupted", external: true, interruptExternal: true, switchNode: true, wantClosed: true},
+			{name: "scoped-probe", external: true, switchNode: true, wantClosed: true, scoped: true},
 			{name: "unchanged"},
 		} {
+			if tc.scoped && network != N.NetworkTCP {
+				continue
+			}
 			t.Run(network+"/"+tc.name, func(t *testing.T) {
 				stream := &selectorTrackedConn{}
 				packet := &selectorTrackedPacketConn{}
@@ -82,11 +90,22 @@ func TestSelectorLateDialAfterSwitch(t *testing.T) {
 					outbounds:                    map[string]adapter.Outbound{"new": &selectorDelayedOutbound{}},
 					interruptGroup:               interrupt.NewGroup(),
 					interruptExternalConnections: tc.interruptExternal,
+					ephemeralPoolProbe:           tc.scoped,
 				}
-				s.selected.Store(old)
+				s.selected.Store(&selectorSelection{outbound: old})
 				ctx := context.Background()
 				if tc.external {
 					ctx = interrupt.ContextWithIsExternalConnection(ctx)
+				}
+				wantErr := error(net.ErrClosed)
+				if tc.scoped {
+					pipe, peer := net.Pipe()
+					t.Cleanup(func() { _ = pipe.Close(); _ = peer.Close() })
+					stream.Conn = pipe
+					stream.closeErr = errors.New("scoped carrier close failed")
+					old.stream, _ = outbound.WrapRuntimeOwnedConn(stream)
+					ctx, _, _ = s.ScopePoolProbeSelection(ctx, 1)
+					wantErr = urltest.ErrProbeNotRun
 				}
 				var conn io.Closer
 				var err error
@@ -111,7 +130,7 @@ func TestSelectorLateDialAfterSwitch(t *testing.T) {
 					t.Cleanup(func() { conn.Close() })
 				}
 				if tc.wantClosed {
-					if !errors.Is(err, net.ErrClosed) || !closed {
+					if !errors.Is(err, wantErr) || !closed || (tc.scoped && !errors.Is(err, stream.closeErr)) {
 						t.Fatalf("old dial survived switch: err=%v closed=%v", err, closed)
 					}
 				} else if err != nil || closed {

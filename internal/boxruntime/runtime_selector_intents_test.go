@@ -1,11 +1,31 @@
 package boxruntime
 
 import (
+	"bytes"
+	"context"
+	"errors"
+	"fmt"
+	"net"
+	"path/filepath"
+	"slices"
 	"testing"
 
+	"github.com/sagernet/sing-box/adapter"
+	"github.com/sagernet/sing-box/adapter/inbound"
+	"github.com/sagernet/sing-box/common/urltest"
 	C "github.com/sagernet/sing-box/constant"
+	"github.com/sagernet/sing-box/dns"
+	"github.com/sagernet/sing-box/dns/transport"
+	"github.com/sagernet/sing-box/experimental/cachefile"
 	"github.com/sagernet/sing-box/internal/runtimegraph"
+	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
+	"github.com/sagernet/sing-box/protocol/group"
+	boxHTTP "github.com/sagernet/sing-box/protocol/http"
+	"github.com/sagernet/sing/common/json"
+	M "github.com/sagernet/sing/common/metadata"
+	N "github.com/sagernet/sing/common/network"
+	"github.com/sagernet/sing/service"
 )
 
 func TestSelectorIntentCandidateMembershipAndType(t *testing.T) {
@@ -62,5 +82,326 @@ func TestSelectorPinMustMatchConfirmedPhysicalWinner(t *testing.T) {
 	intent.ExpectedSelectionPath = nil
 	if runtimeValidateSelectorIntents(options, []RuntimeSelectorIntent{intent}) == nil {
 		t.Fatal("new group claimed an observed winner")
+	}
+}
+
+func TestRuntimeProbeSlotDisregardsImportedChoiceAndReplacementSnapshot(t *testing.T) {
+	const slot = "probe-selector-0"
+	const custom = "probe-selector-9"
+	path := filepath.Join(t.TempDir(), "cache.db")
+	openCache := func() (*cachefile.CacheFile, *adapter.Scope) {
+		logger := log.NewNOPFactory().Logger()
+		scope := adapter.NewScope(t.Context(), logger)
+		cache := cachefile.New(t.Context(), logger, option.CacheFileOptions{Path: path, CacheID: "test"})
+		if err := cache.Start(adapter.StartStateInitialize, scope); err != nil {
+			_ = scope.Close()
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = scope.Close() })
+		return cache, scope
+	}
+	cache, scope := openCache()
+	for _, group := range []string{slot, custom, "proxy-selector"} {
+		if err := cache.StoreSelected(group, "a"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := scope.Close(); err != nil {
+		t.Fatal(err)
+	}
+	config := func(port int) []byte {
+		return []byte(fmt.Sprintf(`{
+			"log":{"disabled":true},
+			"experimental":{"cache_file":{"enabled":true,"cache_id":"test","path":%q}},
+			"inbounds":[{"type":"http","tag":"probe-in-0","listen":"127.0.0.1"}],
+			"dns":{"servers":[{"type":"udp","tag":"resolver","server":"192.0.2.53"},
+				{"type":"https","tag":"dns-probe-exit-0","server":"223.5.5.5","server_port":443,"path":"/dns-query","detour":%q}],
+				"rules":[{"inbound":["probe-in-0"],"query_type":["A","AAAA"],"action":"route","server":"dns-probe-exit-0","disable_cache":true}],"final":"resolver"},
+			"outbounds":[{"type":"direct","tag":"direct"},
+				{"type":"socks","tag":"a","server":"192.0.2.1","server_port":%d},
+				{"type":"socks","tag":"b","server":"192.0.2.2","server_port":1080},
+				{"type":"selector","tag":%q,"outbounds":["a","b","direct"],"default":"direct","interrupt_exist_connections":true},
+				{"type":"selector","tag":%q,"outbounds":["a","b","direct"],"default":"direct","interrupt_exist_connections":true},
+				{"type":"selector","tag":"proxy-selector","outbounds":["a","b","direct"],"default":"direct"}],
+			"route":{"rules":[{"inbound":["probe-in-0"],"action":"route","outbound":%q}],"final":"proxy-selector"}
+		}`, path, slot, port, slot, custom, slot))
+	}
+	start := func(legacy bool) *runtimeTestFixture {
+		f, options := newRuntimeTestConstruction(t, runtimeTestConfig(1080, "example.org"), nil)
+		boxHTTP.RegisterInbound(service.FromContext[adapter.InboundRegistry](f.ctx).(*inbound.Registry))
+		transport.RegisterHTTPS(service.FromContext[adapter.DNSTransportRegistry](f.ctx).(*dns.TransportRegistry))
+		options.Options = option.Options{}
+		if err := json.UnmarshalContext(f.ctx, config(1080), &options.Options); err != nil {
+			t.Fatal(err)
+		}
+		if legacy {
+			options.Certificate = &option.CertificateOptions{Store: C.CertificateStoreNone, CertificateDirectoryPath: []string{t.TempDir()}}
+		}
+		box, err := New(options)
+		if err != nil {
+			t.Fatal(err)
+		}
+		f.box = box
+		t.Cleanup(func() { _ = box.CloseWithResult() })
+		if (box.runtime == nil) != legacy {
+			t.Fatal("fixture reached unexpected Box construction path")
+		}
+		f.start(t)
+		return f
+	}
+	check := func(f *runtimeTestFixture, group, want string) {
+		t.Helper()
+		outbound, exists := f.box.Outbound().Outbound(group)
+		if !exists {
+			t.Fatalf("missing group %s", group)
+		}
+		if got := outbound.(adapter.OutboundGroup).Selected(N.NetworkTCP).Tag(); got != want {
+			t.Errorf("%s selected %s; want %s", group, got, want)
+		}
+	}
+	choose := func(f *runtimeTestFixture, group, member string) {
+		t.Helper()
+		outbound, exists := f.box.Outbound().Outbound(group)
+		if !exists || !outbound.(interface{ SelectOutbound(string) bool }).SelectOutbound(member) {
+			t.Fatalf("legacy-compatible selector mutation rejected %s → %s", group, member)
+		}
+		check(f, group, member)
+	}
+
+	f := start(false)
+	apply := func(content []byte, revision uint64) {
+		t.Helper()
+		_, request := f.plan(t, content)
+		operation, err := f.box.applyRuntimeConfig(t.Context(), "actor-a", request)
+		if err != nil || operation.Active.Revision != revision {
+			t.Fatalf("failed real graph replacement: revision=%d, err=%v", operation.Active.Revision, err)
+		}
+	}
+	check(f, slot, "direct")
+	check(f, custom, "a")
+	check(f, "proxy-selector", "a")
+	choose(f, slot, "b")
+	choose(f, custom, "b")
+	choose(f, "proxy-selector", "b")
+	apply(config(1081), 2)
+	check(f, slot, "direct")
+	check(f, custom, "b")
+	check(f, "proxy-selector", "b")
+	choose(f, slot, "b")
+
+	// A route-only update after bootstrap reuses this exact selector, listener,
+	// DNS transport and member. Only a winning publication may clear its pin.
+	func() {
+		previousLease, err := f.box.runtime.store.Acquire()
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer previousLease.Release()
+		previous := previousLease.View().(*runtimeView)
+		slotOutbound, _ := previous.OutboundManager().Outbound(slot)
+		probe := slotOutbound.(*group.Selector)
+		dialCtx, selected, proofCurrent := probe.ScopePoolProbeSelection(t.Context(), previous.Identity().Revision)
+		if selected == nil || selected.Tag() != "b" || !proofCurrent() {
+			t.Fatal("old graph did not capture the selected member")
+		}
+		actualB := selected.(*runtimeTestSocks)
+		remote, peer := net.Pipe()
+		defer remote.Close()
+		defer peer.Close()
+		actualB.dialHook = func(context.Context, string, M.Socksaddr) (net.Conn, error) { return remote, nil }
+		business, _ := previous.OutboundManager().Outbound("proxy-selector")
+		conn, err := business.DialContext(t.Context(), N.NetworkTCP, M.Socksaddr{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer conn.Close()
+		next := bytes.Replace(config(1081), []byte(`"outbound":"probe-selector-0"}],"final":"proxy-selector"`), []byte(`"outbound":"probe-selector-0"},{"domain":"unrelated.example","action":"route","outbound":"proxy-selector"}],"final":"proxy-selector"`), 1)
+
+		failed := bytes.Replace(next, []byte(`"outbounds":[`), []byte(`"outbounds":[{"type":"socks","tag":"reject-stage","server":"192.0.2.3","server_port":1080},`), 1)
+		f.setConstructorHook(func(outbound *runtimeTestSocks) error {
+			if outbound.Tag() == "reject-stage" {
+				outbound.startHook = func(stage adapter.StartStage) error {
+					if stage == adapter.StartStatePostStart {
+						return errors.New("rejected before publishing probe reset")
+					}
+					return nil
+				}
+			}
+			return nil
+		})
+		_, request := f.plan(t, failed)
+		rejected, err := f.box.applyRuntimeConfig(t.Context(), "actor-a", request)
+		f.setConstructorHook(nil)
+		if err != nil || len(rejected.Errors) == 0 || rejected.Active.Revision != previous.Identity().Revision || !proofCurrent() {
+			t.Fatalf("failed publication changed the active probe: revision=%d, errors=%v, err=%v", rejected.Active.Revision, rejected.Errors, err)
+		}
+		check(f, slot, "b")
+		apply(next, 3)
+		activeLease, err := f.box.runtime.store.Acquire()
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer activeLease.Release()
+		active := activeLease.View().(*runtimeView)
+		reused, _ := active.OutboundManager().Outbound(slot)
+		if reused != slotOutbound || active.componentIDs["outbound:"+slot] != previous.componentIDs["outbound:"+slot] ||
+			active.componentIDs["inbound:probe-in-0"] != previous.componentIDs["inbound:probe-in-0"] ||
+			active.componentIDs["dns-transport:dns-probe-exit-0"] != previous.componentIDs["dns-transport:dns-probe-exit-0"] {
+			t.Fatal("route-only publication rebuilt an unchanged probe resource")
+		}
+		check(f, slot, "direct")
+		if refs := probe.References(); len(refs) != 1 || refs[0] != "direct" {
+			t.Fatalf("retired probe member still contributes census references: %v", refs)
+		}
+		if proofCurrent() {
+			t.Fatal("old in-flight probe could prove a reset selection")
+		}
+		if _, err := probe.DialContext(dialCtx, N.NetworkTCP, M.Socksaddr{}); !errors.Is(err, urltest.ErrProbeNotRun) {
+			t.Fatalf("old in-flight DNS detour borrowed the reset member: %v", err)
+		}
+
+		manager := f.box.Outbound().(*runtimeOutboundManager)
+		if accepted, err := manager.SelectOutboundAtGraphContext(t.Context(), active.Identity(), slot, "b"); !accepted || err != nil {
+			t.Fatalf("fresh graph could not reselect the same slot member: %v", err)
+		}
+		if accepted, err := manager.SelectOutboundAtGraphContext(t.Context(), previous.Identity(), slot, "direct"); accepted || !errors.Is(err, adapter.ErrProbeGraphChanged) {
+			t.Fatalf("old graph release reached the new selection: accepted=%v error=%v", accepted, err)
+		}
+		if _, selected, _ := probe.ScopePoolProbeSelection(t.Context(), previous.Identity().Revision); selected != nil || proofCurrent() {
+			t.Fatal("old graph borrowed the new selection of its previous member")
+		}
+		check(f, slot, "b")
+		deadline, _ := runtimeTestContext(t).Deadline()
+		if err := conn.SetDeadline(deadline); err != nil {
+			t.Fatal(err)
+		}
+		payload := []byte("admitted business")
+		sent := make(chan error, 1)
+		go func() {
+			_, writeErr := peer.Write(payload)
+			sent <- writeErr
+		}()
+		reader := make([]byte, len(payload))
+		if _, err := conn.Read(reader); err != nil || !bytes.Equal(reader, payload) {
+			t.Fatalf("admitted business flow interrupted, got=%q err=%v", reader, err)
+		}
+		if err := <-sent; err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	var typed option.Options
+	if err := json.UnmarshalContext(f.ctx, config(1081), &typed); err != nil {
+		t.Fatal(err)
+	}
+	if err := runtimeValidateSelectorIntents(typed, []RuntimeSelectorIntent{{Group: slot, Selected: "b"}}); err == nil {
+		t.Fatal("durable intent accepted for an ephemeral pool slot")
+	}
+	if err := runtimeValidateSelectorIntents(typed, []RuntimeSelectorIntent{{Group: custom, Selected: "b"}}); err != nil {
+		t.Fatal("durable intent rejected for ordinary selector with reserve-like tag", err)
+	}
+	t.Run("ordinary_consumers", func(t *testing.T) {
+		isEphemeral := func(o option.Options) bool {
+			index := slices.IndexFunc(o.Outbounds, func(outbound option.Outbound) bool { return outbound.Tag == slot })
+			return o.Outbounds[index].Options.(*option.SelectorOutboundOptions).EphemeralPoolProbe
+		}
+		for _, test := range []struct {
+			name    string
+			consume func(*option.Options)
+		}{
+			{"ordinary selector member", func(o *option.Options) {
+				group := o.Outbounds[len(o.Outbounds)-1].Options.(*option.SelectorOutboundOptions)
+				group.Outbounds = append(group.Outbounds, slot)
+			}},
+			{"URL-test member", func(o *option.Options) {
+				o.Outbounds = append(o.Outbounds, option.Outbound{Type: C.TypeURLTest, Tag: "custom-test", Options: &option.URLTestOutboundOptions{Outbounds: []string{slot}}})
+			}},
+			{"custom outbound detour", func(o *option.Options) {
+				o.Outbounds[1].Options.(*option.SOCKSOutboundOptions).Detour = slot
+			}},
+			{"additional DNS route", func(o *option.Options) {
+				rule := o.DNS.Rules[0]
+				rule.DefaultOptions.Inbound = []string{"other-in"}
+				o.DNS.Rules = append(o.DNS.Rules, rule)
+			}},
+			{"custom resolver", func(o *option.Options) {
+				o.Route.DefaultDomainResolver = &option.DomainResolveOptions{Server: "dns-probe-exit-0"}
+			}},
+			{"remote rule-set download detour", func(o *option.Options) {
+				o.Route.RuleSet = []option.RuleSet{{Type: C.RuleSetTypeRemote, RemoteOptions: option.RemoteRuleSet{DownloadDetour: slot}}}
+			}},
+			{"remote rule-set HTTP client", func(o *option.Options) {
+				o.Route.RuleSet = []option.RuleSet{{Type: C.RuleSetTypeRemote, RemoteOptions: option.RemoteRuleSet{HTTPClient: &option.HTTPClientOptions{
+					DialerOptions: option.DialerOptions{Detour: slot},
+				}}}}
+			}},
+			{"certificate provider HTTP client", func(o *option.Options) {
+				o.CertificateProviders = []option.CertificateProvider{{Options: &option.ACMECertificateProviderOptions{HTTPClient: &option.HTTPClientOptions{
+					DialerOptions: option.DialerOptions{Detour: slot},
+				}}}}
+			}},
+			{"implicit default outbound", func(o *option.Options) {
+				o.Route.Final = ""
+				o.Outbounds[0], o.Outbounds[3] = o.Outbounds[3], o.Outbounds[0]
+			}},
+			{"implicit default DNS", func(o *option.Options) {
+				o.DNS.Final = ""
+				o.DNS.Servers[0], o.DNS.Servers[1] = o.DNS.Servers[1], o.DNS.Servers[0]
+			}},
+			{"DNS wildcard", func(o *option.Options) {
+				o.DNS.Rules[0].DefaultOptions.QueryType = nil
+			}},
+		} {
+			t.Run(test.name, func(t *testing.T) {
+				var ordinary option.Options
+				if err := json.UnmarshalContext(f.ctx, config(1081), &ordinary); err != nil {
+					t.Fatal(err)
+				}
+				configured := withAppProbeSelectionScope(ordinary)
+				if isEphemeral(ordinary) || !isEphemeral(configured) {
+					t.Fatal("selector ownership mutated shared configuration or missed the App slot")
+				}
+				test.consume(&configured)
+				if replacement := withAppProbeSelectionScope(configured); isEphemeral(replacement) || !isEphemeral(configured) {
+					t.Fatal("ordinary consumer retained an ephemeral slot or changed the borrowed owner")
+				}
+			})
+		}
+	})
+
+	// Changing only the route role must replace the slot, even though its own
+	// options and all resolved member outbounds are exactly the same.
+	ordinary := bytes.Replace(config(1081), []byte(`"action":"route","outbound"`), []byte(`"action":"route","network":"tcp","outbound"`), 1)
+	apply(ordinary, 4)
+	check(f, slot, "a")
+	choose(f, slot, "b")
+	apply(config(1081), 5)
+	check(f, slot, "direct")
+	choose(f, slot, "b")
+	choose(f, slot, "direct")
+	if err := f.box.CloseWithResult(); err != nil {
+		t.Fatal(err)
+	}
+
+	cache, scope = openCache()
+	if err := cache.StoreSelected(slot, "a"); err != nil {
+		t.Fatal(err)
+	}
+	if err := scope.Close(); err != nil {
+		t.Fatal(err)
+	}
+	legacy := start(true)
+	check(legacy, slot, "direct")
+	check(legacy, custom, "b")
+	choose(legacy, slot, "b")
+	if err := legacy.box.CloseWithResult(); err != nil {
+		t.Fatal(err)
+	}
+	cache, _ = openCache()
+	if got := cache.LoadSelected(slot); got != "a" {
+		t.Errorf("probe slot rewrote the previously imported cache row: %q", got)
+	}
+	if got := cache.LoadSelected(custom); got != "b" {
+		t.Fatalf("custom selector's persisted choice = %q", got)
 	}
 }

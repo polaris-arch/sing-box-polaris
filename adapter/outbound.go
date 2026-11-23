@@ -2,8 +2,10 @@ package adapter
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
+	"net"
 	"net/netip"
 
 	"github.com/sagernet/sing-box/log"
@@ -18,6 +20,36 @@ var ErrOutboundCapacity = errors.New("outbound engine capacity exhausted")
 // ErrOutboundForegroundSlot is a local capacity refusal caused by reserving the last slot for foreground work.
 var ErrOutboundForegroundSlot = fmt.Errorf("outbound engine slot reserved for foreground: %w", ErrOutboundCapacity)
 
+// ErrProbeBindingMismatch means the route did not match the probe's member or graph.
+var ErrProbeBindingMismatch = errors.New("probe route binding mismatch")
+
+// ProbeMemberDigest identifies the intended member of a loopback probe selector.
+type ProbeMemberDigest [sha256.Size]byte
+
+// ProbeBinding pins a loopback probe to a member and optionally to one runtime graph.
+type ProbeBinding struct {
+	Member       ProbeMemberDigest
+	Graph        RuntimeRevision
+	OnVerified   func()
+	TicketMember string
+	TicketSlot   uint32
+}
+
+type probeBindingKey struct{}
+
+func ContextWithProbeBinding(ctx context.Context, binding ProbeBinding) context.Context {
+	return context.WithValue(ctx, probeBindingKey{}, binding)
+}
+
+// TakeProbeBinding consumes the binding at route admission so nested dials do not inherit it.
+func TakeProbeBinding(ctx context.Context) (context.Context, ProbeBinding, bool) {
+	binding, loaded := ctx.Value(probeBindingKey{}).(ProbeBinding)
+	if loaded {
+		ctx = context.WithValue(ctx, probeBindingKey{}, nil)
+	}
+	return ctx, binding, loaded
+}
+
 // IsOutboundForegroundSlot recognizes a refusal with no accompanying failure.
 func IsOutboundForegroundSlot(err error) bool {
 	return isOnlyOutboundError(err, ErrOutboundForegroundSlot)
@@ -26,6 +58,11 @@ func IsOutboundForegroundSlot(err error) bool {
 // IsOutboundCapacity recognizes a capacity refusal with no accompanying failure.
 func IsOutboundCapacity(err error) bool {
 	return isOnlyOutboundError(err, ErrOutboundCapacity)
+}
+
+// IsOutboundClosed recognizes a closed outbound with no accompanying failure.
+func IsOutboundClosed(err error) bool {
+	return isOnlyOutboundError(err, net.ErrClosed)
 }
 
 func isOnlyOutboundError(err, target error) bool {

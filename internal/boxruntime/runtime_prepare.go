@@ -674,6 +674,14 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 				prepared.activate = append(prepared.activate, activate.RuntimeActivate)
 			}
 		}
+		if !owned[bindings[node.Name]] {
+			if selector, ok := component.outbound.(interface {
+				EphemeralPoolProbe() bool
+				PreparePoolProbeReset(uint64) func()
+			}); ok && selector.EphemeralPoolProbe() {
+				prepared.probeResets = append(prepared.probeResets, selector.PreparePoolProbeReset(identity.Revision))
+			}
+		}
 		if err := outboundManager.Insert(component.outbound, scope); err != nil {
 			return prepared, err
 		}

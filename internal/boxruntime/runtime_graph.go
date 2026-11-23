@@ -103,6 +103,7 @@ type preparedRuntimeGraph struct {
 	platformRequest          context.Context
 	platform                 *route.RuntimePlatform
 	apiHandoffs              []adapter.RuntimeAPIHandoff
+	probeResets              []func()
 	checkCertificateClaims   func([]runtimeCertificateClaim) error
 	bindCertificateStorage   func(string, os.FileInfo) error
 	certificateClaimContext  context.Context

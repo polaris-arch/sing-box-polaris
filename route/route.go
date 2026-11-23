@@ -2,12 +2,15 @@ package route
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"io"
 	"net"
 	"net/netip"
 	"slices"
+	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/sagernet/sing-box/adapter"
@@ -40,6 +43,8 @@ var defaultPacketSniffers = []sniff.PacketSniffer{
 	sniff.NTP,
 }
 
+type poolProbeRouteKey struct{}
+
 // Deprecated: use RouteConnectionEx instead.
 func (r *Router) RouteConnection(ctx context.Context, conn net.Conn, metadata adapter.InboundContext) error {
 	done := make(chan any)
@@ -69,8 +74,13 @@ func (r *Router) RouteConnectionEx(ctx context.Context, conn net.Conn, metadata 
 }
 
 func (r *Router) routeConnection(ctx context.Context, conn net.Conn, metadata adapter.InboundContext, onClose N.CloseHandlerFunc) error {
+	ctx, probeBinding, boundProbe := adapter.TakeProbeBinding(ctx)
 	//nolint:staticcheck
 	if metadata.InboundDetour != "" {
+		if probeBinding.TicketMember != "" {
+			closeRouteHandshakeFailure(conn, onClose, adapter.ErrProbeBindingMismatch)
+			return nil
+		}
 		if metadata.LastInbound == metadata.InboundDetour {
 			return E.New("routing loop on detour: ", metadata.InboundDetour)
 		}
@@ -85,8 +95,39 @@ func (r *Router) routeConnection(ctx context.Context, conn net.Conn, metadata ad
 		metadata.LastInbound = metadata.Inbound
 		metadata.Inbound = metadata.InboundDetour
 		metadata.InboundDetour = ""
+		if boundProbe {
+			ctx = adapter.ContextWithProbeBinding(ctx, probeBinding)
+		}
 		injectable.NewConnection(ctx, conn, metadata, onClose)
 		return nil
+	}
+	if probeBinding.Graph.Incarnation != "" {
+		lease, ok := adapter.RuntimeLeaseFromContext(ctx)
+		if !ok || lease.View().Identity() != probeBinding.Graph {
+			closeRouteHandshakeFailure(conn, onClose, adapter.ErrProbeBindingMismatch)
+			return nil
+		}
+	}
+	var probeMember adapter.Outbound
+	matchCtx := ctx
+	probeDestination := metadata.Destination
+	if probeBinding.TicketMember != "" {
+		slot := strconv.FormatUint(uint64(probeBinding.TicketSlot), 10)
+		selector, _ := r.outbound.Outbound("probe-selector-" + slot)
+		group, selectable := selector.(interface {
+			PoolProbeMember(string) (adapter.Outbound, bool)
+		})
+		if !selectable || metadata.Inbound != "probe-in-"+slot || metadata.InboundType != C.TypeHTTP {
+			closeRouteHandshakeFailure(conn, onClose, adapter.ErrProbeBindingMismatch)
+			return nil
+		}
+		var available bool
+		probeMember, available = group.PoolProbeMember(probeBinding.TicketMember)
+		if !available {
+			closeRouteHandshakeFailure(conn, onClose, adapter.ErrProbeBindingMismatch)
+			return nil
+		}
+		matchCtx = context.WithValue(ctx, poolProbeRouteKey{}, selector.Tag())
 	}
 	metadata.Network = N.NetworkTCP
 	switch metadata.Destination.Fqdn {
@@ -106,9 +147,14 @@ func (r *Router) routeConnection(ctx context.Context, conn net.Conn, metadata ad
 	if deadline.NeedAdditionalReadDeadline(conn) {
 		conn = deadline.NewConn(conn)
 	}
-	selectedRule, _, buffers, _, err := r.matchRule(ctx, &metadata, conn, nil)
+	selectedRule, _, buffers, _, err := r.matchRule(matchCtx, &metadata, conn, nil)
 	if err != nil {
 		return err
+	}
+	if probeMember != nil && (selectedRule == nil || metadata.Destination != probeDestination) {
+		buf.ReleaseMulti(buffers)
+		closeRouteHandshakeFailure(conn, onClose, adapter.ErrProbeBindingMismatch)
+		return nil
 	}
 	var selectedOutbound adapter.Outbound
 	if selectedRule != nil {
@@ -147,7 +193,41 @@ func (r *Router) routeConnection(ctx context.Context, conn net.Conn, metadata ad
 	if selectedRule == nil {
 		selectedOutbound = r.outbound.Default()
 	}
-	chain, err := resolveOutbound(selectedOutbound, N.NetworkTCP)
+	// The compatibility path still uses a mutable selected member. Retain the
+	// exact selection through its dial, and drop proof if publication retired it.
+	resolvedMember := probeMember
+	if probeMember == nil && probeBinding.Graph.Revision != 0 && probeBinding.OnVerified != nil {
+		if selector, ok := selectedOutbound.(interface {
+			EphemeralPoolProbe() bool
+			ScopePoolProbeSelection(context.Context, uint64) (context.Context, adapter.Outbound, func() bool)
+		}); ok && selector.EphemeralPoolProbe() {
+			var current func() bool
+			ctx, resolvedMember, current = selector.ScopePoolProbeSelection(ctx, probeBinding.Graph.Revision)
+			if resolvedMember == nil {
+				buf.ReleaseMulti(buffers)
+				closeRouteHandshakeFailure(conn, onClose, adapter.ErrProbeBindingMismatch)
+				return nil
+			}
+			verify := probeBinding.OnVerified
+			probeBinding.OnVerified = func() {
+				if current() {
+					verify()
+				}
+			}
+		}
+	}
+	var chain []adapter.Outbound
+	if resolvedMember != nil {
+		chain, err = resolveOutbound(resolvedMember, N.NetworkTCP)
+		chain = append([]adapter.Outbound{selectedOutbound}, chain...)
+	} else {
+		chain, err = resolveOutbound(selectedOutbound, N.NetworkTCP)
+	}
+	if boundProbe && !probeMemberMatches(metadata.Inbound, chain, probeBinding.Member) {
+		buf.ReleaseMulti(buffers)
+		closeRouteHandshakeFailure(conn, onClose, adapter.ErrProbeBindingMismatch)
+		return nil
+	}
 	if err != nil {
 		buf.ReleaseMulti(buffers)
 		return err
@@ -164,16 +244,42 @@ func (r *Router) routeConnection(ctx context.Context, conn net.Conn, metadata ad
 		conn = tracker.RoutedConnection(ctx, conn, metadata, selectedRule, selectedOutbound)
 	}
 	ctx = interrupt.ContextWithIsExternalConnection(ctx)
-	onClose = registerInterrupt(chain, conn, onClose)
+	var staleSelection error = net.ErrClosed
+	if boundProbe {
+		staleSelection = adapter.ErrProbeBindingMismatch
+	}
+	interruptChain := chain
+	if probeMember != nil {
+		// The first selector has no shared selection to interrupt. Nested
+		// selectors still apply their normal interruption rules.
+		interruptChain = chain[1:]
+	}
+	onClose, attached := registerInterrupt(interruptChain, conn, onClose, staleSelection)
+	if !attached {
+		return nil
+	}
 	outbound := chain[len(chain)-1]
 	if outboundHandler, isHandler := outbound.(adapter.ConnectionHandler); isHandler {
 		outboundHandler.NewConnection(ctx, conn, metadata, onClose)
-	} else {
-		r.connection.NewConnection(ctx, outbound, conn, metadata, onClose)
+		return nil
 	}
+	if probeBinding.OnVerified != nil {
+		if manager, ok := r.connection.(*ConnectionManager); ok {
+			manager.newConnection(ctx, outbound, conn, metadata, onClose, probeBinding.OnVerified)
+			return nil
+		}
+	}
+	r.connection.NewConnection(ctx, outbound, conn, metadata, onClose)
 	return nil
 }
 
+func probeMemberMatches(inbound string, chain []adapter.Outbound, member adapter.ProbeMemberDigest) bool {
+	slot, present := strings.CutPrefix(inbound, "probe-in-")
+	return present && slot != "" && len(chain) > 1 &&
+		chain[0].Tag() == "probe-selector-"+slot && sha256.Sum256([]byte(chain[1].Tag())) == member
+}
+
+// resolveOutbound retains the traversed chain on failure for probe member validation.
 func resolveOutbound(outbound adapter.Outbound, network string) ([]adapter.Outbound, error) {
 	chain := []adapter.Outbound{outbound}
 	for {
@@ -183,33 +289,85 @@ func resolveOutbound(outbound adapter.Outbound, network string) ([]adapter.Outbo
 		}
 		outbound = group.Selected(network)
 		if outbound == nil {
-			return nil, E.New(strings.ToUpper(network), " is not supported by outbound: ", group.Tag())
+			return chain, E.New(strings.ToUpper(network), " is not supported by outbound: ", group.Tag())
 		}
 		chain = append(chain, outbound)
 	}
 	if !common.Contains(outbound.Network(), network) {
-		return nil, E.New(strings.ToUpper(network), " is not supported by outbound: ", outbound.Tag())
+		return chain, E.New(strings.ToUpper(network), " is not supported by outbound: ", outbound.Tag())
 	}
 	return chain, nil
 }
 
-func registerInterrupt(chain []adapter.Outbound, closer io.Closer, onClose N.CloseHandlerFunc) N.CloseHandlerFunc {
+const (
+	routeInterruptPending = iota
+	routeInterruptRequested
+	routeInterruptArmed
+)
+
+type routeInterruptCloser struct {
+	closer io.Closer
+	state  atomic.Uint32
+}
+
+func (c *routeInterruptCloser) Close() error {
+	// An interrupt can run inside an attachment callback. Leave the socket open
+	// for the route to report failure until all groups have been checked.
+	if c.state.CompareAndSwap(routeInterruptPending, routeInterruptRequested) {
+		return nil
+	}
+	// Claim the close before calling out so another group can interrupt reentrantly.
+	if c.state.CompareAndSwap(routeInterruptArmed, routeInterruptRequested) {
+		return c.closer.Close()
+	}
+	return nil
+}
+
+func registerInterrupt(chain []adapter.Outbound, closer io.Closer, onClose N.CloseHandlerFunc, staleSelection error) (N.CloseHandlerFunc, bool) {
+	if len(chain) == 1 {
+		return onClose, true
+	}
+	interruptCloser := &routeInterruptCloser{closer: closer}
 	var removers []func()
-	for _, outbound := range chain {
-		group, isGroup := outbound.(adapter.OutboundGroup)
-		if !isGroup {
-			continue
+	current := true
+	for index, outbound := range chain[:len(chain)-1] {
+		group := outbound.(adapter.OutboundGroup)
+		if selector, ok := group.(interface {
+			AttachConnectionForSelection(io.Closer, adapter.Outbound) (func(), bool)
+		}); ok {
+			var detach func()
+			detach, current = selector.AttachConnectionForSelection(interruptCloser, chain[index+1])
+			if !current {
+				break
+			}
+			removers = append(removers, detach)
+		} else {
+			removers = append(removers, group.AttachConnection(interruptCloser))
 		}
-		removers = append(removers, group.AttachConnection(closer))
 	}
-	if len(removers) == 0 {
-		return onClose
-	}
-	return N.AppendClose(onClose, func(it error) {
+	removeAll := func(error) {
 		for _, remove := range removers {
 			remove()
 		}
-	})
+	}
+	if !current || !interruptCloser.state.CompareAndSwap(routeInterruptPending, routeInterruptArmed) {
+		removeAll(nil)
+		closeRouteHandshakeFailure(closer, onClose, staleSelection)
+		return nil, false
+	}
+	return N.AppendClose(onClose, removeAll), true
+}
+
+func closeRouteHandshakeFailure(closer io.Closer, onClose N.CloseHandlerFunc, cause error) {
+	defer closer.Close()
+	err := N.ReportHandshakeFailure(closer, cause)
+	if err == nil {
+		err = cause
+	}
+	// A managed connection's Close also finishes the flow. Report the route error first.
+	if onClose != nil {
+		onClose(err)
+	}
 }
 
 func (r *Router) RoutePacketConnection(ctx context.Context, conn N.PacketConn, metadata adapter.InboundContext) error {
@@ -333,7 +491,10 @@ func (r *Router) routePacketConnection(ctx context.Context, conn N.PacketConn, m
 		conn = newFakeIPNATPacketConn(bufio.NewNetPacketConn(conn), metadata.OriginDestination, metadata.Destination)
 	}
 	ctx = interrupt.ContextWithIsExternalConnection(ctx)
-	onClose = registerInterrupt(chain, conn, onClose)
+	onClose, attached := registerInterrupt(chain, conn, onClose, net.ErrClosed)
+	if !attached {
+		return nil
+	}
 	outbound := chain[len(chain)-1]
 	if outboundHandler, isHandler := outbound.(adapter.PacketConnectionHandler); isHandler {
 		outboundHandler.NewPacketConnection(ctx, conn, metadata, onClose)
@@ -645,12 +806,20 @@ func (r *Router) matchRule(
 	if fatalErr != nil {
 		return
 	}
+	probeSelector, scoped := ctx.Value(poolProbeRouteKey{}).(string)
 
 match:
 	for currentRuleIndex, currentRule := range r.rules {
 		metadata.ResetRuleCache()
 		if !currentRule.Match(metadata) {
 			continue
+		}
+		if scoped {
+			action, ok := currentRule.Action().(*R.RuleActionRoute)
+			if !ok || action.Outbound != probeSelector {
+				fatalErr = adapter.ErrProbeBindingMismatch
+				return
+			}
 		}
 		ruleDescription := currentRule.String()
 		if ruleDescription != "" {

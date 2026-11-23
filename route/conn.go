@@ -2,6 +2,7 @@ package route
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net"
 	"net/netip"
@@ -17,6 +18,7 @@ import (
 	"github.com/sagernet/sing-box/common/sniff"
 	"github.com/sagernet/sing-box/common/tlsfragment"
 	"github.com/sagernet/sing-box/common/tlsspoof"
+	"github.com/sagernet/sing-box/common/urltest"
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-tun"
 	"github.com/sagernet/sing/common"
@@ -115,6 +117,10 @@ func (m *ConnectionManager) TrackPacketConn(conn net.PacketConn) net.PacketConn 
 }
 
 func (m *ConnectionManager) NewConnection(ctx context.Context, this N.Dialer, conn net.Conn, metadata adapter.InboundContext, onClose N.CloseHandlerFunc) {
+	m.newConnection(ctx, this, conn, metadata, onClose, nil)
+}
+
+func (m *ConnectionManager) newConnection(ctx context.Context, this N.Dialer, conn net.Conn, metadata adapter.InboundContext, onClose N.CloseHandlerFunc, verifyProbe func()) {
 	ctx, flow, taskDone, taskErr := m.reserveFlow(ctx, conn)
 	if taskErr != nil {
 		N.CloseOnHandshakeFailure(conn, onClose, taskErr)
@@ -132,6 +138,18 @@ func (m *ConnectionManager) NewConnection(ctx context.Context, this N.Dialer, co
 		remoteConn, err = this.DialContext(ctx, N.NetworkTCP, metadata.Destination)
 	}
 	if err != nil {
+		if verifyProbe != nil &&
+			!errors.Is(err, context.Canceled) &&
+			!errors.Is(err, urltest.ErrProbeNotRun) &&
+			!adapter.IsOutboundClosed(err) {
+			// Final shutdown seals the manager before canceling its flows.
+			m.access.Lock()
+			live := !m.closed && ctx.Err() == nil
+			m.access.Unlock()
+			if live {
+				verifyProbe()
+			}
+		}
 		var remoteString string
 		if len(metadata.DestinationAddresses) > 0 {
 			remoteString = "[" + strings.Join(common.Map(metadata.DestinationAddresses, netip.Addr.String), ",") + "]"
@@ -167,6 +185,9 @@ func (m *ConnectionManager) NewConnection(ctx context.Context, this N.Dialer, co
 	if !flow.replace(1, remoteConn, base) {
 		N.CloseOnHandshakeFailure(m.closer(ctx, conn), onClose, net.ErrClosed)
 		return
+	}
+	if verifyProbe != nil && ctx.Err() == nil {
+		verifyProbe()
 	}
 	err = N.ReportConnHandshakeSuccess(conn, remoteConn)
 	if err != nil {

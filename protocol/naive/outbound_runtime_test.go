@@ -6,13 +6,16 @@ import (
 	"context"
 	"errors"
 	"net"
+	"runtime"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
+	"weak"
 
 	"github.com/sagernet/cronet-go"
 	"github.com/sagernet/sing-box/adapter"
+	"github.com/sagernet/sing-box/common/dialer"
 	"github.com/sagernet/sing-box/common/urltest"
 	"github.com/sagernet/sing-box/internal/runtimegraph"
 	"github.com/sagernet/sing-box/log"
@@ -244,6 +247,50 @@ func TestNaiveOutboundSealedReceiverAndClientAccessor(t *testing.T) {
 	}
 }
 
+type naiveProbeTestResolver struct{}
+
+func (naiveProbeTestResolver) PoolProbeResolverEligible() bool { return true }
+
+func TestNaivePoolProbeEligibility(t *testing.T) {
+	owner, err := runtimegraph.NewResourceOwner(t.Context(), adapter.RuntimeResourceID{Incarnation: "naive", Sequence: 1}, nil, func() error { return nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(owner.Seal)
+	runtime := &outboundRuntime{source: owner, registered: true}
+	direct := dialer.NewResolveDialer(t.Context(), &dialer.DefaultDialer{}, false, "", adapter.DNSQueryOptions{}, 0)
+	tests := []struct {
+		name   string
+		header string
+		want   bool
+	}{
+		{name: "regular header", header: "X-Custom", want: true},
+		{name: "native control", header: "-connect-authority"},
+		{name: "pseudo header", header: ":authority"},
+		{name: "host override", header: "hOsT"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			h := &Outbound{
+				runtime: runtime,
+				clients: &naiveClientSlot{
+					owner:             runtime,
+					poolProbeResolver: naiveProbeTestResolver{},
+					options: cronet.NaiveClientOptions{
+						ServerAddress: M.ParseSocksaddrHostPort("127.0.0.1", 443),
+						ServerName:    "proxy.example",
+						Dialer:        direct,
+						ExtraHeaders:  map[string]string{test.header: "example.org"},
+					},
+				},
+			}
+			if got := h.PoolProbeNaiveEligible(); got != test.want {
+				t.Fatalf("PoolProbeNaiveEligible() = %v, want %v", got, test.want)
+			}
+		})
+	}
+}
+
 func testWarmNaiveOutbound(t *testing.T) (*Outbound, *naiveClientIncarnation) {
 	t.Helper()
 	ctx := t.Context()
@@ -413,7 +460,8 @@ func TestNaiveOutboundIdleRetirementKeepsUncertainOwner(t *testing.T) {
 
 func TestNaiveOutboundLateDialCompensatesBeforeClose(t *testing.T) {
 	r := newOutboundRuntime(context.Background())
-	r.client = naiveOutboundTestCloser{}
+	sealed := make(chan struct{})
+	r.client = naiveOutboundTestCloser{close: func() error { close(sealed); return nil }}
 	if err := r.install(context.Background()); err != nil {
 		t.Fatal(err)
 	}
@@ -425,12 +473,12 @@ func TestNaiveOutboundLateDialCompensatesBeforeClose(t *testing.T) {
 	t.Cleanup(releaseClose)
 	raw := &naiveOutboundTestConn{close: func() error { close(closeEntered); <-closeRelease; return nil }}
 	d := r.guardDialer(naiveOutboundTestDialer{dial: func(context.Context) (net.Conn, error) { close(entered); <-returned; return raw, nil }})
-	dialDone := make(chan struct{})
-	go func() { _, _ = d.DialContext(context.Background(), "tcp", M.Socksaddr{}); close(dialDone) }()
+	dialDone := make(chan error, 1)
+	go func() { _, err := d.DialContext(context.Background(), "tcp", M.Socksaddr{}); dialDone <- err }()
 	naiveOutboundWait(t, entered)
 	closed := make(chan struct{})
 	go func() { _ = r.close(); close(closed) }()
-	naiveOutboundWait(t, r.ctx.Done())
+	naiveOutboundWait(t, sealed)
 	releaseDial()
 	naiveOutboundWait(t, closeEntered)
 	select {
@@ -439,7 +487,14 @@ func TestNaiveOutboundLateDialCompensatesBeforeClose(t *testing.T) {
 	default:
 	}
 	releaseClose()
-	naiveOutboundWait(t, dialDone)
+	select {
+	case err := <-dialDone:
+		if !errors.Is(err, net.ErrClosed) {
+			t.Fatalf("late dial: %v", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("late dial did not finish")
+	}
 	naiveOutboundWait(t, closed)
 }
 
@@ -470,6 +525,70 @@ func TestNaiveOutboundPhysicalCarrierUsesRelayAndHalfClose(t *testing.T) {
 	}
 	if err := conn.Close(); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestNaiveOutboundClosedPhysicalCarriersAreReleased(t *testing.T) {
+	r := newOutboundRuntime(t.Context())
+	t.Cleanup(func() { _ = r.close() })
+	if err := r.install(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	var carriers []weak.Pointer[naiveOutboundTestConn]
+	d := r.guardDialer(naiveOutboundTestDialer{dial: func(context.Context) (net.Conn, error) {
+		raw := new(naiveOutboundTestConn)
+		carriers = append(carriers, weak.Make(raw))
+		return raw, nil
+	}})
+	for range 64 {
+		conn, err := d.DialContext(t.Context(), N.NetworkTCP, M.Socksaddr{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := conn.Close(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		runtime.GC()
+		retained := 0
+		for _, carrier := range carriers {
+			if carrier.Value() != nil {
+				retained++
+			}
+		}
+		if retained == 0 {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("open owner retains %d of %d already closed physical carriers", retained, len(carriers))
+		}
+		time.Sleep(time.Millisecond)
+	}
+}
+
+func TestNaiveOutboundPhysicalCarrierFailureRemainsSticky(t *testing.T) {
+	r := newOutboundRuntime(t.Context())
+	if err := r.install(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	want := &net.OpError{Op: "close", Net: "naive", Err: context.Canceled}
+	raw := &naiveOutboundTestConn{close: func() error { return want }}
+	d := r.guardDialer(naiveOutboundTestDialer{dial: func(context.Context) (net.Conn, error) { return raw, nil }})
+	conn, err := d.DialContext(t.Context(), N.NetworkTCP, M.Socksaddr{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = conn.Close(); !errors.Is(err, want) {
+		t.Fatalf("carrier returned %v, want %v", err, want)
+	}
+	for range 2 {
+		var marker interface{ RuntimeCleanupIncomplete() bool }
+		if err = r.close(); !errors.Is(err, want) || errors.Is(err, context.Canceled) ||
+			!errors.As(err, &marker) || !marker.RuntimeCleanupIncomplete() {
+			t.Fatalf("owner lost carrier cleanup failure: %v", err)
+		}
 	}
 }
 
