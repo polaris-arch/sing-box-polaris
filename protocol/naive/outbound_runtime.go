@@ -211,7 +211,8 @@ func (h *Outbound) WithURLTestDialer(ctx context.Context, test func(context.Cont
 		}
 	}()
 	options := h.clients.options
-	if h.clients.owner != owner {
+	if h.server != nil {
+		options = h.server.options
 		options.Context = h.ctx
 		options.Logger = h.logger
 		if h.clients.resolverForLogger != nil {

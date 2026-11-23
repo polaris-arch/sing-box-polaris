@@ -400,18 +400,257 @@
 +}
 --- a/naive_client.go
 +++ b/naive_client.go
-@@ -41,0 +42 @@
+@@ -3,0 +4 @@
++	"bytes"
+@@ -7,0 +9 @@
++	"net/netip"
+@@ -10,0 +13 @@
++	"strings"
+@@ -20,0 +24,2 @@
++
++	mDNS "github.com/miekg/dns"
+@@ -41,0 +47 @@
 +	clientStateDormant
-@@ -43,0 +45 @@
+@@ -43,0 +50 @@
 +	clientStateSealed
-@@ -52,0 +55,4 @@
+@@ -52,0 +60,4 @@
 +	nativeOperations         int
 +	onIdle                   func()
 +	reserveEngines           func(context.Context, int) (func(int), error)
 +	releaseEngines           func(int)
-@@ -54,0 +61 @@
+@@ -54,0 +66 @@
 +	startError               error
-@@ -106,0 +114,8 @@
+@@ -59,4 +71,2 @@
+-	serverAddress            M.Socksaddr
+-	serverName               string
+-	serverURL                string
+-	authorization            string
++	server                   *NaiveServer
++	registry                 *NaiveServerRegistry
+@@ -64 +73,0 @@
+-	extraHeaders             map[string]string
+@@ -69,3 +77,0 @@
+-	echConfigList            []byte
+-	echQueryServerName       string
+-	echMutex                 sync.RWMutex
+@@ -85,0 +92,216 @@
++// NaiveServer is the identity of one proxy server: the URL and headers of its
++// streams and the DNS answers its engine resolves for it.
++type NaiveServer struct {
++	address            M.Socksaddr
++	name               string
++	url                string
++	authorization      string
++	extraHeaders       map[string]string
++	echConfigList      []byte
++	echQueryServerName string
++	echMutex           sync.RWMutex
++	registry           *NaiveServerRegistry
++	entry              *naiveServerEntry
++	isolationKey       string
++	keep               bool
++}
++
++// Registries answer server names with addresses from this reserved block:
++// never a real server, the in-process DNS server or a fake-IP pool.
++var naiveSyntheticPrefix = netip.MustParsePrefix("240.0.0.0/4")
++
++// NaiveServerRegistry lets clients with equal engine options share one engine
++// across servers. Their DNS answers each registered server name with a unique
++// synthetic address, from which their dial callbacks recover the real server.
++// A registry outlives the clients created with it.
++type NaiveServerRegistry struct {
++	access    sync.Mutex
++	names     map[string]*naiveServerEntry
++	addresses map[netip.Addr]*naiveServerEntry
++	sequence  uint32
++}
++
++// One resolution and connection context per registered server name.
++type naiveServerEntry struct {
++	server     *NaiveServer
++	address    netip.Addr
++	servers    int
++	keeps      int
++	streams    int
++	relay      context.Context
++	closeRelay context.CancelFunc
++}
++
++func naiveServerKey(name string) string {
++	return strings.ToLower(strings.TrimSuffix(name, "."))
++}
++
++// Register adds a server for streams of clients created with this registry.
++// A name already registered with another address or ECH setting is rejected;
++// the caller keeps that server on a dedicated client.
++func (r *NaiveServerRegistry) Register(config NaiveClientOptions) (*NaiveServer, error) {
++	server, err := newNaiveServer(config)
++	if err != nil {
++		return nil, err
++	}
++	for key := range server.extraHeaders {
++		// Chromium reads its control headers case-insensitively, so one server
++		// could otherwise replace the isolation key of every stream it opens.
++		if key == "" || key[0] == '-' || key[0] == ':' || strings.EqualFold(key, "host") {
++			return nil, E.New("reserved header on shared server: ", key)
++		}
++	}
++	name := naiveServerKey(server.name)
++	r.access.Lock()
++	defer r.access.Unlock()
++	if r.sequence == 1<<28-2 {
++		return nil, E.New("server registry exhausted")
++	}
++	r.sequence++
++	entry := r.names[name]
++	if entry == nil {
++		// Chromium dials an IP literal host without DNS.
++		address, err := netip.ParseAddr(name)
++		if err != nil {
++			address = netip.AddrFrom4([4]byte{240 | byte(r.sequence>>24), byte(r.sequence >> 16), byte(r.sequence >> 8), byte(r.sequence)})
++		} else if naiveSyntheticPrefix.Contains(address) {
++			return nil, E.New("reserved server address: ", address)
++		}
++		if r.names == nil {
++			r.names = make(map[string]*naiveServerEntry)
++			r.addresses = make(map[netip.Addr]*naiveServerEntry)
++		}
++		entry = &naiveServerEntry{server: server, address: address}
++		entry.relay, entry.closeRelay = context.WithCancel(context.Background())
++		r.names[name] = entry
++		r.addresses[address] = entry
++	} else if !strings.EqualFold(entry.server.address.AddrString(), server.address.AddrString()) ||
++		naiveServerKey(entry.server.echQueryServerName) != naiveServerKey(server.echQueryServerName) || !bytes.Equal(entry.server.echConfigList, server.echConfigList) {
++		return nil, E.New("server name ", server.name, " is registered with another address or ECH setting")
++	}
++	entry.servers++
++	entry.keeps++
++	server.registry = r
++	server.entry = entry
++	server.isolationKey = F.ToString("n", r.sequence)
++	server.keep = true
++	return server, nil
++}
++
++// Close unregisters the server. Its name stays registered until its last
++// stream ends.
++func (s *NaiveServer) Close() {
++	s.registry.access.Lock()
++	defer s.registry.access.Unlock()
++	entry := s.entry
++	if entry == nil {
++		return
++	}
++	s.entry = nil
++	entry.servers--
++	if s.keep {
++		entry.keeps--
++	}
++	s.registry.closeIdleLocked(entry, false)
++}
++
++// SetKeep sets whether idle connections stay open. Without keep, they close
++// when the last stream ends. Servers with one name share their connections.
++func (s *NaiveServer) SetKeep(keep bool) {
++	s.registry.access.Lock()
++	defer s.registry.access.Unlock()
++	if s.entry == nil || s.keep == keep {
++		return
++	}
++	s.keep = keep
++	if keep {
++		s.entry.keeps++
++		return
++	}
++	s.entry.keeps--
++	s.registry.closeIdleLocked(s.entry, false)
++}
++
++// CloseIdleConnections closes the connections of servers with this name
++// unless they have an active stream.
++func (s *NaiveServer) CloseIdleConnections() {
++	s.registry.access.Lock()
++	defer s.registry.access.Unlock()
++	if s.entry != nil {
++		s.registry.closeIdleLocked(s.entry, true)
++	}
++}
++
++func (r *NaiveServerRegistry) closeIdleLocked(entry *naiveServerEntry, explicit bool) {
++	if entry.streams != 0 || (entry.keeps != 0 && !explicit) {
++		return
++	}
++	entry.closeRelay()
++	if entry.servers == 0 {
++		delete(r.names, naiveServerKey(entry.server.name))
++		delete(r.addresses, entry.address)
++	} else {
++		entry.relay, entry.closeRelay = context.WithCancel(context.Background())
++	}
++}
++
++func (r *NaiveServerRegistry) finishStream(entry *naiveServerEntry) {
++	r.access.Lock()
++	defer r.access.Unlock()
++	entry.streams--
++	r.closeIdleLocked(entry, false)
++}
++
++func (r *NaiveServerRegistry) wrapDNSResolver(resolver DNSResolverFunc, echEnabled bool, quicEnabled bool, l logger.ContextLogger) DNSResolverFunc {
++	return func(ctx context.Context, request *mDNS.Msg) *mDNS.Msg {
++		if len(request.Question) > 0 {
++			question := request.Question[0]
++			name := naiveServerKey(question.Name)
++			if strings.HasPrefix(name, "_") {
++				if _, serverName, found := strings.Cut(name, "._https."); found {
++					name = serverName
++				}
++			}
++			r.access.Lock()
++			entry := r.names[name]
++			r.access.Unlock()
++			if entry != nil {
++				switch question.Qtype {
++				case mDNS.TypeA, mDNS.TypeAAAA:
++					return synthesizeAddressResponse(request, entry.address)
++				case mDNS.TypeHTTPS:
++					if echEnabled {
++						server := entry.server
++						return wrapDNSResolverWithECH(resolver, server.name, server.echQueryServerName, server.getECHConfigList, quicEnabled, l)(ctx, request)
++					}
++				}
++			}
++		}
++		return resolver(ctx, request)
++	}
++}
++
++// relay maps a dialed address to its registered server and derives the
++// physical connection's context, canceled with the server's connections.
++func (r *NaiveServerRegistry) relay(ctx context.Context, destination M.Socksaddr) (context.Context, context.CancelFunc, M.Socksaddr, error) {
++	r.access.Lock()
++	entry := r.addresses[destination.Addr]
++	var serverRelay context.Context
++	if entry != nil {
++		serverRelay = entry.relay
++		port := destination.Port
++		destination = entry.server.address
++		destination.Port = port
++	}
++	r.access.Unlock()
++	if entry == nil && naiveSyntheticPrefix.Contains(destination.Addr) {
++		return nil, nil, destination, E.New("unregistered server address")
++	}
++	relayContext, relayCancel := context.WithCancel(ctx)
++	if entry == nil {
++		return relayContext, relayCancel, destination, nil
++	}
++	stop := context.AfterFunc(serverRelay, relayCancel)
++	return relayContext, func() { stop(); relayCancel() }, destination, nil
++}
++
+@@ -106,0 +329,11 @@
 +
 +	// OnIdle may run on a native callback thread and must not block on Close.
 +	OnIdle func()
@@ -420,11 +659,85 @@
 +	// in one or more calls as unused slots or destroyed engines are freed.
 +	// Both callbacks must be nonblocking and may run under the lifecycle lock.
 +	ReserveEngines func(ctx context.Context, count int) (release func(int), err error)
-@@ -180,0 +196,2 @@
++	// Registry shares the engine across its servers, which open streams with
++	// DialServerEarly. Its physical dials complete after the dial callback.
++	Registry *NaiveServerRegistry
+@@ -114,2 +347,3 @@
+-	if !config.ServerAddress.IsValid() {
+-		return nil, E.New("invalid server address")
++	server, err := newNaiveServer(config)
++	if err != nil {
++		return nil, err
+@@ -121,16 +354,0 @@
+-	serverName := config.ServerName
+-	if serverName == "" {
+-		serverName = config.ServerAddress.AddrString()
+-	}
+-
+-	serverURL := &url.URL{
+-		Scheme: "https",
+-		Host:   net.JoinHostPort(serverName, F.ToString(config.ServerAddress.Port)),
+-	}
+-
+-	var authorization string
+-	if config.Username != "" {
+-		authorization = "Basic " + base64.StdEncoding.EncodeToString(
+-			[]byte(config.Username+":"+config.Password))
+-	}
+-
+@@ -161,5 +379,2 @@
+-		serverAddress:            config.ServerAddress,
+-		serverName:               serverName,
+-		serverURL:                serverURL.String(),
+-		authorization:            authorization,
+-		extraHeaders:             config.ExtraHeaders,
++		server:                   server,
++		registry:                 config.Registry,
+@@ -170,2 +384,0 @@
+-		echConfigList:            config.ECHConfigList,
+-		echQueryServerName:       config.ECHQueryServerName,
+@@ -180,0 +394,2 @@
 +		onIdle:                   config.OnIdle,
 +		reserveEngines:           config.ReserveEngines,
-@@ -184 +201,7 @@
+@@ -184 +399,44 @@
 -func (c *NaiveClient) Start() (startResult error) {
++func newNaiveServer(config NaiveClientOptions) (*NaiveServer, error) {
++	if !config.ServerAddress.IsValid() {
++		return nil, E.New("invalid server address")
++	}
++
++	serverName := config.ServerName
++	if serverName == "" {
++		serverName = config.ServerAddress.AddrString()
++	}
++
++	serverURL := &url.URL{
++		Scheme: "https",
++		Host:   net.JoinHostPort(serverName, F.ToString(config.ServerAddress.Port)),
++	}
++
++	var authorization string
++	if config.Username != "" {
++		authorization = "Basic " + base64.StdEncoding.EncodeToString(
++			[]byte(config.Username+":"+config.Password))
++	}
++
++	echQueryServerName := config.ECHQueryServerName
++	if echQueryServerName == "" {
++		echQueryServerName = serverName
++	}
++
++	return &NaiveServer{
++		address:            config.ServerAddress,
++		name:               serverName,
++		url:                serverURL.String(),
++		authorization:      authorization,
++		extraHeaders:       config.ExtraHeaders,
++		echConfigList:      config.ECHConfigList,
++		echQueryServerName: echQueryServerName,
++	}, nil
++}
++
 +// Start starts a new or prepared client without waiting for its first dial.
 +func (c *NaiveClient) Start() error {
 +	return c.start(c.ctx, false)
@@ -432,7 +745,7 @@
 +
 +// StartOnDemand validates custom roots before the first dial starts the engine.
 +func (c *NaiveClient) StartOnDemand(ctx context.Context) error {
-@@ -186,10 +209,23 @@
+@@ -186,10 +444,23 @@
 -	if !c.state.CompareAndSwap(uint32(clientStateCreated), uint32(clientStateStarting)) {
 -		state := clientState(c.state.Load())
 -		c.lifecycle.Unlock()
@@ -466,7 +779,7 @@
 +			close(c.started)
 +			close(c.closed)
 +			return c.startError
-@@ -197,0 +234,13 @@
+@@ -197,0 +469,28 @@
 +	c.state.Store(uint32(clientStateDormant))
 +	return nil
 +}
@@ -480,7 +793,7 @@
 +	defer engine.Destroy()
 +	return engine.SetTrustedRootCertificates(c.trustedRootCertificates)
 +}
-@@ -198,0 +248,40 @@
++
 +func (c *NaiveClient) IsDormant() bool {
 +	return clientState(c.state.Load()) == clientStateDormant
 +}
@@ -495,7 +808,7 @@
 +		return net.ErrClosed
 +	}
 +}
-+
+@@ -198,0 +498,25 @@
 +func (c *NaiveClient) start(ctx context.Context, onDemand bool) (startResult error) {
 +	c.lifecycle.Lock()
 +	state := clientState(c.state.Load())
@@ -521,34 +834,150 @@
 +		c.releaseEngines = release
 +	}
 +	c.state.Store(uint32(clientStateStarting))
-@@ -205,0 +295,3 @@
+@@ -205,0 +530,3 @@
 +			if c.releaseEngines != nil && len(engines) < engineCount {
 +				c.releaseEngines(engineCount - len(engines))
 +			}
-@@ -206,0 +299 @@
+@@ -206,0 +534 @@
 +			c.startError = startError
-@@ -238 +331 @@
+@@ -222,3 +550,6 @@
+-	if c.serverName != c.serverAddress.AddrString() {
+-		dnsResolver = wrapDNSResolverForServerRedirect(dnsResolver, c.serverName, c.serverAddress)
+-	}
++	if c.registry != nil {
++		dnsResolver = c.registry.wrapDNSResolver(dnsResolver, c.echEnabled, c.quicEnabled, c.logger)
++	} else {
++		if c.server.name != c.server.address.AddrString() {
++			dnsResolver = wrapDNSResolverForServerRedirect(dnsResolver, c.server.name, c.server.address)
++		}
+@@ -226,4 +557,2 @@
+-	if c.echEnabled {
+-		echQueryServerName := c.echQueryServerName
+-		if echQueryServerName == "" {
+-			echQueryServerName = c.serverName
++		if c.echEnabled {
++			dnsResolver = wrapDNSResolverWithECH(dnsResolver, c.server.name, c.server.echQueryServerName, c.server.getECHConfigList, c.quicEnabled, c.logger)
+@@ -231 +559,0 @@
+-		dnsResolver = wrapDNSResolverWithECH(dnsResolver, c.serverName, echQueryServerName, c.getECHConfigList, c.quicEnabled, c.logger)
+@@ -238 +566 @@
 -		defer c.callbacks.Done()
 +		defer c.finishOperation(&c.callbacks)
-@@ -294 +387 @@
+@@ -255,0 +584,29 @@
++		if c.registry != nil {
++			relayContext, relayCancel, server, err := c.registry.relay(proxyContext, destination)
++			if err != nil {
++				c.logger.ErrorContext(c.ctx, "open TCP connection to ", destination, ": ", err)
++				return NetErrorConnectionFailed.Code()
++			}
++			fd, pipeConn, err := createSocketPair()
++			if err != nil {
++				c.logger.ErrorContext(c.ctx, "socket pair failed: ", err)
++				relayCancel()
++				return NetErrorConnectionFailed.Code()
++			}
++			// The network thread serves every server: dial after returning.
++			c.proxyWaitGroup.Add(1)
++			go func() {
++				defer c.proxyWaitGroup.Done()
++				defer relayCancel()
++				defer pipeConn.Close()
++				c.logger.DebugContext(c.ctx, "open TCP connection to ", server)
++				conn, err := c.dialer.DialContext(relayContext, N.NetworkTCP, server)
++				if err != nil {
++					c.logger.ErrorContext(c.ctx, "open TCP connection to ", server, ": ", err)
++					return
++				}
++				bufio.CopyConn(relayContext, conn, pipeConn)
++				conn.Close()
++			}()
++			return fd
++		}
+@@ -294 +651 @@
 -		defer c.callbacks.Done()
 +		defer c.finishOperation(&c.callbacks)
-@@ -363,4 +455,0 @@
+@@ -318,0 +676,35 @@
++		if c.registry != nil {
++			relayContext, relayCancel, server, err := c.registry.relay(proxyContext, destination)
++			if err != nil {
++				c.logger.ErrorContext(c.ctx, "open UDP connection to ", destination, ": ", err)
++				return NetErrorConnectionFailed.Code(), "", 0, nil
++			}
++			fd, pipeConn, err := createPacketSocketPair(c.testForceUDPLoopback)
++			if err != nil {
++				c.logger.ErrorContext(c.ctx, "socket pair failed: ", err)
++				relayCancel()
++				return NetErrorConnectionFailed.Code(), "", 0, nil
++			}
++			// The real local address is unknown before the dial; Cronet only
++			// reports this one back as the socket's own.
++			localAddr := M.SocksaddrFromNet(pipeConn.LocalAddr())
++			if localAddr.IsValid() {
++				localAddress = localAddr.AddrString()
++				localPort = localAddr.Port
++			}
++			c.proxyWaitGroup.Add(1)
++			go func() {
++				defer c.proxyWaitGroup.Done()
++				defer relayCancel()
++				c.logger.DebugContext(c.ctx, "open UDP connection to ", server)
++				conn, err := c.dialer.DialContext(relayContext, N.NetworkUDP, server)
++				if err != nil {
++					c.logger.ErrorContext(c.ctx, "open UDP connection to ", server, ": ", err)
++					pipeConn.Close()
++					return
++				}
++				remoteAddress := M.SocksaddrFromNet(conn.RemoteAddr())
++				_ = bufio.CopyPacketConn(relayContext, bufio.NewUnbindPacketConn(conn), bufio.NewUnbindPacketConnWithAddr(pipeConn.(net.Conn), remoteAddress))
++			}()
++			return fd, localAddress, localPort, relayCancel
++		}
+@@ -363,4 +754,0 @@
 -	engineCount := 1
 -	if c.concurrency > 1 && !c.singleEngine {
 -		engineCount = c.concurrency
 -	}
-@@ -382,0 +472,3 @@
+@@ -382,0 +771,3 @@
 +	if version := c.Version(); version != "" {
 +		c.logger.Info("NaiveProxy started, version: ", version)
 +	}
-@@ -465 +557 @@
+@@ -415,0 +807,10 @@
++			sessionReceiveWindow := c.quicSessionReceiveWindow
++			if runtime.GOOS == "ios" {
++				// Same receive backlog bound as the HTTP/2 default below.
++				if streamReceiveWindow == 0 {
++					streamReceiveWindow = 2 * 1024 * 1024
++				}
++				if sessionReceiveWindow == 0 {
++					sessionReceiveWindow = 4 * 1024 * 1024
++				}
++			}
+@@ -419 +819,0 @@
+-			sessionReceiveWindow := c.quicSessionReceiveWindow
+@@ -465 +865 @@
 -	defer c.pending.Done()
 +	defer c.finishOperation(&c.pending)
-@@ -477 +569 @@
+@@ -477 +877 @@
 -	defer c.pending.Done()
 +	defer c.finishOperation(&c.pending)
-@@ -494,5 +586,13 @@
+@@ -484 +884,9 @@
+-	return c.dialEarly(ctx, destination, StreamEngine.CreateConn, (*BidirectionalConn).Start)
++	return c.dialEarly(ctx, c.server, "", destination, StreamEngine.CreateConn, (*BidirectionalConn).Start)
++}
++
++// DialServerEarly opens a stream through a server registered with the
++// client's registry. Streams carry the server's isolation key, n1, n2 and so
++// on; a nonempty isolationKey, another single DNS label, replaces it so that
++// the stream shares no connection or cached state with other keys.
++func (c *NaiveClient) DialServerEarly(ctx context.Context, server *NaiveServer, isolationKey string, destination M.Socksaddr) (NaiveConn, error) {
++	return c.dialEarly(ctx, server, isolationKey, destination, StreamEngine.CreateConn, (*BidirectionalConn).Start)
+@@ -489 +897 @@
+-func (c *NaiveClient) dialEarly(ctx context.Context, destination M.Socksaddr,
++func (c *NaiveClient) dialEarly(ctx context.Context, server *NaiveServer, isolationKey string, destination M.Socksaddr,
+@@ -492,0 +901,3 @@
++	if server.registry != c.registry {
++		return nil, E.New("server is not registered with the client registry")
++	}
+@@ -494,5 +905,13 @@
 -	switch state {
 -	case clientStateRunning:
 -	case clientStateClosed, clientStateClosing:
@@ -567,12 +996,12 @@
 +		state = clientState(c.state.Load())
 +	}
 +	if state < clientStateRunning {
-@@ -501,3 +601 @@
+@@ -501,3 +920 @@
 -			if clientState(c.state.Load()) != clientStateRunning {
 -				return nil, net.ErrClosed
 -			}
 +			state = clientState(c.state.Load())
-@@ -509,0 +608,7 @@
+@@ -509,0 +927,7 @@
 +	if state != clientStateRunning {
 +		// A terminal startup error is published before the closing state.
 +		if c.startError != nil {
@@ -580,19 +1009,67 @@
 +		}
 +		return nil, net.ErrClosed
 +	}
-@@ -513 +618 @@
+@@ -513 +937 @@
 -	defer c.pending.Done()
 +	defer c.finishOperation(&c.pending)
-@@ -576 +681 @@
+@@ -521,2 +945,2 @@
+-	if c.authorization != "" {
+-		headers["proxy-authorization"] = c.authorization
++	if server.authorization != "" {
++		headers["proxy-authorization"] = server.authorization
+@@ -527 +951 @@
+-	for key, value := range c.extraHeaders {
++	for key, value := range server.extraHeaders {
+@@ -531,0 +956,3 @@
++	if isolationKey == "" {
++		isolationKey = server.isolationKey
++	}
+@@ -537 +964,20 @@
+-			headers["-network-isolation-key"] = F.ToString("https://pool-", concurrencyIndex, ":443")
++			if isolationKey == "" {
++				isolationKey = "pool"
++			}
++			isolationKey = F.ToString(isolationKey, "-", concurrencyIndex)
++		}
++	}
++	if isolationKey != "" {
++		// Sessions, TLS resumption, Alt-Svc and host cache are keyed by it.
++		headers["-network-isolation-key"] = F.ToString("https://", isolationKey, ":443")
++	}
++	var entry *naiveServerEntry
++	if c.registry != nil {
++		c.registry.access.Lock()
++		entry = server.entry
++		if entry != nil {
++			entry.streams++
++		}
++		c.registry.access.Unlock()
++		if entry == nil {
++			return nil, net.ErrClosed
+@@ -541,2 +987,2 @@
+-	c.trackConnection(conn)
+-	err := startConn(conn, "CONNECT", c.serverURL, headers, 0, false)
++	c.trackConnection(conn, entry)
++	err := startConn(conn, "CONNECT", server.url, headers, 0, false)
+@@ -576 +1022 @@
 -		case clientStateCreated:
 +		case clientStateCreated, clientStateDormant:
-@@ -588 +693 @@
+@@ -588 +1034 @@
 -		case clientStateRunning:
 +		case clientStateRunning, clientStateSealed:
-@@ -624 +729 @@
+@@ -624 +1070 @@
 -		closeError = errors.Join(closeError, shutdownNaiveEngine(engine.Shutdown, engine.Destroy))
 +		closeError = errors.Join(closeError, shutdownNaiveEngine(engine.Shutdown, engine.Destroy, c.releaseEngines))
-@@ -655 +759,0 @@
+@@ -634,4 +1080,4 @@
+-func (c *NaiveClient) getECHConfigList() []byte {
+-	c.echMutex.RLock()
+-	defer c.echMutex.RUnlock()
+-	return c.echConfigList
++func (s *NaiveServer) getECHConfigList() []byte {
++	s.echMutex.RLock()
++	defer s.echMutex.RUnlock()
++	return s.echConfigList
+@@ -655 +1100,0 @@
 -
 --- a/naive_client_lifecycle.go
 +++ b/naive_client_lifecycle.go
@@ -628,35 +1105,53 @@
 +	}
 +}
 +
+@@ -34 +63 @@
+-func (c *NaiveClient) trackConnection(conn *BidirectionalConn) {
++func (c *NaiveClient) trackConnection(conn *BidirectionalConn, entry *naiveServerEntry) {
 @@ -41,0 +71 @@
 +			defer c.activeConnections.Done()
 @@ -43,0 +74 @@
 +			idle := c.onIdle != nil && c.idleLocked()
-@@ -47 +78,3 @@
+@@ -44,0 +76,3 @@
++			if entry != nil {
++				c.registry.finishStream(entry)
++			}
+@@ -47 +81,3 @@
 -			c.activeConnections.Done()
 +			if idle {
 +				c.onIdle()
 +			}
-@@ -54 +87 @@
+@@ -54 +90 @@
 -func shutdownNaiveEngine(shutdown func() Result, destroy func()) error {
 +func shutdownNaiveEngine(shutdown func() Result, destroy func(), release func(int)) error {
-@@ -58,0 +92,3 @@
+@@ -58,0 +95,3 @@
 +	if release != nil {
 +		release(1)
 +	}
 --- a/naive_client_lifecycle_test.go
 +++ b/naive_client_lifecycle_test.go
-@@ -4,0 +5 @@
+@@ -4,0 +5,6 @@
++	"crypto/ecdsa"
++	"crypto/elliptic"
++	"crypto/rand"
++	"crypto/tls"
++	"crypto/x509"
 +	"encoding/pem"
-@@ -5,0 +7,4 @@
+@@ -5,0 +12,7 @@
++	"math/big"
 +	"net"
++	"net/http"
 +	"net/http/httptest"
++	"net/netip"
 +	"runtime"
 +	"slices"
-@@ -11,0 +17,2 @@
+@@ -11,0 +25,2 @@
 +
 +	mDNS "github.com/miekg/dns"
-@@ -31,0 +39,188 @@
+@@ -15 +30 @@
+-	c := &NaiveClient{ctx: context.Background(), started: make(chan struct{}), closed: make(chan struct{}), connections: make(map[*BidirectionalConn]struct{})}
++	c := &NaiveClient{ctx: context.Background(), server: &NaiveServer{}, started: make(chan struct{}), closed: make(chan struct{}), connections: make(map[*BidirectionalConn]struct{})}
+@@ -31,0 +47,188 @@
 +func TestNaiveDormantClientControlsAndClose(t *testing.T) {
 +	c := lifecycleTestClient(clientStateCreated)
 +	if err := c.StartOnDemand(t.Context()); err != nil {
@@ -845,12 +1340,12 @@
 +	}
 +}
 +
-@@ -48,2 +243,2 @@
+@@ -48,2 +251,2 @@
 -	c.pending.Done()
 -	c.callbacks.Done()
 +	c.finishOperation(&c.pending)
 +	c.finishOperation(&c.callbacks)
-@@ -58,0 +254,38 @@
+@@ -58,0 +262,38 @@
 +func TestNaiveIdleSealWaitsForNativeWorkAndStreams(t *testing.T) {
 +	c := lifecycleTestClient(clientStateRunning)
 +	idle := make(chan struct{}, 1)
@@ -862,7 +1357,7 @@
 +		t.Fatal("sealed during native operation")
 +	}
 +	conn := &BidirectionalConn{done: make(chan struct{})}
-+	c.trackConnection(conn)
++	c.trackConnection(conn, nil)
 +	c.finishOperation(&c.pending)
 +	if c.TrySealIdle() {
 +		t.Fatal("sealed during native callback")
@@ -889,9 +1384,12 @@
 +	}
 +}
 +
-@@ -120,0 +354 @@
+@@ -69 +310 @@
+-		c.trackConnection(conn)
++		c.trackConnection(conn, nil)
+@@ -120,0 +362 @@
 +		released := 0
-@@ -126 +360,6 @@
+@@ -126 +368,6 @@
 -		}, func() { called = true })
 +		}, func() { called = true }, func(count int) {
 +			if !called {
@@ -899,7 +1397,244 @@
 +			}
 +			released += count
 +		})
-@@ -128,0 +368,3 @@
-+		}
+@@ -129,0 +377,3 @@
 +		if (success && released != 1) || (!success && released != 0) {
 +			t.Fatalf("success=%v released=%d", success, released)
++		}
+@@ -157 +407 @@
+-		_, err := c.dialEarly(context.Background(), M.Socksaddr{},
++		_, err := c.dialEarly(context.Background(), c.server, "", M.Socksaddr{},
+@@ -206 +456 @@
+-		_, err := c.dialEarly(context.Background(), M.Socksaddr{},
++		_, err := c.dialEarly(context.Background(), c.server, "", M.Socksaddr{},
+@@ -251,0 +502,230 @@
++
++func TestNaiveServerRegistryResolutionAndRelay(t *testing.T) {
++	r := &NaiveServerRegistry{}
++	options := NaiveClientOptions{ServerAddress: M.ParseSocksaddrHostPort("192.0.2.1", 443), ServerName: "Example.org", ECHConfigList: []byte{1}}
++	a, err := r.Register(options)
++	if err != nil {
++		t.Fatal(err)
++	}
++	options.ServerName, options.ServerAddress.Port = "example.org.", 8443
++	b, err := r.Register(options)
++	if err != nil || b.entry != a.entry || a.isolationKey == b.isolationKey {
++		t.Fatalf("same resolution must share one entry with distinct keys: %v", err)
++	}
++	for _, conflict := range []NaiveClientOptions{
++		{ServerAddress: M.ParseSocksaddrHostPort("192.0.2.2", 443), ServerName: "example.org", ECHConfigList: []byte{1}},
++		{ServerAddress: M.ParseSocksaddrHostPort("192.0.2.1", 443), ServerName: "example.org"},
++		{ServerAddress: M.ParseSocksaddrHostPort("240.0.0.9", 443)},
++	} {
++		if _, err := r.Register(conflict); err == nil {
++			t.Fatalf("registered conflicting server %v", conflict.ServerAddress)
++		}
++	}
++	literal, err := r.Register(NaiveClientOptions{ServerAddress: M.ParseSocksaddrHostPort("198.51.100.7", 443)})
++	if err != nil || literal.entry.address != netip.MustParseAddr("198.51.100.7") || !naiveSyntheticPrefix.Contains(a.entry.address) {
++		t.Fatalf("literal %v, synthetic %v: %v", literal.entry, a.entry.address, err)
++	}
++
++	var forwarded []string
++	resolve := r.wrapDNSResolver(func(_ context.Context, request *mDNS.Msg) *mDNS.Msg {
++		forwarded = append(forwarded, request.Question[0].Name)
++		return nil
++	}, true, false, logger.NOP())
++	query := func(name string, qtype uint16) *mDNS.Msg {
++		request := new(mDNS.Msg)
++		request.SetQuestion(name, qtype)
++		return resolve(context.Background(), request)
++	}
++	if response := query("EXAMPLE.org.", mDNS.TypeA); len(response.Answer) != 1 || response.Answer[0].(*mDNS.A).A.String() != a.entry.address.String() {
++		t.Fatalf("A answer %v, want %v", response.Answer, a.entry.address)
++	}
++	if response := query("example.org.", mDNS.TypeAAAA); len(response.Answer) != 0 || response.Rcode != mDNS.RcodeSuccess {
++		t.Fatalf("AAAA answer %v", response)
++	}
++	if response := query("_8443._https.example.org.", mDNS.TypeHTTPS); len(response.Answer) != 1 {
++		t.Fatalf("ECH answer %v", response)
++	}
++	query("other.org.", mDNS.TypeA)
++	if !slices.Equal(forwarded, []string{"other.org."}) {
++		t.Fatalf("forwarded %v", forwarded)
++	}
++
++	ctx, cancel, destination, err := r.relay(context.Background(), M.Socksaddr{Addr: a.entry.address, Port: 8443})
++	if err != nil || destination != M.ParseSocksaddrHostPort("192.0.2.1", 8443) {
++		t.Fatalf("relay destination %v: %v", destination, err)
++	}
++	defer cancel()
++	if _, _, _, err := r.relay(context.Background(), M.ParseSocksaddrHostPort("240.255.0.1", 443)); err == nil {
++		t.Fatal("relayed an unregistered synthetic address")
++	}
++	if _, _, destination, err := r.relay(context.Background(), M.ParseSocksaddrHostPort("203.0.113.1", 443)); err != nil || destination.Addr.String() != "203.0.113.1" {
++		t.Fatalf("other destination %v: %v", destination, err)
++	}
++	a.SetKeep(false)
++	a.Close()
++	if ctx.Err() != nil {
++		t.Fatal("closed connections a kept server shares")
++	}
++	b.SetKeep(false)
++	awaitLifecycle(t, ctx.Done())
++	b.Close()
++	b.Close()
++	if _, found := r.names["example.org"]; found || len(r.addresses) != 1 {
++		t.Fatalf("unregistered name retained: %v", r.names)
++	}
++}
++
++func TestNaiveServerDialKeysAndStreams(t *testing.T) {
++	r := &NaiveServerRegistry{}
++	c := lifecycleTestClient(clientStateRunning)
++	c.registry = r
++	c.streamEngines = []StreamEngine{{}}
++	for _, key := range []string{"-Network-Isolation-Key", ":authority", "HOST"} {
++		if _, err := r.Register(NaiveClientOptions{
++			ServerAddress: M.ParseSocksaddrHostPort("192.0.2.1", 443),
++			ExtraHeaders:  map[string]string{key: "x"},
++		}); err == nil {
++			t.Fatalf("registered reserved header %s", key)
++		}
++	}
++	server, err := r.Register(NaiveClientOptions{
++		ServerAddress: M.ParseSocksaddrHostPort("192.0.2.1", 443), Username: "user",
++	})
++	if err != nil {
++		t.Fatal(err)
++	}
++	if _, err := c.dialEarly(context.Background(), c.server, "", M.Socksaddr{}, nil, nil); err == nil {
++		t.Fatal("shared client opened an unregistered stream")
++	}
++	relay, cancel, _, _ := r.relay(context.Background(), M.Socksaddr{Addr: server.entry.address, Port: 443})
++	defer cancel()
++	var conns []*BidirectionalConn
++	for _, key := range []string{"", "t1"} {
++		conn := &BidirectionalConn{done: make(chan struct{})}
++		_, err := c.dialEarly(context.Background(), server, key, M.Socksaddr{},
++			func(StreamEngine, context.Context, logger.ContextLogger, bool, bool) *BidirectionalConn { return conn },
++			func(_ *BidirectionalConn, _, url string, headers map[string]string, _ int, _ bool) error {
++				want := "https://" + server.isolationKey + ":443"
++				if key != "" {
++					want = "https://" + key + ":443"
++				}
++				if headers["-network-isolation-key"] != want || headers["proxy-authorization"] != server.authorization || url != server.url {
++					t.Errorf("stream headers %v url %s", headers, url)
++				}
++				return nil
++			})
++		if err != nil {
++			t.Fatal(err)
++		}
++		conns = append(conns, conn)
++	}
++	server.SetKeep(false)
++	conns[0].onTerminate()
++	if relay.Err() != nil {
++		t.Fatal("closed connections under an active stream")
++	}
++	conns[1].onTerminate()
++	awaitLifecycle(t, relay.Done())
++	server.Close()
++	if _, err := c.dialEarly(context.Background(), server, "", M.Socksaddr{}, nil, nil); !errors.Is(err, net.ErrClosed) {
++		t.Fatalf("dial through unregistered server: %v", err)
++	}
++	if err := c.Close(); err != nil {
++		t.Fatal(err)
++	}
++}
++
++func TestNaiveSharedEngineSeparatesServers(t *testing.T) {
++	if err := checkLibrary(); err != nil {
++		t.Skipf("Cronet library unavailable: %v", err)
++	}
++	var access sync.Mutex
++	remotes := make(map[string][]string)
++	closed := make(chan struct{}, 8)
++	proxy := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
++		access.Lock()
++		remotes[r.Header.Get("Proxy-Authorization")] = append(remotes[r.Header.Get("Proxy-Authorization")], r.RemoteAddr)
++		access.Unlock()
++		w.WriteHeader(http.StatusOK)
++		w.(http.Flusher).Flush()
++		<-r.Context().Done()
++	}))
++	proxy.EnableHTTP2 = true
++	// Chromium rejects the long-lived httptest certificate.
++	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
++	if err != nil {
++		t.Fatal(err)
++	}
++	template := &x509.Certificate{
++		SerialNumber: big.NewInt(1), DNSNames: []string{"example.com"}, IsCA: true, BasicConstraintsValid: true,
++		NotBefore: time.Now().Add(-time.Hour), NotAfter: time.Now().Add(time.Hour),
++		KeyUsage: x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign, ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
++	}
++	raw, err := x509.CreateCertificate(rand.Reader, template, template, &key.PublicKey, key)
++	if err != nil {
++		t.Fatal(err)
++	}
++	proxy.TLS = &tls.Config{Certificates: []tls.Certificate{{Certificate: [][]byte{raw}, PrivateKey: key}}}
++	proxy.Config.ConnState = func(_ net.Conn, state http.ConnState) {
++		if state == http.StateClosed {
++			closed <- struct{}{}
++		}
++	}
++	proxy.StartTLS()
++	defer proxy.Close()
++	cert := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: raw})
++	address := M.SocksaddrFromNet(proxy.Listener.Addr())
++
++	r := &NaiveServerRegistry{}
++	client, err := NewNaiveClient(NaiveClientOptions{
++		Context: t.Context(), ServerAddress: address, TrustedRootCertificates: string(cert), Registry: r,
++		DNSResolver: func(context.Context, *mDNS.Msg) *mDNS.Msg { return nil },
++	})
++	if err != nil {
++		t.Fatal(err)
++	}
++	defer client.Close()
++	if err := client.Start(); err != nil {
++		t.Fatal(err)
++	}
++	var servers []*NaiveServer
++	for _, user := range []string{"a", "b"} {
++		server, err := r.Register(NaiveClientOptions{ServerAddress: address, ServerName: "example.com", Username: user})
++		if err != nil {
++			t.Fatal(err)
++		}
++		defer server.Close()
++		servers = append(servers, server)
++	}
++	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
++	defer cancel()
++	var conns []NaiveConn
++	for _, stream := range []struct {
++		server *NaiveServer
++		key    string
++	}{{servers[0], ""}, {servers[0], ""}, {servers[1], ""}, {servers[0], "t1"}} {
++		conn, err := client.DialServerEarly(ctx, stream.server, stream.key, M.ParseSocksaddrHostPort("203.0.113.1", 80))
++		if err == nil {
++			err = conn.HandshakeContext(ctx)
++		}
++		if err != nil {
++			t.Fatal(err)
++		}
++		conns = append(conns, conn)
++	}
++	access.Lock()
++	a, b := remotes[servers[0].authorization], remotes[servers[1].authorization]
++	access.Unlock()
++	if len(a) != 3 || len(b) != 1 || a[0] != a[1] || a[2] == a[0] || b[0] == a[0] || b[0] == a[2] {
++		t.Fatalf("connections per stream: a=%v b=%v", a, b)
++	}
++	for _, conn := range conns {
++		conn.Close()
++	}
++	for _, server := range servers {
++		server.SetKeep(false)
++	}
++	for range 3 {
++		awaitLifecycle(t, closed)
++	}
++}

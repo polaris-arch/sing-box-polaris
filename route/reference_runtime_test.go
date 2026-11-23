@@ -3,6 +3,7 @@ package route
 import (
 	"context"
 	"errors"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -901,12 +902,12 @@ func TestRuntimeReferenceCensusTraversesSelectedCurrentDependencies(t *testing.T
 	}
 }
 
-func TestRuntimeReferenceSharedAliasesKeepOnePhysicalOwner(t *testing.T) {
-	var kept []bool
+func TestRuntimeReferenceSharedAliasesKeepEachAliasCloseOneOwner(t *testing.T) {
+	kept := make(map[string][]bool)
 	idle := 0
 	newAlias := func(tag string) *referenceSharedOutbound {
 		return &referenceSharedOutbound{referenceTestOutbound: &referenceTestOutbound{
-			tag: tag, keep: func(keep bool) { kept = append(kept, keep) }, idle: func() { idle++ },
+			tag: tag, keep: func(keep bool) { kept[tag] = append(kept[tag], keep) }, idle: func() { idle++ },
 		}}
 	}
 	first, second := newAlias("first"), newAlias("second")
@@ -923,19 +924,20 @@ func TestRuntimeReferenceSharedAliasesKeepOnePhysicalOwner(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	// Each alias keeps its own idle connections; the owner keeps their union.
 	run(false)
-	if len(kept) != 1 || !kept[0] {
-		t.Fatalf("only one alias was selected, physical keep calls = %v", kept)
+	if !slices.Equal(kept["first"], []bool{false}) || !slices.Equal(kept["second"], []bool{true}) {
+		t.Fatalf("alias keep calls = %v", kept)
 	}
 	selector.references = []string{first.Tag()}
 	run(false)
-	if len(kept) != 1 {
-		t.Fatalf("changing the selected alias changed physical keep: %v", kept)
+	if !slices.Equal(kept["first"], []bool{false, true}) || !slices.Equal(kept["second"], []bool{true, false}) {
+		t.Fatalf("alias keep calls after changing the selected alias = %v", kept)
 	}
 	selector.references = nil
 	run(false)
-	if len(kept) != 2 || kept[1] {
-		t.Fatalf("physical keep calls after both aliases became unreferenced = %v", kept)
+	if !slices.Equal(kept["first"], []bool{false, true, false}) || len(kept["second"]) != 2 {
+		t.Fatalf("alias keep calls after both aliases became unreferenced = %v", kept)
 	}
 	run(true)
 	if idle != 1 {

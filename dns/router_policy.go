@@ -226,6 +226,7 @@ func (t *dnsPolicyTransport) Exchange(ctx context.Context, message *mDNS.Msg) (*
 		DNSResolverPolicy: t.policy,
 		Domain:            FqdnToDomain(message.Question[0].Name),
 		QueryType:         message.Question[0].Qtype,
+		RuleSetRouter:     t.router.ruleSetRouter(ctx),
 	})
 	ctx = withLookupQueryMetadata(ctx, message.Question[0].Qtype)
 	result := t.router.exchangeWithRules(ctx, t.rules, message, t.options, false)
@@ -248,7 +249,7 @@ func (t *dnsPolicyTransport) ExchangeAsync(ctx context.Context, message *mDNS.Ms
 	go func() { callback(t.Exchange(ctx, message)) }()
 }
 
-func (r *Router) policyTransport(id string, domain string, options adapter.DNSQueryOptions) (*dnsPolicyTransport, error) {
+func (r *Router) policyTransport(ctx context.Context, id string, domain string, options adapter.DNSQueryOptions) (*dnsPolicyTransport, error) {
 	r.rulesAccess.RLock()
 	defer r.rulesAccess.RUnlock()
 	if r.closing {
@@ -270,7 +271,7 @@ func (r *Router) policyTransport(id string, domain string, options adapter.DNSQu
 		rawPolicy = append(rawPolicy, raw)
 		server := dnsRuleActionServer(raw)
 		if server != "" {
-			if transport, loaded := r.transport.Transport(server); loaded {
+			if transport, loaded := r.transports(ctx).Transport(server); loaded {
 				policy.dependencies = append(policy.dependencies, transport)
 			}
 		}
@@ -321,7 +322,7 @@ func (r *Router) lookupPolicy(parent context.Context, domain string, options ada
 	}
 	strategy := r.resolveLookupStrategy(options)
 	options.Strategy = strategy
-	policy, err := r.policyTransport(options.Policy, domain, options)
+	policy, err := r.policyTransport(parent, options.Policy, domain, options)
 	if err != nil {
 		return nil, err
 	}
@@ -498,7 +499,7 @@ func (r *Router) exchangePolicy(parent context.Context, message *mDNS.Msg, optio
 		options.Timeout = C.DNSTimeout
 	}
 	options = r.finalizeExchangeOptions(options)
-	policy, err := r.policyTransport(options.Policy, FqdnToDomain(message.Question[0].Name), options)
+	policy, err := r.policyTransport(parent, options.Policy, FqdnToDomain(message.Question[0].Name), options)
 	if err != nil {
 		return nil, err
 	}

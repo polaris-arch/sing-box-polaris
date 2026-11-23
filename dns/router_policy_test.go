@@ -137,7 +137,7 @@ func policyOptions(timeout time.Duration) adapter.DNSQueryOptions {
 func policyExchange(t *testing.T, router *Router, ctx context.Context, timeout time.Duration) (*mDNS.Msg, error) {
 	t.Helper()
 	options := policyOptions(timeout)
-	transport, err := router.policyTransport(testPolicyID, "node.example", options)
+	transport, err := router.policyTransport(context.Background(), testPolicyID, "node.example", options)
 	require.NoError(t, err)
 	ctx, cancel := withDNSPolicyBudget(ctx, timeout)
 	defer cancel()

@@ -93,6 +93,7 @@ type runtimeComponent struct {
 	history       *urltest.HistoryStorage
 	inbound       adapter.Inbound
 	outbound      adapter.Outbound
+	naiveClient   func(context.Context) context.Context
 	transport     adapter.DNSTransport
 	ruleSet       adapter.RuleSet
 	router        *route.Router

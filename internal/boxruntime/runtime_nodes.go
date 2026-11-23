@@ -6,7 +6,6 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
-	"reflect"
 	"slices"
 	"sort"
 	"strings"
@@ -19,6 +18,7 @@ import (
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing-box/protocol/naive"
 	"github.com/sagernet/sing-box/route"
+	R "github.com/sagernet/sing-box/route/rule"
 	"github.com/sagernet/sing/common"
 	"github.com/sagernet/sing/common/domain"
 	"github.com/sagernet/sing/common/json"
@@ -81,7 +81,7 @@ func runtimeConfigNodes(ctx context.Context, options option.Options) ([]runtimeg
 		sort.Strings(dependencies)
 		return runtimegraph.DependencyNode{Name: name, Fingerprint: runtimeDigest(encoded), Dependencies: dependencies}, nil
 	}
-	var sets, transports, outbounds, inbounds []string
+	var sets, dnsDeps, transports, outbounds, inbounds []string
 	var endpointDNS runtimeconfig.EndpointDNS
 	// Inline provider HTTP clients are owned by the receiving HTTP manager.
 	// Its fingerprint must include them, rather than merely retaining a provider
@@ -144,6 +144,12 @@ func runtimeConfigNodes(ctx context.Context, options option.Options) ([]runtimeg
 		}
 		configs[name] = runtimeNodeOptions{node: node, ruleSet: &set}
 		sets = append(sets, name)
+		// The DNS router's build-time rule modes read only these predicates. A set
+		// without them is found by tag in each query's admitted view instead, so
+		// its content alone no longer replaces the router and its consumers.
+		if metadata := R.RuntimeRuleSetMetadata(set.InlineOptions.Rules); metadata.ContainsProcessRule || metadata.ContainsWIFIRule || metadata.ContainsIPCIDRRule || metadata.ContainsDNSQueryTypeRule {
+			dnsDeps = append(dnsDeps, name)
+		}
 	}
 	for i := range dnsOptions.Servers {
 		server := dnsOptions.Servers[i]
@@ -508,16 +514,59 @@ func runtimeConfigNodes(ctx context.Context, options option.Options) ([]runtimeg
 		httpNode.Fingerprint = runtimeDigest([]byte(fmt.Sprintf("%s:%t:%t:%t:%t", httpNode.Fingerprint, client.DefaultOutbound, client.ResolveOnDetour, client.DirectResolver, client.DisableEmptyDirectCheck)))
 	}
 	configs["http-manager"] = runtimeNodeOptions{node: httpNode}
-	dnsDeps := append(append([]string(nil), sets...), transports...)
-	if dnsOptions.Final != "" {
+	// The DNS router finds rule and default servers by tag in each query's
+	// admitted view. A stateless wire transport whose detour reaches a group is
+	// late-bound there; object-captured defaults and all others keep the edge.
+	lateBound := make(map[string]bool)
+	if len(transports) > 1 {
+		defaultResolver := common.PtrValueOrDefault(routeOptions.DefaultDomainResolver).Server
+		for _, name := range transports {
+			server := configs[name].transport
+			switch server.Type {
+			case C.DNSTypeUDP, C.DNSTypeTCP, C.DNSTypeTLS, C.DNSTypeHTTPS, C.DNSTypeQUIC, C.DNSTypeHTTP3:
+			default:
+				continue
+			}
+			wrapper, ok := server.Options.(option.DialerOptionsWrapper)
+			if !ok || wrapper.TakeDialerOptions().Detour == "" || server.Tag == defaultResolver {
+				continue
+			}
+			seen := make(map[string]bool)
+			pending := slices.Clone(configs[name].node.Dependencies)
+			for len(pending) > 0 && !lateBound[name] {
+				dependency := pending[len(pending)-1]
+				pending = pending[:len(pending)-1]
+				if dependency == "dns-router" || seen[dependency] {
+					continue
+				}
+				seen[dependency] = true
+				config := configs[dependency]
+				lateBound[name] = config.outbound != nil && (config.outbound.Type == C.TypeSelector || config.outbound.Type == C.TypeURLTest)
+				pending = append(pending, config.node.Dependencies...)
+			}
+		}
+	}
+	var lateDeps []string
+	for _, name := range transports {
+		if lateBound[name] {
+			lateDeps = append(lateDeps, name)
+		} else {
+			dnsDeps = append(dnsDeps, name)
+		}
+	}
+	if dnsOptions.Final != "" && !lateBound["dns-transport:"+dnsOptions.Final] {
 		dnsDeps = append(dnsDeps, "dns-transport:"+dnsOptions.Final)
 	}
 	dnsNode, err := makeNode("dns-router", dnsOptions, dnsDeps, false)
 	if err != nil {
 		return nil, nil, err
 	}
+	// Adding or removing a set still rebuilds the router and reruns its
+	// rule-set lookups and mode checks.
+	dnsNode.Fingerprint = runtimeDigest([]byte(dnsNode.Fingerprint + ":" + strings.Join(slices.Sorted(slices.Values(sets)), "\x00")))
 	configs["dns-router"] = runtimeNodeOptions{node: dnsNode}
-	routeDeps := append(append(append([]string{"dns-router", "http-manager"}, sets...), outbounds...), inbounds...)
+	// FakeIP and resolve actions look up transports in the captured manager.
+	routeDeps := append(append(append(append([]string{"dns-router", "http-manager"}, sets...), outbounds...), inbounds...), lateDeps...)
 	if routeOptions.Final != "" {
 		routeDeps = append(routeDeps, "outbound:"+routeOptions.Final)
 	}
@@ -633,11 +682,21 @@ func runtimeShareNaiveClients(ctx context.Context, nodes []runtimegraph.Dependen
 		if !ok || !runtimeNaiveClientShareable(options) {
 			continue
 		}
-		encoded, err := json.MarshalContext(ctx, options)
+		// Members register their server identity with the client. Everything
+		// else, including the outgoing edges, selects the client.
+		projection, tls := *options, *options.TLS
+		projection.ServerOptions, projection.Username, projection.Password = option.ServerOptions{}, "", ""
+		projection.ExtraHeaders, projection.UDPOverTCP, projection.TLS = nil, nil, &tls
+		tls.ServerName = ""
+		if tls.ECH != nil {
+			tls.ECH = &option.OutboundECHOptions{Enabled: tls.ECH.Enabled}
+		}
+		encoded, err := json.MarshalContext(ctx, &projection)
 		if err != nil {
 			return nil, err
 		}
-		key := runtimeDigest(append(append(encoded, '\n'), defaults...))
+		encoded = append(append(append(encoded, '\n'), strings.Join(node.Dependencies, "\n")...), '\n')
+		key := runtimeDigest(append(encoded, defaults...))
 		groups[key] = append(groups[key], i)
 	}
 	var cyclic map[string]bool
@@ -659,37 +718,28 @@ func runtimeShareNaiveClients(ctx context.Context, nodes []runtimegraph.Dependen
 				}
 			}
 		}
-		first := nodes[members[0]]
-		options := configs[first.Name].outbound.Options.(*option.NaiveOutboundOptions)
-		compatible := true
-		for _, i := range members {
-			node := nodes[i]
-			if cyclic[node.Name] || slices.Contains(node.Dependencies, node.Name) ||
-				!slices.Equal(node.Dependencies, first.Dependencies) ||
-				!reflect.DeepEqual(configs[node.Name].outbound.Options, options) {
-				compatible = false
-				break
-			}
-		}
-		if !compatible {
+		// A cyclic member would pull the client into its cohort.
+		members = slices.DeleteFunc(members, func(i int) bool {
+			return cyclic[nodes[i].Name] || slices.Contains(nodes[i].Dependencies, nodes[i].Name)
+		})
+		if len(members) < 2 {
 			continue
 		}
-		// The client and its aliases retire as one allocation. Identical outgoing
-		// edges and acyclic members keep this from merging any other cohort.
+		// The client depends only on the members' common edges and survives
+		// their changes. Each graph's members bind the client it retains.
 		name := "naive-client:" + key
-		deps := slices.Clone(first.Dependencies)
+		first := nodes[members[0]]
 		for _, i := range members {
 			node := &nodes[i]
-			deps = append(deps, node.Name)
 			node.Dependencies = append(slices.Clone(node.Dependencies), name)
 			config := configs[node.Name]
 			config.node = *node
 			config.naiveClient = name
 			configs[node.Name] = config
 		}
-		node := runtimegraph.DependencyNode{Name: name, Fingerprint: key, Dependencies: deps}
+		node := runtimegraph.DependencyNode{Name: name, Fingerprint: key, Dependencies: slices.Clone(first.Dependencies)}
 		nodes = append(nodes, node)
-		configs[name] = runtimeNodeOptions{node: node, naiveOptions: options}
+		configs[name] = runtimeNodeOptions{node: node, naiveOptions: configs[first.Name].outbound.Options.(*option.NaiveOutboundOptions)}
 	}
 	return nodes, nil
 }
@@ -706,13 +756,14 @@ func runtimeNaiveClientShareable(options *option.NaiveOutboundOptions) bool {
 	}
 	// Header.Build merges case aliases in map iteration order. The first value
 	// could differ between two clients constructed with the same options.
+	// Control headers could replace the isolation key of a shared stream.
 	headers := make(map[string]bool)
 	for key, values := range options.ExtraHeaders {
 		if len(values) == 0 {
 			continue
 		}
 		key = strings.ToLower(key)
-		if headers[key] {
+		if headers[key] || key == "" || key[0] == '-' || key[0] == ':' || key == "host" {
 			return false
 		}
 		headers[key] = true

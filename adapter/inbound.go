@@ -104,6 +104,9 @@ type InboundContext struct {
 	QueryDNSSEC                         bool
 	FakeIP                              bool
 	PreMatch                            bool
+	// RuleSetRouter is the admitted view's route leaf while a DNS router serves
+	// that view. Rule-set items match its sets by tag instead of captured ones.
+	RuleSetRouter Router
 
 	// rule cache
 

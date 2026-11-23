@@ -40,6 +40,7 @@ var (
 type Router struct {
 	ctx                   context.Context
 	runtimeResource       adapter.RuntimeResourceSource
+	admission             adapter.RuntimeAdmission
 	logger                logger.ContextLogger
 	transport             adapter.DNSTransportManager
 	outbound              adapter.OutboundManager
@@ -133,6 +134,7 @@ func newRouter(ctx context.Context, logFactory log.Factory, options option.DNSOp
 		if store := explicitDependencies.DNSCache; store != nil {
 			dnsCacheProvider = func() adapter.DNSCacheStore { return store }
 		}
+		router.admission = explicitDependencies.Admission
 	}
 	router.client = NewClient(ClientOptions{
 		Context:           ctx,
@@ -337,7 +339,7 @@ func (r *Router) matchDNS(ctx context.Context, rules []adapter.DNSRule, allowFak
 			}
 			switch action := currentRule.Action().(type) {
 			case *R.RuleActionDNSRoute:
-				transport, loaded := r.transport.Transport(action.Server)
+				transport, loaded := r.transports(ctx).Transport(action.Server)
 				if !loaded {
 					r.logger.ErrorContext(ctx, "transport not found: ", action.Server)
 					continue
@@ -395,7 +397,7 @@ func (r *Router) matchDNS(ctx context.Context, rules []adapter.DNSRule, allowFak
 			}
 		}
 	}
-	transport := r.transport.Default()
+	transport := r.transports(ctx).Default()
 	return transport, nil, -1
 }
 
@@ -433,8 +435,8 @@ const (
 	dnsRouteStatusResolved
 )
 
-func (r *Router) resolveDNSRoute(server string, routeOptions R.RuleActionDNSRouteOptions, allowFakeIP bool, options *adapter.DNSQueryOptions) (adapter.DNSTransport, dnsRouteStatus) {
-	transport, loaded := r.transport.Transport(server)
+func (r *Router) resolveDNSRoute(ctx context.Context, server string, routeOptions R.RuleActionDNSRouteOptions, allowFakeIP bool, options *adapter.DNSQueryOptions) (adapter.DNSTransport, dnsRouteStatus) {
+	transport, loaded := r.transports(ctx).Transport(server)
 	if !loaded {
 		return nil, dnsRouteStatusMissing
 	}
@@ -724,7 +726,7 @@ func (r *Router) walkDNSRules(ctx context.Context, rules []adapter.DNSRule, mess
 		case *R.RuleActionDNSRouteOptions:
 			r.applyDNSRouteOptions(&state.effectiveOptions, *action)
 		case *R.RuleActionEvaluate:
-			transport, loaded := r.transport.Transport(action.Server)
+			transport, loaded := r.transports(ctx).Transport(action.Server)
 			if !loaded {
 				r.logger.ErrorContext(ctx, "transport not found: ", action.Server)
 				if action.Tag == "" {
@@ -785,7 +787,7 @@ func (r *Router) walkDNSRules(ctx context.Context, rules []adapter.DNSRule, mess
 			}, nil
 		case *R.RuleActionDNSRoute:
 			queryOptions := state.effectiveOptions
-			transport, status := r.resolveDNSRoute(action.Server, action.RuleActionDNSRouteOptions, allowFakeIP, &queryOptions)
+			transport, status := r.resolveDNSRoute(ctx, action.Server, action.RuleActionDNSRouteOptions, allowFakeIP, &queryOptions)
 			switch status {
 			case dnsRouteStatusMissing:
 				r.logger.ErrorContext(ctx, "transport not found: ", action.Server)
@@ -834,7 +836,7 @@ func (r *Router) walkDNSRules(ctx context.Context, rules []adapter.DNSRule, mess
 	if len(state.armedRules) > 0 {
 		return exchangeWithRulesResult{}, &dnsWalkSuspension{drain: true}
 	}
-	return exchangeWithRulesResult{}, &dnsWalkSuspension{pending: &dnsPendingExchange{transport: r.transport.Default(), options: state.effectiveOptions}}
+	return exchangeWithRulesResult{}, &dnsWalkSuspension{pending: &dnsPendingExchange{transport: r.transports(ctx).Default(), options: state.effectiveOptions}}
 }
 
 func (r *Router) exchangeWithRules(ctx context.Context, rules []adapter.DNSRule, message *mDNS.Msg, options adapter.DNSQueryOptions, allowFakeIP bool) exchangeWithRulesResult {
@@ -986,7 +988,7 @@ func (r *Router) sweepArmedDNSRules(ctx context.Context, message *mDNS.Msg, stat
 			}, nil, true
 		case *R.RuleActionDNSRoute:
 			queryOptions := armed.options
-			transport, status := r.resolveDNSRoute(action.Server, action.RuleActionDNSRouteOptions, allowFakeIP, &queryOptions)
+			transport, status := r.resolveDNSRoute(ctx, action.Server, action.RuleActionDNSRouteOptions, allowFakeIP, &queryOptions)
 			switch status {
 			case dnsRouteStatusMissing:
 				r.logger.ErrorContext(ctx, "transport not found: ", action.Server)
@@ -1203,6 +1205,7 @@ func (r *Router) prepareExchange(ctx context.Context, message *mDNS.Msg) (*dnsEx
 	r.logger.DebugContext(ctx, "exchange ", FormatQuestion(message.Question[0].String()))
 	ctx, metadata := adapter.ExtendContext(ctx)
 	metadata.DNSResolverPolicy = ""
+	metadata.RuleSetRouter = r.ruleSetRouter(ctx)
 	metadata.Destination = M.Socksaddr{}
 	metadata.QueryType = message.Question[0].Qtype
 	metadata.DNSResponse = nil
@@ -1295,7 +1298,7 @@ func (r *Router) exchangeLegacy(ctx context.Context, exchangeCtx *dnsExchangeCon
 
 func (r *Router) Exchange(ctx context.Context, message *mDNS.Msg, options adapter.DNSQueryOptions) (*mDNS.Msg, error) {
 	ctx = context.WithValue(ctx, fakeIPRouterAdmissionKey{}, true)
-	ctx, releaseRuntime, runtimeErr := adapter.AcquireRuntimeOperation(ctx, r.runtimeResource)
+	ctx, releaseRuntime, runtimeErr := r.acquireRuntimeOperation(ctx)
 	if runtimeErr != nil {
 		return nil, runtimeErr
 	}
@@ -1335,7 +1338,7 @@ func (r *Router) Exchange(ctx context.Context, message *mDNS.Msg, options adapte
 
 func (r *Router) ExchangeAsync(ctx context.Context, message *mDNS.Msg, options adapter.DNSQueryOptions, callback func(response *mDNS.Msg, err error)) {
 	ctx = context.WithValue(ctx, fakeIPRouterAdmissionKey{}, true)
-	ctx, releaseCall, runtimeErr := adapter.AcquireRuntimeOperation(ctx, r.runtimeResource)
+	ctx, releaseCall, runtimeErr := r.acquireRuntimeOperation(ctx)
 	if runtimeErr != nil {
 		callback(nil, runtimeErr)
 		return
@@ -1392,7 +1395,7 @@ func (r *Router) finishExchangeAsync(ctx context.Context, message *mDNS.Msg, tra
 }
 
 func (r *Router) Lookup(ctx context.Context, domain string, options adapter.DNSQueryOptions) ([]netip.Addr, error) {
-	ctx, releaseRuntime, runtimeErr := adapter.AcquireRuntimeOperation(ctx, r.runtimeResource)
+	ctx, releaseRuntime, runtimeErr := r.acquireRuntimeOperation(ctx)
 	if runtimeErr != nil {
 		return nil, runtimeErr
 	}
@@ -1450,6 +1453,7 @@ func (r *Router) Lookup(ctx context.Context, domain string, options adapter.DNSQ
 	r.logger.DebugContext(ctx, "lookup domain ", domain)
 	ctx, metadata := adapter.ExtendContext(ctx)
 	metadata.DNSResolverPolicy = ""
+	metadata.RuleSetRouter = r.ruleSetRouter(ctx)
 	metadata.Destination = M.Socksaddr{}
 	metadata.Domain = FqdnToDomain(domain)
 	metadata.DNSResponse = nil
@@ -1561,6 +1565,41 @@ func (r *Router) ResetNetwork() {
 	for _, transport := range r.transport.Transports() {
 		transport.Reset()
 	}
+}
+
+// transports is the admitted view's manager while this router serves that view.
+// A retired router keeps its constructor manager rather than mixing graphs.
+func (r *Router) transports(ctx context.Context) adapter.DNSTransportManager {
+	if lease, loaded := adapter.RuntimeLeaseFromContext(ctx); loaded && lease.View().DNSRouter() == adapter.DNSRouter(r) {
+		return lease.View().DNSTransportManager()
+	}
+	return r.transport
+}
+
+// ruleSetRouter is the admitted view's route leaf under the same condition, so
+// late-bound rule sets (not dependencies of this router) match in that view.
+// Otherwise rule items use their captured sets. For a retired router those
+// late-bound sets may be closed and then intentionally match nothing.
+func (r *Router) ruleSetRouter(ctx context.Context) adapter.Router {
+	if lease, loaded := adapter.RuntimeLeaseFromContext(ctx); loaded && lease.View().DNSRouter() == adapter.DNSRouter(r) {
+		return lease.View().Router()
+	}
+	return nil
+}
+
+// acquireRuntimeOperation first admits current for a caller without a graph,
+// so late-bound transports resolve in the generation this router serves.
+func (r *Router) acquireRuntimeOperation(ctx context.Context) (context.Context, func(), error) {
+	if _, loaded := adapter.RuntimeLeaseFromContext(ctx); !loaded && r.admission != nil {
+		if current, err := r.admission.Acquire(); err == nil {
+			// The operation forks its own continuation before this one is released.
+			defer current.Release()
+			if current.View().DNSRouter() == adapter.DNSRouter(r) {
+				ctx = adapter.ContextWithRuntimeLease(ctx, current)
+			}
+		}
+	}
+	return adapter.AcquireRuntimeOperation(ctx, r.runtimeResource)
 }
 
 func defaultRuleNeedsLegacyDNSModeFromAddressFilter(rule option.DefaultDNSRule) bool {

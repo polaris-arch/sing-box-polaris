@@ -16,6 +16,8 @@ import (
 type RouterClientDependencies struct {
 	DNSCache adapter.DNSCacheStore
 	RDRC     adapter.RDRCStore
+	// Admission admits the current graph for a query arriving without one.
+	Admission adapter.RuntimeAdmission
 }
 
 func NewRouterWithClientDependencies(ctx context.Context, logFactory log.Factory, options option.DNSOptions, dependencies RouterClientDependencies) (*Router, error) {

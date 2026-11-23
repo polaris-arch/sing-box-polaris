@@ -37,6 +37,7 @@ import (
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing-box/protocol/naive"
 	"github.com/sagernet/sing/common/json"
+	"github.com/sagernet/sing/common/json/badoption"
 	M "github.com/sagernet/sing/common/metadata"
 	"github.com/sagernet/sing/service"
 
@@ -60,11 +61,17 @@ func TestRuntimeNaiveShareRequiresEquivalentAcyclicDependencies(t *testing.T) {
 		name   string
 		change func(*option.NaiveOutboundOptions)
 		both   bool
-		cycle  bool
+		detour string
 		share  bool
 	}{
 		{name: "duplicate", share: true},
-		{name: "different credentials", change: func(o *option.NaiveOutboundOptions) { o.Password = "other" }},
+		{name: "different server", share: true, change: func(o *option.NaiveOutboundOptions) {
+			o.Server, o.Password, o.TLS.ServerName = "192.0.2.2", "other", "other.test"
+			o.ExtraHeaders = badoption.HTTPHeader{"X-Member": {"other"}}
+		}},
+		{name: "control header", change: func(o *option.NaiveOutboundOptions) {
+			o.ExtraHeaders = badoption.HTTPHeader{"-Network-Isolation-Key": {"https://n1:443"}}
+		}},
 		{name: "different congestion control", change: func(o *option.NaiveOutboundOptions) { o.QUICCongestionControl = "cubic" }},
 		{name: "detour", both: true, change: func(o *option.NaiveOutboundOptions) { o.Detour = "carrier" }},
 		{name: "external roots", both: true, change: func(o *option.NaiveOutboundOptions) { o.TLS.CertificatePath = "roots.pem" }},
@@ -73,7 +80,8 @@ func TestRuntimeNaiveShareRequiresEquivalentAcyclicDependencies(t *testing.T) {
 		}},
 		{name: "hidden dialer option", both: true, change: func(o *option.NaiveOutboundOptions) { o.UDPBindPort = 12345 }},
 		{name: "multiple engines", both: true, change: func(o *option.NaiveOutboundOptions) { o.InsecureConcurrency = 2 }},
-		{name: "DNS depends on first alias", cycle: true},
+		{name: "DNS depends on first member", detour: "first"},
+		{name: "DNS late-binds a group of members", detour: "select", share: true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			first, second := base, base
@@ -90,17 +98,21 @@ func TestRuntimeNaiveShareRequiresEquivalentAcyclicDependencies(t *testing.T) {
 				{Type: C.TypeNaive, Tag: "second", Options: &second},
 				{Type: C.TypeDirect, Tag: "carrier", Options: &option.DirectOutboundOptions{}},
 				{Type: C.TypeNaive, Tag: "singleton", Options: &option.NaiveOutboundOptions{
-					ServerOptions: option.ServerOptions{Server: "192.0.2.99", ServerPort: 443}, OutboundTLSOptionsContainer: base.OutboundTLSOptionsContainer,
+					ServerOptions: option.ServerOptions{Server: "192.0.2.99", ServerPort: 443}, OutboundTLSOptionsContainer: base.OutboundTLSOptionsContainer, QUIC: true,
 				}},
 			}}
-			if test.cycle {
+			if test.detour != "" {
+				options.Outbounds = append(options.Outbounds, option.Outbound{Type: C.TypeSelector, Tag: "select", Options: &option.SelectorOutboundOptions{Outbounds: []string{"first", "second"}}})
 				options.DNS = &option.DNSOptions{RawDNSOptions: option.RawDNSOptions{
 					Servers: []option.DNSServerOptions{{
 						Type: C.DNSTypeUDP, Tag: "resolver",
 						Options: &option.RemoteDNSServerOptions{
-							RawLocalDNSServerOptions: option.RawLocalDNSServerOptions{DialerOptions: option.DialerOptions{Detour: "first"}},
+							RawLocalDNSServerOptions: option.RawLocalDNSServerOptions{DialerOptions: option.DialerOptions{Detour: test.detour}},
 							DNSServerAddressOptions:  option.DNSServerAddressOptions{Server: "192.0.2.53"},
 						},
+					}, {
+						Type: C.DNSTypeUDP, Tag: "bootstrap",
+						Options: &option.RemoteDNSServerOptions{DNSServerAddressOptions: option.DNSServerAddressOptions{Server: "192.0.2.54"}},
 					}},
 				}}
 			}
@@ -111,11 +123,12 @@ func TestRuntimeNaiveShareRequiresEquivalentAcyclicDependencies(t *testing.T) {
 			require.Empty(t, configs["outbound:singleton"].naiveClient)
 			require.Equal(t, test.share, name != "")
 			if test.share {
+				// The client survives member changes: it depends on no member.
 				cohorts, err := runtimegraph.DependencyCohorts(nodes)
 				require.NoError(t, err)
 				for _, cohort := range cohorts {
 					if slices.Contains(cohort.Members, name) {
-						require.ElementsMatch(t, []string{name, "outbound:first", "outbound:second"}, cohort.Members)
+						require.Equal(t, []string{name}, cohort.Members)
 						return
 					}
 				}
@@ -134,13 +147,17 @@ func TestRuntimeNaiveSharedClientThroughPublication(t *testing.T) {
 		t.Run(fmt.Sprint("h", protocol), func(t *testing.T) {
 			dnsPort, dnsQueries := runtimeNaiveDNS(t)
 			port, root, sessions := runtimeNaiveEchoProxy(t, protocol)
+			// proxy-a and proxy-b are different servers of one engine group.
+			// proxy-c names proxy-a's server with another address, so it keeps a
+			// dedicated engine.
 			config := func(socksPort int, includeFirst bool, password string) []byte {
-				alias := func(tag string) string {
-					return fmt.Sprintf(`{"type":"naive","tag":%q,"server":%q,"server_port":%d,"quic":%t,"username":"test","password":%q,"domain_resolver":{"server":"native-resolver","disable_cache":true},"tls":{"enabled":true,"certificate":%q}},`, tag, runtimeNaiveProxyHost, port, h3, password, root)
+				member := func(tag string, server string, password string) string {
+					return fmt.Sprintf(`{"type":"naive","tag":%q,"server":%q,"server_port":%d,"quic":%t,"username":"test","password":%q,"domain_resolver":{"server":"native-resolver","disable_cache":true},"tls":{"enabled":true,"server_name":%q,"certificate":%q}},`, tag, server, port, h3, password, runtimeNaiveProxyHost, root)
 				}
-				insertion := alias("proxy-b")
+				insertion := member("proxy-b", runtimeNaiveProxyHost, password) + member("proxy-c", "conflict.naive.test", "c")
 				if includeFirst {
-					insertion = alias("proxy-a") + insertion
+					// After proxy-b: the first outbound is the default route.
+					insertion += member("proxy-a", runtimeNaiveProxyHost, "a")
 				}
 				configuration := bytes.Replace(runtimeTestConfig(socksPort, "example.org"), []byte(`"outbounds":[`), []byte(`"outbounds":[`+insertion), 1)
 				configuration = bytes.Replace(configuration, []byte(`"servers":[`), fmt.Appendf(nil, `"servers":[{"type":"udp","tag":"native-resolver","server":"127.0.0.1","server_port":%d},`, dnsPort), 1)
@@ -148,7 +165,7 @@ func TestRuntimeNaiveSharedClientThroughPublication(t *testing.T) {
 			}
 			f, options := newRuntimeTestConstruction(t, runtimeTestConfig(1080, "example.org"), nil)
 			naive.RegisterOutbound(service.FromContext[adapter.OutboundRegistry](f.ctx).(*outbound.Registry))
-			require.NoError(t, json.UnmarshalContext(f.ctx, config(1080, true, "test"), &options.Options))
+			require.NoError(t, json.UnmarshalContext(f.ctx, config(1080, true, "b"), &options.Options))
 			instance, err := New(options)
 			require.NoError(t, err)
 			f.box = instance
@@ -162,6 +179,8 @@ func TestRuntimeNaiveSharedClientThroughPublication(t *testing.T) {
 			require.True(t, found)
 			second, found := view.outbounds.Outbound("proxy-b")
 			require.True(t, found)
+			conflict, found := view.outbounds.Outbound("proxy-c")
+			require.True(t, found)
 			require.IsType(t, (*naive.Outbound)(nil), first)
 			require.IsType(t, (*naive.Outbound)(nil), second)
 			require.NotSame(t, first, second)
@@ -169,8 +188,17 @@ func TestRuntimeNaiveSharedClientThroughPublication(t *testing.T) {
 			require.Equal(t, "proxy-b", second.Tag())
 			require.Equal(t, C.TypeNaive, first.Type())
 			require.NotSame(t, view.histories["proxy-a"], view.histories["proxy-b"])
-			owner := view.componentIDs["outbound:proxy-a"]
-			require.Equal(t, owner, view.componentIDs["outbound:proxy-b"])
+			require.NotEqual(t, view.componentIDs["outbound:proxy-a"], view.componentIDs["outbound:proxy-b"])
+			engine := func(member adapter.Outbound) adapter.RuntimeResourceID {
+				t.Helper()
+				owner, shared := member.(adapter.RuntimeSharedConnectionOwner).RuntimeSharedConnectionOwner()
+				require.True(t, shared)
+				return owner
+			}
+			owner := engine(first)
+			require.Equal(t, owner, engine(second))
+			_, shared := conflict.(adapter.RuntimeSharedConnectionOwner).RuntimeSharedConnectionOwner()
+			require.False(t, shared, "a conflicting server name joined the shared engine")
 			resets := 0
 			instance.runtime.VisitRuntimeNetwork(t.Context(), func(_ context.Context, member adapter.Outbound, _ adapter.Router) {
 				if member == first || member == second {
@@ -208,11 +236,11 @@ func TestRuntimeNaiveSharedClientThroughPublication(t *testing.T) {
 			}
 			firstCold := probe("proxy-a")
 			firstQueries := dnsQueries.Load()
-			require.Positive(t, firstQueries, "first cold alias never queried the captured resolver")
+			require.Positive(t, firstQueries, "first cold member never queried the captured resolver")
 			secondCold := probe("proxy-b")
 			secondQueries := dnsQueries.Load()
-			require.Greater(t, secondQueries, firstQueries, "second cold alias never queried the captured resolver")
-			require.NotEqual(t, firstCold, secondCold, "cold aliases shared a temporary session")
+			require.Greater(t, secondQueries, firstQueries, "second cold member never queried the captured resolver")
+			require.NotEqual(t, firstCold, secondCold, "cold members shared a temporary session")
 			require.Nil(t, view.histories["proxy-a"].LoadURLTestHistory("proxy-b"))
 			require.Nil(t, view.histories["proxy-b"].LoadURLTestHistory("proxy-a"))
 
@@ -239,11 +267,12 @@ func TestRuntimeNaiveSharedClientThroughPublication(t *testing.T) {
 				return conn, session(ctx)
 			}
 			firstConn, firstSession := dial("proxy-a")
-			require.Greater(t, dnsQueries.Load(), secondQueries, "foreground slot never queried the captured resolver")
 			require.NotContains(t, []uint64{firstCold, secondCold}, firstSession, "cold probe warmed the active slot")
-			require.Equal(t, firstSession, probe("proxy-b"), "warm alias did not borrow the foreground session")
+			// A warm probe runs on the shared engine under its member's isolation key.
+			secondWarm := probe("proxy-b")
+			require.NotEqual(t, firstSession, secondWarm, "members shared a session")
 			secondConn, secondSession := dial("proxy-b")
-			require.Equal(t, firstSession, secondSession, "aliases opened separate physical proxy connections")
+			require.Equal(t, secondWarm, secondSession, "member did not reuse its own session")
 
 			apply := func(content []byte) RuntimeConfigOperation {
 				t.Helper()
@@ -252,30 +281,42 @@ func TestRuntimeNaiveSharedClientThroughPublication(t *testing.T) {
 				require.NoError(t, err)
 				return operation
 			}
-			require.Equal(t, "COMMITTED_DURABILITY_PENDING", apply(config(1081, true, "test")).State)
+			require.Equal(t, "COMMITTED_DURABILITY_PENDING", apply(config(1081, true, "b")).State)
 			nextLease, next := f.acquire(t)
-			require.Equal(t, owner, next.componentIDs["outbound:proxy-b"])
+			require.Equal(t, view.componentIDs["outbound:proxy-b"], next.componentIDs["outbound:proxy-b"])
 			borrowed, _ := next.outbounds.Outbound("proxy-b")
 			require.Same(t, second, borrowed)
 			nextLease.Release()
 
-			require.Equal(t, "COMMITTED_DURABILITY_PENDING", apply(config(1081, false, "test")).State)
-			_, singleton := f.acquire(t)
-			require.NotEqual(t, owner, singleton.componentIDs["outbound:proxy-b"])
-			require.NotContains(t, singleton.componentIDs, "outbound:proxy-a")
-			old := runtimeTestResource(t, f, owner)
-			runtimeTestWait(t, old.owner.Retiring(), "old Naive group retirement")
+			// Changing one member rebuilds only it: the engine and the other
+			// member, with its history, are retained.
+			require.Equal(t, "COMMITTED_DURABILITY_PENDING", apply(config(1081, true, "changed")).State)
+			changedLease, changed := f.acquire(t)
+			require.Equal(t, view.componentIDs["outbound:proxy-a"], changed.componentIDs["outbound:proxy-a"])
+			require.Same(t, view.histories["proxy-a"], changed.histories["proxy-a"])
+			require.NotEqual(t, view.componentIDs["outbound:proxy-b"], changed.componentIDs["outbound:proxy-b"])
+			changedSecond, _ := changed.outbounds.Outbound("proxy-b")
+			require.Equal(t, owner, engine(changedSecond))
+			changedLease.Release()
+
+			require.Equal(t, "COMMITTED_DURABILITY_PENDING", apply(config(1081, false, "changed")).State)
+			_, removed := f.acquire(t)
+			require.Equal(t, changed.componentIDs["outbound:proxy-b"], removed.componentIDs["outbound:proxy-b"])
+			require.NotContains(t, removed.componentIDs, "outbound:proxy-a")
+			old := runtimeTestResource(t, f, view.componentIDs["outbound:proxy-a"])
+			runtimeTestWait(t, old.owner.Retiring(), "removed Naive member retirement")
 			lease.Release()
 			echo(firstConn)
 			echo(secondConn)
 			require.NoError(t, firstConn.Close())
 			require.NoError(t, secondConn.Close())
 			require.NoError(t, old.owner.WaitClosed(runtimeTestContext(t)))
+			require.Equal(t, owner, engine(changedSecond))
 
 			before := f.identity()
 			f.setConstructorHook(func(member *runtimeTestSocks) error {
 				if member.Tag() == "a" {
-					return errors.New("abort after preparing the replacement Naive group")
+					return errors.New("abort after preparing the replacement Naive members")
 				}
 				return nil
 			})

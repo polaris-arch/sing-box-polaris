@@ -60,8 +60,9 @@ func r5PublicationRequireUnknown(t *testing.T, f *runtimeTestFixture, calls *ato
 	}
 }
 
-// The DNS router actually depends on the captured rule-set source. A changed
-// source replaces that resource, whose existing StopRuntimeProducers callback
+// The DNS router actually depends on the captured rule-set source: its IP
+// predicate keeps it a router dependency (pure-domain sets are late-bound by
+// tag and leave the router in place). A changed source replaces that resource, whose existing StopRuntimeProducers callback
 // runs in Apply's postpublication retirement loop. Wrap that real callback
 // during quiescent fixture setup: preserve its complete behavior first, then
 // hold the outer Apply tail. No production hook, identity, lineage or receipt
@@ -71,12 +72,15 @@ func TestRuntimeSourcePublicationSettlesBeforeConcurrentManagementControl(t *tes
 		for _, control := range []string{"selector", "mode"} {
 			t.Run(fmt.Sprintf("prior-source-child=%t/%s", warm, control), func(t *testing.T) {
 				path := filepath.Join(t.TempDir(), "sites.json")
-				r3SourceWrite(t, path, runtimeTestSourceBytes("initial.example"))
+				source := func(domain string) []byte {
+					return []byte(fmt.Sprintf(`{"version":3,"rules":[{"domain_suffix":[%q]},{"ip_cidr":["192.0.2.0/24"]}]}`, domain))
+				}
+				r3SourceWrite(t, path, source("initial.example"))
 				var calls atomic.Int32
 				f := r5PublicationControlFixture(t, path, &calls, control == "mode")
 				producer := runtimeTestProducer(t, f)
 				if warm {
-					r3SourceWrite(t, path, runtimeTestSourceBytes("warm.example"))
+					r3SourceWrite(t, path, source("warm.example"))
 					if wait, retry := producer.refresh(); wait != nil || retry {
 						t.Fatal("real initial source refresh did not settle before the race")
 					}
@@ -102,7 +106,7 @@ func TestRuntimeSourcePublicationSettlesBeforeConcurrentManagementControl(t *tes
 					retry bool
 				}
 				finished := make(chan refreshResult, 1)
-				r3SourceWrite(t, path, runtimeTestSourceBytes("racing.example"))
+				r3SourceWrite(t, path, source("racing.example"))
 				go func() {
 					wait, retry := producer.refresh()
 					finished <- refreshResult{wait, retry}
@@ -202,7 +206,7 @@ func TestRuntimeSourcePublicationSettlesBeforeConcurrentManagementControl(t *tes
 				// No NoOp, App ACK, retry-driver call or manual settlement is used
 				// to recover the child. Another real source edit must progress
 				// immediately through the same original production producer path.
-				r3SourceWrite(t, path, runtimeTestSourceBytes("following.example"))
+				r3SourceWrite(t, path, source("following.example"))
 				nextProducer := runtimeTestProducer(t, f)
 				if wait, retry := nextProducer.refresh(); wait != nil || retry {
 					t.Fatal("next real source refresh remained deferred behind the raced child")

@@ -484,6 +484,7 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 		if dependencyErr != nil {
 			return prepared, dependencyErr
 		}
+		dependencies.Admission = c.store
 		dnsLeaf, err = dns.NewRouterWithClientDependencies(ctx, s.logFactory, dnsOptions, dependencies)
 		if err != nil {
 			return prepared, err
@@ -612,7 +613,6 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 	if err := endpointManager.Freeze(); err != nil {
 		return prepared, err
 	}
-	var naiveClients map[string]func(context.Context) context.Context
 	for _, node := range nodes {
 		options := configs[node.Name].naiveOptions
 		if options == nil || !owned[bindings[node.Name]] {
@@ -626,10 +626,8 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 		if createErr != nil {
 			return prepared, E.Cause(createErr, "initialize shared Naive client")
 		}
-		if naiveClients == nil {
-			naiveClients = make(map[string]func(context.Context) context.Context)
-		}
-		naiveClients[node.Name] = bind
+		// Members of later graphs bind the client while its node is retained.
+		getComponent(node.Name).naiveClient = bind
 	}
 	for _, node := range nodes {
 		config := configs[node.Name]
@@ -644,7 +642,7 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 				return prepared, contextErr
 			}
 			if config.naiveClient != "" {
-				ctx = naiveClients[config.naiveClient](ctx)
+				ctx = getComponent(config.naiveClient).naiveClient(ctx)
 			}
 			component.history = urltest.NewIncarnationHistory(service.PtrFromContext[urltest.HistoryStorage](c.ctx))
 			service.MustRegisterPtr(ctx, component.history)
