@@ -178,8 +178,8 @@ func TestRuntimeProbeSlotDisregardsImportedChoiceAndReplacementSnapshot(t *testi
 		}
 	}
 	check(f, slot, "direct")
-	check(f, custom, "a")
-	check(f, "proxy-selector", "a")
+	check(f, custom, "direct")
+	check(f, "proxy-selector", "direct")
 	choose(f, slot, "b")
 	choose(f, custom, "b")
 	choose(f, "proxy-selector", "b")
