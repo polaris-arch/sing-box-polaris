@@ -32,7 +32,7 @@ func RegisterOutbound(registry *outbound.Registry) {
 	outbound.Register[option.NaiveOutboundOptions](registry, C.TypeNaive, NewOutbound)
 }
 
-const RuntimeClientSharing = true
+const RuntimeClientSharing = false
 
 type runtimeClientKey struct{}
 

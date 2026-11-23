@@ -50,6 +50,9 @@ const (
 )
 
 func TestRuntimeNaiveShareRequiresEquivalentAcyclicDependencies(t *testing.T) {
+	if !naive.RuntimeClientSharing {
+		t.Skip("runtime Naive client sharing is disabled")
+	}
 	base := option.NaiveOutboundOptions{
 		ServerOptions: option.ServerOptions{Server: "192.0.2.1", ServerPort: 443},
 		OutboundTLSOptionsContainer: option.OutboundTLSOptionsContainer{
@@ -126,6 +129,9 @@ func TestRuntimeNaiveShareRequiresEquivalentAcyclicDependencies(t *testing.T) {
 }
 
 func TestRuntimeNaiveSharedClientThroughPublication(t *testing.T) {
+	if !naive.RuntimeClientSharing {
+		t.Skip("runtime Naive client sharing is disabled")
+	}
 	for _, h3 := range []bool{false, true} {
 		protocol := 2
 		if h3 {
