@@ -278,7 +278,10 @@ func (r *Router) NeighborResolver() adapter.NeighborResolver {
 
 func (r *Router) ResetNetwork() {
 	r.httpClientManager.ResetNetwork()
-	r.dns.ResetNetwork()
+	// This graph's manager: a reused DNS leaf's may predate late-bound transports.
+	for _, transport := range r.dnsTransport.Transports() {
+		transport.Reset()
+	}
 	if r.processCache != nil {
 		r.processCache.Purge()
 	}

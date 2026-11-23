@@ -484,6 +484,7 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 		if dependencyErr != nil {
 			return prepared, dependencyErr
 		}
+		dependencies.Admission = c.store
 		dnsLeaf, err = dns.NewRouterWithClientDependencies(ctx, s.logFactory, dnsOptions, dependencies)
 		if err != nil {
 			return prepared, err

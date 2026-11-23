@@ -508,8 +508,48 @@ func runtimeConfigNodes(ctx context.Context, options option.Options) ([]runtimeg
 		httpNode.Fingerprint = runtimeDigest([]byte(fmt.Sprintf("%s:%t:%t:%t:%t", httpNode.Fingerprint, client.DefaultOutbound, client.ResolveOnDetour, client.DirectResolver, client.DisableEmptyDirectCheck)))
 	}
 	configs["http-manager"] = runtimeNodeOptions{node: httpNode}
-	dnsDeps := append(append([]string(nil), sets...), transports...)
-	if dnsOptions.Final != "" {
+	// The DNS router finds rule and default servers by tag in each query's
+	// admitted view. A stateless wire transport whose detour reaches a group is
+	// late-bound there; object-captured defaults and all others keep the edge.
+	lateBound := make(map[string]bool)
+	if len(transports) > 1 {
+		defaultResolver := common.PtrValueOrDefault(routeOptions.DefaultDomainResolver).Server
+		for _, name := range transports {
+			server := configs[name].transport
+			switch server.Type {
+			case C.DNSTypeUDP, C.DNSTypeTCP, C.DNSTypeTLS, C.DNSTypeHTTPS, C.DNSTypeQUIC, C.DNSTypeHTTP3:
+			default:
+				continue
+			}
+			wrapper, ok := server.Options.(option.DialerOptionsWrapper)
+			if !ok || wrapper.TakeDialerOptions().Detour == "" || server.Tag == defaultResolver {
+				continue
+			}
+			seen := make(map[string]bool)
+			pending := slices.Clone(configs[name].node.Dependencies)
+			for len(pending) > 0 && !lateBound[name] {
+				dependency := pending[len(pending)-1]
+				pending = pending[:len(pending)-1]
+				if dependency == "dns-router" || seen[dependency] {
+					continue
+				}
+				seen[dependency] = true
+				config := configs[dependency]
+				lateBound[name] = config.outbound != nil && (config.outbound.Type == C.TypeSelector || config.outbound.Type == C.TypeURLTest)
+				pending = append(pending, config.node.Dependencies...)
+			}
+		}
+	}
+	dnsDeps := append([]string(nil), sets...)
+	var lateDeps []string
+	for _, name := range transports {
+		if lateBound[name] {
+			lateDeps = append(lateDeps, name)
+		} else {
+			dnsDeps = append(dnsDeps, name)
+		}
+	}
+	if dnsOptions.Final != "" && !lateBound["dns-transport:"+dnsOptions.Final] {
 		dnsDeps = append(dnsDeps, "dns-transport:"+dnsOptions.Final)
 	}
 	dnsNode, err := makeNode("dns-router", dnsOptions, dnsDeps, false)
@@ -517,7 +557,8 @@ func runtimeConfigNodes(ctx context.Context, options option.Options) ([]runtimeg
 		return nil, nil, err
 	}
 	configs["dns-router"] = runtimeNodeOptions{node: dnsNode}
-	routeDeps := append(append(append([]string{"dns-router", "http-manager"}, sets...), outbounds...), inbounds...)
+	// FakeIP and resolve actions look up transports in the captured manager.
+	routeDeps := append(append(append(append([]string{"dns-router", "http-manager"}, sets...), outbounds...), inbounds...), lateDeps...)
 	if routeOptions.Final != "" {
 		routeDeps = append(routeDeps, "outbound:"+routeOptions.Final)
 	}

@@ -91,7 +91,10 @@ func (r *RuntimeDNSRouter) ResetNetwork() {
 		return
 	}
 	defer lease.Release()
-	lease.View().DNSRouter().ResetNetwork()
+	// A reused leaf's constructor manager can predate late-bound transports.
+	for _, transport := range lease.View().DNSTransportManager().Transports() {
+		transport.Reset()
+	}
 }
 
 func (r *RuntimeDNSRouter) HasResolverPolicy(id string) bool {
