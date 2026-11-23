@@ -624,6 +624,7 @@ func TestRouteProbeConnectProofAfterFlowAdmission(t *testing.T) {
 		background bool
 		wantStatus int
 		wantProof  bool
+		resetProbe bool
 		ticket     string
 	}{
 		{name: "final close rejects before dial", stopBefore: true, dialErr: dialFailure},
@@ -637,6 +638,8 @@ func TestRouteProbeConnectProofAfterFlowAdmission(t *testing.T) {
 		{name: "local context cancelled before a successful dial returns", cancelDial: true},
 		{name: "final close prevents publishing dialed connection", stopInDial: true},
 		{name: "published outbound connection", wantProof: true},
+		{name: "reused probe slot resets during a successful legacy dial", resetProbe: true},
+		{name: "reused probe slot resets during a failed legacy dial", resetProbe: true, dialErr: dialFailure},
 		{name: "ticket uses member without changing selector", ticket: "valid", background: true, wantProof: true},
 		{name: "ticket for a different slot", ticket: "slot", wantStatus: http.StatusBadGateway},
 		{name: "ticket for a different destination", ticket: "destination", wantStatus: http.StatusBadGateway},
@@ -659,6 +662,7 @@ func TestRouteProbeConnectProofAfterFlowAdmission(t *testing.T) {
 				manager.StopFinal()
 			}
 			var dialCalls atomic.Int32
+			var resetProbe func()
 			leaf := &probeGraphTestOutbound{referenceTestOutbound: referenceTestOutbound{tag: member}, dial: func() (net.Conn, error) {
 				dialCalls.Add(1)
 				if tc.cancelDial {
@@ -666,6 +670,9 @@ func TestRouteProbeConnectProofAfterFlowAdmission(t *testing.T) {
 				}
 				if tc.stopInDial {
 					manager.StopFinal()
+				}
+				if resetProbe != nil {
+					resetProbe()
 				}
 				if tc.dialErr != nil {
 					return nil, tc.dialErr
@@ -675,14 +682,20 @@ func TestRouteProbeConnectProofAfterFlowAdmission(t *testing.T) {
 				return out, nil
 			}}
 			outbounds := &referenceTestOutbounds{values: []adapter.Outbound{leaf}, defaultTag: slot}
-			options := option.SelectorOutboundOptions{Outbounds: []string{member}}
-			if tc.ticket != "" {
+			options := option.SelectorOutboundOptions{Outbounds: []string{member}, EphemeralPoolProbe: tc.resetProbe}
+			if tc.ticket != "" || tc.resetProbe {
 				outbounds.values = append(outbounds.values, &probeGraphTestOutbound{referenceTestOutbound: referenceTestOutbound{tag: "direct"}})
 				options.Outbounds = append(options.Outbounds, "direct")
 				options.Default = "direct"
 				options.InterruptExistConnections = true
 			}
 			selector := newHandshakeTestSelector(t, outbounds, slot, options)
+			if tc.resetProbe {
+				if !selector.SelectOutbound(member) {
+					t.Fatal("prepare probe selection")
+				}
+				resetProbe = selector.PreparePoolProbeReset(2)
+			}
 			outbounds.values = append(outbounds.values, selector)
 			router := &Router{ctx: ctx, logger: logger, outbound: outbounds, connection: manager}
 			if tc.ticket != "" && tc.ticket != "rule" {

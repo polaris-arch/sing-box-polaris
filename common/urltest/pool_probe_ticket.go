@@ -1,6 +1,7 @@
 package urltest
 
 import (
+	"context"
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
@@ -16,6 +17,17 @@ import (
 
 	"github.com/sagernet/sing-box/adapter"
 )
+
+type legacyPoolProbeDNSKey struct{}
+
+func ContextWithLegacyPoolProbeDNS(ctx context.Context, resolver string) context.Context {
+	return context.WithValue(ctx, legacyPoolProbeDNSKey{}, resolver)
+}
+
+func IsLegacyPoolProbeDNS(ctx context.Context, resolver string) bool {
+	tag, loaded := ctx.Value(legacyPoolProbeDNSKey{}).(string)
+	return loaded && tag == resolver
+}
 
 const (
 	PoolProbeTicketVersion  = 1

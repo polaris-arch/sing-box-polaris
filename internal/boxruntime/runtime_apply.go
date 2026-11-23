@@ -243,6 +243,7 @@ func (s *Box) applyRuntimeConfig(ctx context.Context, actor string, request Runt
 		defer func() { publication.abort() }()
 		if prepared != nil {
 			publication.apiHandoffs = prepared.apiHandoffs
+			publication.probeResets = prepared.probeResets
 			publication.logPublication = prepared.logPublication
 			publication.dnsStores = prepared.dnsStores
 			publication.endpoints = prepared.endpointTransaction

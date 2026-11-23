@@ -193,9 +193,32 @@ func (r *Router) routeConnection(ctx context.Context, conn net.Conn, metadata ad
 	if selectedRule == nil {
 		selectedOutbound = r.outbound.Default()
 	}
+	// The compatibility path still uses a mutable selected member. Retain the
+	// exact selection through its dial, and drop proof if publication retired it.
+	resolvedMember := probeMember
+	if probeMember == nil && probeBinding.Graph.Revision != 0 && probeBinding.OnVerified != nil {
+		if selector, ok := selectedOutbound.(interface {
+			EphemeralPoolProbe() bool
+			ScopePoolProbeSelection(context.Context, uint64) (context.Context, adapter.Outbound, func() bool)
+		}); ok && selector.EphemeralPoolProbe() {
+			var current func() bool
+			ctx, resolvedMember, current = selector.ScopePoolProbeSelection(ctx, probeBinding.Graph.Revision)
+			if resolvedMember == nil {
+				buf.ReleaseMulti(buffers)
+				closeRouteHandshakeFailure(conn, onClose, adapter.ErrProbeBindingMismatch)
+				return nil
+			}
+			verify := probeBinding.OnVerified
+			probeBinding.OnVerified = func() {
+				if current() {
+					verify()
+				}
+			}
+		}
+	}
 	var chain []adapter.Outbound
-	if probeMember != nil {
-		chain, err = resolveOutbound(probeMember, N.NetworkTCP)
+	if resolvedMember != nil {
+		chain, err = resolveOutbound(resolvedMember, N.NetworkTCP)
 		chain = append([]adapter.Outbound{selectedOutbound}, chain...)
 	} else {
 		chain, err = resolveOutbound(selectedOutbound, N.NetworkTCP)

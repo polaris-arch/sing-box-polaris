@@ -2,13 +2,17 @@ package boxruntime
 
 import (
 	"bytes"
+	"context"
+	"errors"
 	"fmt"
+	"net"
 	"path/filepath"
 	"slices"
 	"testing"
 
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/adapter/inbound"
+	"github.com/sagernet/sing-box/common/urltest"
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/dns"
 	"github.com/sagernet/sing-box/dns/transport"
@@ -16,8 +20,10 @@ import (
 	"github.com/sagernet/sing-box/internal/runtimegraph"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
+	"github.com/sagernet/sing-box/protocol/group"
 	boxHTTP "github.com/sagernet/sing-box/protocol/http"
 	"github.com/sagernet/sing/common/json"
+	M "github.com/sagernet/sing/common/metadata"
 	N "github.com/sagernet/sing/common/network"
 	"github.com/sagernet/sing/service"
 )
@@ -183,6 +189,107 @@ func TestRuntimeProbeSlotDisregardsImportedChoiceAndReplacementSnapshot(t *testi
 	check(f, "proxy-selector", "b")
 	choose(f, slot, "b")
 
+	// A route-only update after bootstrap reuses this exact selector, listener,
+	// DNS transport and member. Only a winning publication may clear its pin.
+	func() {
+		previousLease, err := f.box.runtime.store.Acquire()
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer previousLease.Release()
+		previous := previousLease.View().(*runtimeView)
+		slotOutbound, _ := previous.OutboundManager().Outbound(slot)
+		probe := slotOutbound.(*group.Selector)
+		dialCtx, selected, proofCurrent := probe.ScopePoolProbeSelection(t.Context(), previous.Identity().Revision)
+		if selected == nil || selected.Tag() != "b" || !proofCurrent() {
+			t.Fatal("old graph did not capture the selected member")
+		}
+		actualB := selected.(*runtimeTestSocks)
+		remote, peer := net.Pipe()
+		defer remote.Close()
+		defer peer.Close()
+		actualB.dialHook = func(context.Context, string, M.Socksaddr) (net.Conn, error) { return remote, nil }
+		business, _ := previous.OutboundManager().Outbound("proxy-selector")
+		conn, err := business.DialContext(t.Context(), N.NetworkTCP, M.Socksaddr{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer conn.Close()
+		next := bytes.Replace(config(1081), []byte(`"outbound":"probe-selector-0"}],"final":"proxy-selector"`), []byte(`"outbound":"probe-selector-0"},{"domain":"unrelated.example","action":"route","outbound":"proxy-selector"}],"final":"proxy-selector"`), 1)
+
+		failed := bytes.Replace(next, []byte(`"outbounds":[`), []byte(`"outbounds":[{"type":"socks","tag":"reject-stage","server":"192.0.2.3","server_port":1080},`), 1)
+		f.setConstructorHook(func(outbound *runtimeTestSocks) error {
+			if outbound.Tag() == "reject-stage" {
+				outbound.startHook = func(stage adapter.StartStage) error {
+					if stage == adapter.StartStatePostStart {
+						return errors.New("rejected before publishing probe reset")
+					}
+					return nil
+				}
+			}
+			return nil
+		})
+		_, request := f.plan(t, failed)
+		rejected, err := f.box.applyRuntimeConfig(t.Context(), "actor-a", request)
+		f.setConstructorHook(nil)
+		if err != nil || len(rejected.Errors) == 0 || rejected.Active.Revision != previous.Identity().Revision || !proofCurrent() {
+			t.Fatalf("failed publication changed the active probe: revision=%d, errors=%v, err=%v", rejected.Active.Revision, rejected.Errors, err)
+		}
+		check(f, slot, "b")
+		apply(next, 3)
+		activeLease, err := f.box.runtime.store.Acquire()
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer activeLease.Release()
+		active := activeLease.View().(*runtimeView)
+		reused, _ := active.OutboundManager().Outbound(slot)
+		if reused != slotOutbound || active.componentIDs["outbound:"+slot] != previous.componentIDs["outbound:"+slot] ||
+			active.componentIDs["inbound:probe-in-0"] != previous.componentIDs["inbound:probe-in-0"] ||
+			active.componentIDs["dns-transport:dns-probe-exit-0"] != previous.componentIDs["dns-transport:dns-probe-exit-0"] {
+			t.Fatal("route-only publication rebuilt an unchanged probe resource")
+		}
+		check(f, slot, "direct")
+		if refs := probe.References(); len(refs) != 1 || refs[0] != "direct" {
+			t.Fatalf("retired probe member still contributes census references: %v", refs)
+		}
+		if proofCurrent() {
+			t.Fatal("old in-flight probe could prove a reset selection")
+		}
+		if _, err := probe.DialContext(dialCtx, N.NetworkTCP, M.Socksaddr{}); !errors.Is(err, urltest.ErrProbeNotRun) {
+			t.Fatalf("old in-flight DNS detour borrowed the reset member: %v", err)
+		}
+
+		manager := f.box.Outbound().(*runtimeOutboundManager)
+		if accepted, err := manager.SelectOutboundAtGraphContext(t.Context(), active.Identity(), slot, "b"); !accepted || err != nil {
+			t.Fatalf("fresh graph could not reselect the same slot member: %v", err)
+		}
+		if accepted, err := manager.SelectOutboundAtGraphContext(t.Context(), previous.Identity(), slot, "direct"); accepted || !errors.Is(err, adapter.ErrProbeGraphChanged) {
+			t.Fatalf("old graph release reached the new selection: accepted=%v error=%v", accepted, err)
+		}
+		if _, selected, _ := probe.ScopePoolProbeSelection(t.Context(), previous.Identity().Revision); selected != nil || proofCurrent() {
+			t.Fatal("old graph borrowed the new selection of its previous member")
+		}
+		check(f, slot, "b")
+		deadline, _ := runtimeTestContext(t).Deadline()
+		if err := conn.SetDeadline(deadline); err != nil {
+			t.Fatal(err)
+		}
+		payload := []byte("admitted business")
+		sent := make(chan error, 1)
+		go func() {
+			_, writeErr := peer.Write(payload)
+			sent <- writeErr
+		}()
+		reader := make([]byte, len(payload))
+		if _, err := conn.Read(reader); err != nil || !bytes.Equal(reader, payload) {
+			t.Fatalf("admitted business flow interrupted, got=%q err=%v", reader, err)
+		}
+		if err := <-sent; err != nil {
+			t.Fatal(err)
+		}
+	}()
+
 	var typed option.Options
 	if err := json.UnmarshalContext(f.ctx, config(1081), &typed); err != nil {
 		t.Fatal(err)
@@ -265,10 +372,10 @@ func TestRuntimeProbeSlotDisregardsImportedChoiceAndReplacementSnapshot(t *testi
 	// Changing only the route role must replace the slot, even though its own
 	// options and all resolved member outbounds are exactly the same.
 	ordinary := bytes.Replace(config(1081), []byte(`"action":"route","outbound"`), []byte(`"action":"route","network":"tcp","outbound"`), 1)
-	apply(ordinary, 3)
+	apply(ordinary, 4)
 	check(f, slot, "a")
 	choose(f, slot, "b")
-	apply(config(1081), 4)
+	apply(config(1081), 5)
 	check(f, slot, "direct")
 	choose(f, slot, "b")
 	choose(f, slot, "direct")
