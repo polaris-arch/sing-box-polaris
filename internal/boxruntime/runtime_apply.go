@@ -341,6 +341,7 @@ func (s *Box) applyRuntimeConfig(ctx context.Context, actor string, request Runt
 		operation = cloneRuntimeOperation(*record.operation)
 	}()
 	if prepareErr != nil {
+		s.logger.Warn("runtime candidate was not published: ", prepareErr)
 		if prepared != nil {
 			prepared.abort()
 			s.recordRuntimeListenerRestoration(record, prepared)

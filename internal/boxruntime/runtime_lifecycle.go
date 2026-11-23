@@ -8,6 +8,7 @@ import (
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/common/urltest"
 	C "github.com/sagernet/sing-box/constant"
+	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing/service"
 )
 
@@ -105,6 +106,17 @@ func (s *Box) startRuntime() error {
 		return err
 	}
 	prepared := c.initialPrepared
+	// The App passes its choices only as selector defaults, so a cold start
+	// applies them as intents and never judges a stale cached choice.
+	var intents []RuntimeSelectorIntent
+	for _, outbound := range prepared.options.Outbounds {
+		if selector, ok := outbound.Options.(*option.SelectorOutboundOptions); ok && outbound.Type == C.TypeSelector && selector.Default != "" && !selector.EphemeralPoolProbe {
+			intents = append(intents, RuntimeSelectorIntent{Group: outbound.Tag, Selected: selector.Default})
+		}
+	}
+	if err := s.applyRuntimeSelectorIntents(prepared, intents); err != nil {
+		return err
+	}
 	var endpointErr error
 	prepared.endpointTransaction, endpointErr = s.stageRuntimeEndpoints(c.ctx, prepared)
 	if endpointErr != nil {

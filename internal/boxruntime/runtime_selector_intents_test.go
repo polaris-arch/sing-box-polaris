@@ -8,6 +8,7 @@ import (
 	"net"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/sagernet/sing-box/adapter"
@@ -178,8 +179,8 @@ func TestRuntimeProbeSlotDisregardsImportedChoiceAndReplacementSnapshot(t *testi
 		}
 	}
 	check(f, slot, "direct")
-	check(f, custom, "a")
-	check(f, "proxy-selector", "a")
+	check(f, custom, "direct")
+	check(f, "proxy-selector", "direct")
 	choose(f, slot, "b")
 	choose(f, custom, "b")
 	choose(f, "proxy-selector", "b")
@@ -403,5 +404,56 @@ func TestRuntimeProbeSlotDisregardsImportedChoiceAndReplacementSnapshot(t *testi
 	}
 	if got := cache.LoadSelected(custom); got != "b" {
 		t.Fatalf("custom selector's persisted choice = %q", got)
+	}
+}
+
+func TestRuntimeColdStartJudgesSelectorDefaultOverCache(t *testing.T) {
+	for _, test := range []struct {
+		name, cached, defaultTag string
+		fails                    bool
+	}{
+		{"cached failed node, good default", "b", "a", false},
+		{"cached good node, failed default", "a", "b", true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "cache.db")
+			logger := log.NewNOPFactory().Logger()
+			scope := adapter.NewScope(t.Context(), logger)
+			cache := cachefile.New(t.Context(), logger, option.CacheFileOptions{Path: path, CacheID: "test"})
+			if err := cache.Start(adapter.StartStateInitialize, scope); err != nil {
+				_ = scope.Close()
+				t.Fatal(err)
+			}
+			if err := cache.StoreSelected("select", test.cached); err != nil {
+				_ = scope.Close()
+				t.Fatal(err)
+			}
+			if err := scope.Close(); err != nil {
+				t.Fatal(err)
+			}
+			content := bytes.Replace(runtimeTestConfig(1080, "example.org"), []byte(`"default":"a"`), []byte(`"default":"`+test.defaultTag+`"`), 1)
+			content = bytes.Replace(content, []byte(`"log":`), []byte(fmt.Sprintf(`"experimental":{"cache_file":{"enabled":true,"cache_id":"test","path":%q}},"log":`, path)), 1)
+			f := newRuntimeTestFixture(t, content, func(outbound *runtimeTestSocks) error {
+				if outbound.Tag() == "b" {
+					outbound.startHook = func(stage adapter.StartStage) error {
+						if stage == adapter.StartStateStart {
+							return errors.New("injected selected start failure")
+						}
+						return nil
+					}
+				}
+				return nil
+			})
+			err := f.box.Start()
+			if test.fails != (err != nil) || err != nil && !strings.Contains(err.Error(), "outbound/socks[b]") {
+				t.Fatalf("cold start: %v", err)
+			}
+			if !test.fails {
+				selector, _ := f.box.Outbound().Outbound("select")
+				if got := selector.(adapter.OutboundGroup).Selected(N.NetworkTCP).Tag(); got != test.defaultTag {
+					t.Fatalf("select selected %s; want %s", got, test.defaultTag)
+				}
+			}
+		})
 	}
 }

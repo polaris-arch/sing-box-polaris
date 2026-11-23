@@ -728,6 +728,36 @@ func TestRuntimeInitialStartFailureNeverPublishesAndCleansRealConstructors(t *te
 	}
 }
 
+func TestRuntimeBorrowedStartFailureStillFailsSelection(t *testing.T) {
+	f := newRuntimeTestFixture(t, runtimeTestConfig(1080, "example.org"), nil)
+	f.start(t)
+	f.setConstructorHook(func(outbound *runtimeTestSocks) error {
+		if outbound.Tag() == "c" {
+			outbound.startHook = func(stage adapter.StartStage) error {
+				if stage == adapter.StartStateStart {
+					return errors.New("injected unselected start failure")
+				}
+				return nil
+			}
+		}
+		return nil
+	})
+	added := bytes.Replace(runtimeTestConfig(1080, "example.org"), []byte(`"outbounds":[`), []byte(`"outbounds":[{"type":"socks","tag":"c","server":"192.0.2.3","server_port":1080,"version":"5"},`), 1)
+	_, request := f.plan(t, added)
+	operation, err := f.box.applyRuntimeConfig(context.Background(), "actor-a", request)
+	if err != nil || operation.Active.Revision != 2 || len(operation.Errors) != 0 {
+		t.Fatalf("unselected start failure rejected the candidate: %+v %v", operation, err)
+	}
+	_, request = f.plan(t, bytes.Replace(added, []byte(`"route":{"final":"select"`), []byte(`"route":{"final":"c"`), 1))
+	operation, err = f.box.applyRuntimeConfig(context.Background(), "actor-a", request)
+	if err != nil || operation.Active.Revision != 2 || len(operation.Errors) == 0 || operation.Errors[0].Code != "PREPARATION_FAILED" {
+		t.Fatalf("borrowed failed default outbound published: %+v %v", operation, err)
+	}
+	if f.count("c") != 1 {
+		t.Fatal("failed outbound was reconstructed instead of borrowed")
+	}
+}
+
 func TestRuntimeInlineSourceReplacementChangesOnlyCapturedClosure(t *testing.T) {
 	f := newRuntimeTestFixture(t, runtimeTestConfig(1080, "example.org"), nil)
 	f.start(t)

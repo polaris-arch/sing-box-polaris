@@ -82,6 +82,10 @@ func (s *Scope) Context() context.Context {
 	return s.ctx
 }
 
+func (s *Scope) Logger() log.ContextLogger {
+	return s.logger
+}
+
 func (s *Scope) Add(cleanup func() error) {
 	s.access.Lock()
 	s.cleanups = append(s.cleanups, cleanup)

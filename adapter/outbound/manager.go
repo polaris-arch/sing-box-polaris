@@ -3,15 +3,21 @@ package outbound
 import (
 	"context"
 	"errors"
+	"net"
 	"os"
+	"reflect"
 	"slices"
 	"strings"
 	"sync"
 
 	"github.com/sagernet/sing-box/adapter"
+	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/log"
+	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing/common"
 	E "github.com/sagernet/sing/common/exceptions"
+	M "github.com/sagernet/sing/common/metadata"
+	N "github.com/sagernet/sing/common/network"
 )
 
 var _ adapter.OutboundManager = (*Manager)(nil)
@@ -164,7 +170,10 @@ func (m *Manager) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 	outbounds := slices.Clone(m.outbounds)
 	m.access.Unlock()
 	if stage == adapter.StartStateStart {
-		return m.startOutbounds(scope, append(outbounds, common.Map(m.endpoint.Endpoints(), func(it adapter.Endpoint) adapter.Outbound { return it })...))
+		if err := m.startOutbounds(scope, append(outbounds, common.Map(m.endpoint.Endpoints(), func(it adapter.Endpoint) adapter.Outbound { return it })...)); err != nil {
+			return err
+		}
+		return m.SelectedFailure(nil, "")
 	}
 	for _, outbound := range outbounds {
 		lifecycle, isLifecycle := outbound.(adapter.Lifecycle)
@@ -214,7 +223,7 @@ func (m *Manager) startOutbounds(scope *adapter.Scope, outbounds []adapter.Outbo
 	for {
 		canContinue := false
 	startOne:
-		for _, outboundToStart := range outbounds {
+		for i, outboundToStart := range outbounds {
 			outboundTag := outboundToStart.Tag()
 			if started[outboundTag] {
 				continue
@@ -245,7 +254,18 @@ func (m *Manager) startOutbounds(scope *adapter.Scope, outbounds []adapter.Outbo
 			}
 			err := memberScope.Start(name, lifecycle, adapter.StartStateStart)
 			if err != nil {
-				return err
+				if _, isGroup := outboundToStart.(adapter.OutboundGroup); isGroup {
+					return err
+				}
+				// A failed leaf stays resolvable for groups and detours; only the
+				// default outbound chain fails the start (SelectedFailure).
+				memberScope.Logger().Error(err)
+				failed := &failedOutbound{outboundToStart, err}
+				m.access.Lock()
+				// outbounds begins with the clone of m.outbounds.
+				m.outbounds[i] = failed
+				m.outboundByTag[outboundTag] = failed
+				m.access.Unlock()
 			}
 		}
 		if len(started) == len(outbounds) {
@@ -274,6 +294,56 @@ func (m *Manager) startOutbounds(scope *adapter.Scope, outbounds []adapter.Outbo
 			return lintOutbound(append(oTree, problemOutboundTag), problemOutbound)
 		}
 		return lintOutbound([]string{currentOutbound.Tag()}, currentOutbound)
+	}
+	return nil
+}
+
+// SelectedFailure returns the start error of a failed outbound on the default
+// outbound chain: selected selector members, urltest groups whose members all
+// failed, and detours. The chain starts at the default outbound and at routes
+// whose only condition is the current clash mode, which stand in for
+// route.final in mode-compiled configurations.
+func (m *Manager) SelectedFailure(rules []option.Rule, mode string) error {
+	var failure func(tag string) error
+	failure = func(tag string) error {
+		outbound, _ := m.Outbound(tag)
+		switch it := outbound.(type) {
+		case *failedOutbound:
+			return it.err
+		case adapter.URLTestGroup:
+			var err error
+			for _, member := range it.All() {
+				if err = failure(member); err == nil {
+					break
+				}
+			}
+			return err
+		case adapter.OutboundGroup:
+			if selected := it.Selected(N.NetworkTCP); selected != nil {
+				return failure(selected.Tag())
+			}
+		case adapter.Outbound:
+			for _, dependency := range it.Dependencies() {
+				if err := failure(dependency); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	}
+	if defaultOutbound := m.Default(); defaultOutbound != nil {
+		if err := failure(defaultOutbound.Tag()); err != nil {
+			return err
+		}
+	}
+	for _, rule := range rules {
+		raw := rule.DefaultOptions.RawDefaultRule
+		if rule.Type == C.RuleTypeDefault && rule.DefaultOptions.Action == C.RuleActionTypeRoute &&
+			strings.EqualFold(raw.ClashMode, mode) && reflect.DeepEqual(raw, option.RawDefaultRule{ClashMode: raw.ClashMode}) {
+			if err := failure(rule.DefaultOptions.RouteOptions.Outbound); err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }
@@ -332,4 +402,17 @@ func (m *Manager) Create(ctx context.Context, router adapter.Router, logger log.
 		m.defaultOutbound = outbound
 	}
 	return nil
+}
+
+type failedOutbound struct {
+	adapter.Outbound
+	err error
+}
+
+func (o *failedOutbound) DialContext(ctx context.Context, network string, destination M.Socksaddr) (net.Conn, error) {
+	return nil, o.err
+}
+
+func (o *failedOutbound) ListenPacket(ctx context.Context, destination M.Socksaddr) (net.PacketConn, error) {
+	return nil, o.err
 }
