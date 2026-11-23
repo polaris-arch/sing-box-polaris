@@ -466,11 +466,11 @@
 +			close(c.started)
 +			close(c.closed)
 +			return c.startError
-@@ -197,0 +234,13 @@
+@@ -197,0 +234,3 @@
 +	c.state.Store(uint32(clientStateDormant))
 +	return nil
 +}
-+
+@@ -198,0 +238,50 @@
 +func (c *NaiveClient) validateTrustedRoots() bool {
 +	// An unstarted engine owns the verifier. Create and destroy it on
 +	// the same OS thread, as required by Cronet's thread checker.
@@ -480,7 +480,7 @@
 +	defer engine.Destroy()
 +	return engine.SetTrustedRootCertificates(c.trustedRootCertificates)
 +}
-@@ -198,0 +248,40 @@
++
 +func (c *NaiveClient) IsDormant() bool {
 +	return clientState(c.state.Load()) == clientStateDormant
 +}
@@ -542,13 +542,26 @@
 +	if version := c.Version(); version != "" {
 +		c.logger.Info("NaiveProxy started, version: ", version)
 +	}
-@@ -465 +557 @@
+@@ -415,0 +508,10 @@
++			sessionReceiveWindow := c.quicSessionReceiveWindow
++			if runtime.GOOS == "ios" {
++				// Same receive backlog bound as the HTTP/2 default below.
++				if streamReceiveWindow == 0 {
++					streamReceiveWindow = 2 * 1024 * 1024
++				}
++				if sessionReceiveWindow == 0 {
++					sessionReceiveWindow = 4 * 1024 * 1024
++				}
++			}
+@@ -419 +520,0 @@
+-			sessionReceiveWindow := c.quicSessionReceiveWindow
+@@ -465 +566 @@
 -	defer c.pending.Done()
 +	defer c.finishOperation(&c.pending)
-@@ -477 +569 @@
+@@ -477 +578 @@
 -	defer c.pending.Done()
 +	defer c.finishOperation(&c.pending)
-@@ -494,5 +586,13 @@
+@@ -494,5 +595,13 @@
 -	switch state {
 -	case clientStateRunning:
 -	case clientStateClosed, clientStateClosing:
@@ -567,12 +580,12 @@
 +		state = clientState(c.state.Load())
 +	}
 +	if state < clientStateRunning {
-@@ -501,3 +601 @@
+@@ -501,3 +610 @@
 -			if clientState(c.state.Load()) != clientStateRunning {
 -				return nil, net.ErrClosed
 -			}
 +			state = clientState(c.state.Load())
-@@ -509,0 +608,7 @@
+@@ -509,0 +617,7 @@
 +	if state != clientStateRunning {
 +		// A terminal startup error is published before the closing state.
 +		if c.startError != nil {
@@ -580,19 +593,19 @@
 +		}
 +		return nil, net.ErrClosed
 +	}
-@@ -513 +618 @@
+@@ -513 +627 @@
 -	defer c.pending.Done()
 +	defer c.finishOperation(&c.pending)
-@@ -576 +681 @@
+@@ -576 +690 @@
 -		case clientStateCreated:
 +		case clientStateCreated, clientStateDormant:
-@@ -588 +693 @@
+@@ -588 +702 @@
 -		case clientStateRunning:
 +		case clientStateRunning, clientStateSealed:
-@@ -624 +729 @@
+@@ -624 +738 @@
 -		closeError = errors.Join(closeError, shutdownNaiveEngine(engine.Shutdown, engine.Destroy))
 +		closeError = errors.Join(closeError, shutdownNaiveEngine(engine.Shutdown, engine.Destroy, c.releaseEngines))
-@@ -655 +759,0 @@
+@@ -655 +768,0 @@
 -
 --- a/naive_client_lifecycle.go
 +++ b/naive_client_lifecycle.go

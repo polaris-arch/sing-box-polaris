@@ -505,10 +505,19 @@ func (c *NaiveClient) startEngine(tcpDialer Dialer, udpDialer UDPDialer, dnsServ
 	if paramsError == nil {
 		if c.quicEnabled {
 			streamReceiveWindow := c.receiveWindow
+			sessionReceiveWindow := c.quicSessionReceiveWindow
+			if runtime.GOOS == "ios" {
+				// Same receive backlog bound as the HTTP/2 default below.
+				if streamReceiveWindow == 0 {
+					streamReceiveWindow = 2 * 1024 * 1024
+				}
+				if sessionReceiveWindow == 0 {
+					sessionReceiveWindow = 4 * 1024 * 1024
+				}
+			}
 			if streamReceiveWindow == 0 {
 				streamReceiveWindow = 6 * 1024 * 1024
 			}
-			sessionReceiveWindow := c.quicSessionReceiveWindow
 			if sessionReceiveWindow == 0 {
 				sessionReceiveWindow = 15 * 1024 * 1024
 			}
