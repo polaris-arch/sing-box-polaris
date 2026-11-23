@@ -10,7 +10,9 @@ import (
 
 	"github.com/sagernet/sing-box/adapter"
 	endpointmanager "github.com/sagernet/sing-box/adapter/endpoint"
+	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/log"
+	"github.com/sagernet/sing-box/option"
 	M "github.com/sagernet/sing/common/metadata"
 	N "github.com/sagernet/sing/common/network"
 )
@@ -319,6 +321,13 @@ func TestRuntimeUnselectedStartFailureIsIsolated(t *testing.T) {
 }
 
 func TestRuntimeSelectedStartFailureNamesNode(t *testing.T) {
+	route := func(mode, outbound string) option.Rule {
+		return option.Rule{Type: C.RuleTypeDefault, DefaultOptions: option.DefaultRule{
+			RawDefaultRule: option.RawDefaultRule{ClashMode: mode},
+			RuleAction:     option.RuleAction{Action: C.RuleActionTypeRoute, RouteOptions: option.RouteActionOptions{Outbound: outbound}},
+		}}
+	}
+	rules := []option.Rule{route("normal", "select"), route("global", "other")}
 	for _, test := range []struct {
 		name    string
 		members func(*Manager) []adapter.Outbound
@@ -336,11 +345,17 @@ func TestRuntimeSelectedStartFailureNamesNode(t *testing.T) {
 		{"detour", func(m *Manager) []adapter.Outbound {
 			return []adapter.Outbound{runtimeFailingMember("bad"), runtimeMember("default", "bad")}
 		}, true},
+		{"clash mode route with direct final", func(m *Manager) []adapter.Outbound {
+			return []adapter.Outbound{runtimeMember("default"), runtimeFailingMember("bad"), &runtimeGroup{runtimeMember("select", "bad"), m, "bad"}}
+		}, true},
+		{"other clash mode route", func(m *Manager) []adapter.Outbound {
+			return []adapter.Outbound{runtimeMember("default"), runtimeFailingMember("bad"), &runtimeGroup{runtimeMember("other", "bad"), m, "bad"}}
+		}, false},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			manager := NewRuntimeManager(nil, runtimeEndpointManager(t), "default")
 			runtimeStartMembers(t, manager, test.members(manager)...)
-			err := manager.SelectedFailure(nil, "")
+			err := manager.SelectedFailure(rules, "Normal")
 			if test.fails != (err != nil) || err != nil && !strings.Contains(err.Error(), "start outbound/test[bad") {
 				t.Fatalf("selected failure: %v", err)
 			}
