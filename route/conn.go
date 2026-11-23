@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"math"
 	"net"
 	"net/netip"
 	"os"
@@ -20,6 +21,7 @@ import (
 	"github.com/sagernet/sing-box/common/tlsspoof"
 	"github.com/sagernet/sing-box/common/urltest"
 	C "github.com/sagernet/sing-box/constant"
+	"github.com/sagernet/sing-box/constant/goos"
 	"github.com/sagernet/sing-tun"
 	"github.com/sagernet/sing/common"
 	"github.com/sagernet/sing/common/buf"
@@ -34,6 +36,11 @@ import (
 
 var _ adapter.ConnectionManager = (*ConnectionManager)(nil)
 
+// Each dial holds its TLS state and goroutine stacks until the handshake ends.
+// The iOS Network Extension shares one 50 MB process limit with the TUN stack,
+// so a burst after connecting queues there; elsewhere the bound is never hit.
+const connectionDialLimit = goos.IsIos*48 + (1-goos.IsIos)*math.MaxInt32
+
 type ConnectionManager struct {
 	closed          bool // guarded by access
 	tasks           sync.WaitGroup
@@ -45,11 +52,39 @@ type ConnectionManager struct {
 	logger          logger.ContextLogger
 	access          sync.Mutex
 	connections     list.List[io.Closer]
+	dialing         chan struct{}
 }
 
 func NewConnectionManager(logger logger.ContextLogger) *ConnectionManager {
 	return &ConnectionManager{
-		logger: logger,
+		logger:  logger,
+		dialing: make(chan struct{}, connectionDialLimit),
+	}
+}
+
+// reserveDial waits for a dial slot for a proxy handshake. Direct and block
+// outbounds start none, bridge dialers already run under their outer flow's
+// slot, and probes must not measure the queue. A wait past the connect timeout
+// dials without a slot rather than queue behind dials to an unreachable node.
+func (m *ConnectionManager) reserveDial(ctx context.Context, this N.Dialer, probe bool) (func(), error) {
+	outbound, isOutbound := this.(adapter.Outbound)
+	if probe || !isOutbound || outbound.Type() == C.TypeDirect || outbound.Type() == C.TypeBlock {
+		return func() {}, nil
+	}
+	select {
+	case m.dialing <- struct{}{}:
+		return func() { <-m.dialing }, nil
+	default:
+	}
+	timeout := time.NewTimer(C.TCPConnectTimeout)
+	defer timeout.Stop()
+	select {
+	case m.dialing <- struct{}{}:
+		return func() { <-m.dialing }, nil
+	case <-timeout.C:
+		return func() {}, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
 	}
 }
 
@@ -132,11 +167,17 @@ func (m *ConnectionManager) newConnection(ctx context.Context, this N.Dialer, co
 		remoteConn net.Conn
 		err        error
 	)
+	dialDone, err := m.reserveDial(ctx, this, verifyProbe != nil)
+	if err != nil {
+		N.CloseOnHandshakeFailure(m.closer(ctx, conn), onClose, err)
+		return
+	}
 	if len(metadata.DestinationAddresses) > 0 || metadata.Destination.IsIP() {
 		remoteConn, err = dialer.DialSerialNetwork(ctx, this, N.NetworkTCP, metadata.Destination, metadata.DestinationAddresses, metadata.NetworkStrategy, metadata.NetworkType, metadata.FallbackNetworkType, metadata.FallbackDelay)
 	} else {
 		remoteConn, err = this.DialContext(ctx, N.NetworkTCP, metadata.Destination)
 	}
+	dialDone()
 	if err != nil {
 		if verifyProbe != nil &&
 			!errors.Is(err, context.Canceled) &&
@@ -244,6 +285,11 @@ func (m *ConnectionManager) NewPacketConnection(ctx context.Context, this N.Dial
 		destinationAddress netip.Addr
 		err                error
 	)
+	dialDone, err := m.reserveDial(ctx, this, false)
+	if err != nil {
+		N.CloseOnHandshakeFailure(m.closer(ctx, conn), onClose, err)
+		return
+	}
 	if metadata.UDPConnect {
 		parallelDialer, isParallelDialer := this.(dialer.ParallelInterfaceDialer)
 		if len(metadata.DestinationAddresses) > 0 {
@@ -261,6 +307,7 @@ func (m *ConnectionManager) NewPacketConnection(ctx context.Context, this N.Dial
 		} else {
 			remoteConn, err = this.DialContext(ctx, N.NetworkUDP, metadata.Destination)
 		}
+		dialDone()
 		if err != nil {
 			var remoteString string
 			if len(metadata.DestinationAddresses) > 0 {
@@ -294,6 +341,7 @@ func (m *ConnectionManager) NewPacketConnection(ctx context.Context, this N.Dial
 		} else {
 			remotePacketConn, err = this.ListenPacket(ctx, metadata.Destination)
 		}
+		dialDone()
 		if err != nil {
 			var dialerString string
 			if outbound, isOutbound := this.(adapter.Outbound); isOutbound {
