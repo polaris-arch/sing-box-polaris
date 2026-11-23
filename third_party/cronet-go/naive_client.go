@@ -63,19 +63,12 @@ type NaiveClient struct {
 	ctx                      context.Context
 	dialer                   N.Dialer
 	logger                   logger.ContextLogger
-	serverAddress            M.Socksaddr
-	serverName               string
-	serverURL                string
-	authorization            string
+	server                   *NaiveServer
 	concurrency              int
-	extraHeaders             map[string]string
 	receiveWindow            uint64
 	trustedRootCertificates  string
 	dnsResolver              DNSResolverFunc
 	echEnabled               bool
-	echConfigList            []byte
-	echQueryServerName       string
-	echMutex                 sync.RWMutex
 	testForceUDPLoopback     bool
 	quicEnabled              bool
 	quicCongestionControl    QUICCongestionControl
@@ -88,6 +81,19 @@ type NaiveClient struct {
 	activeConnections        sync.WaitGroup
 	proxyWaitGroup           sync.WaitGroup
 	proxyCancel              context.CancelFunc
+}
+
+// NaiveServer is the identity of one proxy server: the URL and headers of its
+// streams and the DNS answers its engine resolves for it.
+type NaiveServer struct {
+	address            M.Socksaddr
+	name               string
+	url                string
+	authorization      string
+	extraHeaders       map[string]string
+	echConfigList      []byte
+	echQueryServerName string
+	echMutex           sync.RWMutex
 }
 
 type NaiveClientOptions struct {
@@ -126,27 +132,12 @@ func NewNaiveClient(config NaiveClientOptions) (*NaiveClient, error) {
 	if err != nil {
 		return nil, err
 	}
-	if !config.ServerAddress.IsValid() {
-		return nil, E.New("invalid server address")
+	server, err := newNaiveServer(config)
+	if err != nil {
+		return nil, err
 	}
 	if config.DNSResolver == nil {
 		return nil, E.New("DNSResolver is required")
-	}
-
-	serverName := config.ServerName
-	if serverName == "" {
-		serverName = config.ServerAddress.AddrString()
-	}
-
-	serverURL := &url.URL{
-		Scheme: "https",
-		Host:   net.JoinHostPort(serverName, F.ToString(config.ServerAddress.Port)),
-	}
-
-	var authorization string
-	if config.Username != "" {
-		authorization = "Basic " + base64.StdEncoding.EncodeToString(
-			[]byte(config.Username+":"+config.Password))
 	}
 
 	concurrency := config.InsecureConcurrency
@@ -173,17 +164,11 @@ func NewNaiveClient(config NaiveClientOptions) (*NaiveClient, error) {
 		ctx:                      ctx,
 		dialer:                   dialer,
 		logger:                   l,
-		serverAddress:            config.ServerAddress,
-		serverName:               serverName,
-		serverURL:                serverURL.String(),
-		authorization:            authorization,
-		extraHeaders:             config.ExtraHeaders,
+		server:                   server,
 		concurrency:              concurrency,
 		trustedRootCertificates:  config.TrustedRootCertificates,
 		dnsResolver:              config.DNSResolver,
 		echEnabled:               config.ECHEnabled,
-		echConfigList:            config.ECHConfigList,
-		echQueryServerName:       config.ECHQueryServerName,
 		testForceUDPLoopback:     config.TestForceUDPLoopback,
 		singleEngine:             config.TestForceSingleEngine || runtime.GOOS == "ios",
 		quicEnabled:              config.QUIC,
@@ -195,6 +180,43 @@ func NewNaiveClient(config NaiveClientOptions) (*NaiveClient, error) {
 		connections:              make(map[*BidirectionalConn]struct{}),
 		onIdle:                   config.OnIdle,
 		reserveEngines:           config.ReserveEngines,
+	}, nil
+}
+
+func newNaiveServer(config NaiveClientOptions) (*NaiveServer, error) {
+	if !config.ServerAddress.IsValid() {
+		return nil, E.New("invalid server address")
+	}
+
+	serverName := config.ServerName
+	if serverName == "" {
+		serverName = config.ServerAddress.AddrString()
+	}
+
+	serverURL := &url.URL{
+		Scheme: "https",
+		Host:   net.JoinHostPort(serverName, F.ToString(config.ServerAddress.Port)),
+	}
+
+	var authorization string
+	if config.Username != "" {
+		authorization = "Basic " + base64.StdEncoding.EncodeToString(
+			[]byte(config.Username+":"+config.Password))
+	}
+
+	echQueryServerName := config.ECHQueryServerName
+	if echQueryServerName == "" {
+		echQueryServerName = serverName
+	}
+
+	return &NaiveServer{
+		address:            config.ServerAddress,
+		name:               serverName,
+		url:                serverURL.String(),
+		authorization:      authorization,
+		extraHeaders:       config.ExtraHeaders,
+		echConfigList:      config.ECHConfigList,
+		echQueryServerName: echQueryServerName,
 	}, nil
 }
 
@@ -312,16 +334,12 @@ func (c *NaiveClient) start(ctx context.Context, onDemand bool) (startResult err
 	dnsServerAddress := M.ParseSocksaddrHostPort("127.0.0.1", 53)
 	dnsResolver := c.dnsResolver
 
-	if c.serverName != c.serverAddress.AddrString() {
-		dnsResolver = wrapDNSResolverForServerRedirect(dnsResolver, c.serverName, c.serverAddress)
+	if c.server.name != c.server.address.AddrString() {
+		dnsResolver = wrapDNSResolverForServerRedirect(dnsResolver, c.server.name, c.server.address)
 	}
 
 	if c.echEnabled {
-		echQueryServerName := c.echQueryServerName
-		if echQueryServerName == "" {
-			echQueryServerName = c.serverName
-		}
-		dnsResolver = wrapDNSResolverWithECH(dnsResolver, c.serverName, echQueryServerName, c.getECHConfigList, c.quicEnabled, c.logger)
+		dnsResolver = wrapDNSResolverWithECH(dnsResolver, c.server.name, c.server.echQueryServerName, c.server.getECHConfigList, c.quicEnabled, c.logger)
 	}
 
 	tcpDialer := Dialer(func(address string, port uint16) int {
@@ -582,12 +600,12 @@ func (c *NaiveClient) closeAllConnections(closeConnections func(Engine)) {
 }
 
 func (c *NaiveClient) DialEarly(ctx context.Context, destination M.Socksaddr) (NaiveConn, error) {
-	return c.dialEarly(ctx, destination, StreamEngine.CreateConn, (*BidirectionalConn).Start)
+	return c.dialEarly(ctx, c.server, destination, StreamEngine.CreateConn, (*BidirectionalConn).Start)
 }
 
 // The function arguments are the exact native operations in production and
 // deterministic barriers in source tests. No process-global mutable test hooks.
-func (c *NaiveClient) dialEarly(ctx context.Context, destination M.Socksaddr,
+func (c *NaiveClient) dialEarly(ctx context.Context, server *NaiveServer, destination M.Socksaddr,
 	createConn func(StreamEngine, context.Context, logger.ContextLogger, bool, bool) *BidirectionalConn,
 	startConn func(*BidirectionalConn, string, string, map[string]string, int, bool) error,
 ) (NaiveConn, error) {
@@ -632,13 +650,13 @@ func (c *NaiveClient) dialEarly(ctx context.Context, destination M.Socksaddr,
 		"-connect-authority": destination.String(),
 		"Padding":            generatePaddingHeader(),
 	}
-	if c.authorization != "" {
-		headers["proxy-authorization"] = c.authorization
+	if server.authorization != "" {
+		headers["proxy-authorization"] = server.authorization
 	}
 	if c.quicEnabled {
 		headers["-force-quic"] = "true"
 	}
-	for key, value := range c.extraHeaders {
+	for key, value := range server.extraHeaders {
 		headers[key] = value
 	}
 
@@ -653,7 +671,7 @@ func (c *NaiveClient) dialEarly(ctx context.Context, destination M.Socksaddr,
 	}
 	conn := createConn(streamEngine, ctx, c.logger, true, false)
 	c.trackConnection(conn)
-	err := startConn(conn, "CONNECT", c.serverURL, headers, 0, false)
+	err := startConn(conn, "CONNECT", server.url, headers, 0, false)
 	if err != nil {
 		return nil, err
 	}
@@ -745,10 +763,10 @@ func (c *NaiveClient) doClose() error {
 	return closeError
 }
 
-func (c *NaiveClient) getECHConfigList() []byte {
-	c.echMutex.RLock()
-	defer c.echMutex.RUnlock()
-	return c.echConfigList
+func (s *NaiveServer) getECHConfigList() []byte {
+	s.echMutex.RLock()
+	defer s.echMutex.RUnlock()
+	return s.echConfigList
 }
 
 type trackedNaiveConn struct {

@@ -19,7 +19,7 @@ import (
 )
 
 func lifecycleTestClient(state clientState) *NaiveClient {
-	c := &NaiveClient{ctx: context.Background(), started: make(chan struct{}), closed: make(chan struct{}), connections: make(map[*BidirectionalConn]struct{})}
+	c := &NaiveClient{ctx: context.Background(), server: &NaiveServer{}, started: make(chan struct{}), closed: make(chan struct{}), connections: make(map[*BidirectionalConn]struct{})}
 	c.state.Store(uint32(state))
 	if state == clientStateRunning {
 		close(c.started)
@@ -396,7 +396,7 @@ func TestNaiveDialCreationBarrierAndTerminalOwnership(t *testing.T) {
 	entered, proceed, dialDone := make(chan struct{}), make(chan struct{}), make(chan struct{})
 	conn := &BidirectionalConn{done: make(chan struct{}), close: make(chan struct{}), cancelled: true}
 	go func() {
-		_, err := c.dialEarly(context.Background(), M.Socksaddr{},
+		_, err := c.dialEarly(context.Background(), c.server, M.Socksaddr{},
 			func(StreamEngine, context.Context, logger.ContextLogger, bool, bool) *BidirectionalConn {
 				close(entered)
 				<-proceed
@@ -445,7 +445,7 @@ func TestNaiveDialStartFailureAndInlineTerminal(t *testing.T) {
 		c.streamEngines = []StreamEngine{{}}
 		conn := &BidirectionalConn{done: make(chan struct{})}
 		want := errors.New("start failed")
-		_, err := c.dialEarly(context.Background(), M.Socksaddr{},
+		_, err := c.dialEarly(context.Background(), c.server, M.Socksaddr{},
 			func(StreamEngine, context.Context, logger.ContextLogger, bool, bool) *BidirectionalConn { return conn },
 			func(conn *BidirectionalConn, _, _ string, _ map[string]string, _ int, _ bool) error {
 				if conn.onTerminate == nil {

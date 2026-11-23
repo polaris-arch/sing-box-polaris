@@ -411,7 +411,33 @@
 +	releaseEngines           func(int)
 @@ -54,0 +61 @@
 +	startError               error
-@@ -106,0 +114,8 @@
+@@ -59,4 +66 @@
+-	serverAddress            M.Socksaddr
+-	serverName               string
+-	serverURL                string
+-	authorization            string
++	server                   *NaiveServer
+@@ -64 +67,0 @@
+-	extraHeaders             map[string]string
+@@ -69,3 +71,0 @@
+-	echConfigList            []byte
+-	echQueryServerName       string
+-	echMutex                 sync.RWMutex
+@@ -85,0 +86,13 @@
++// NaiveServer is the identity of one proxy server: the URL and headers of its
++// streams and the DNS answers its engine resolves for it.
++type NaiveServer struct {
++	address            M.Socksaddr
++	name               string
++	url                string
++	authorization      string
++	extraHeaders       map[string]string
++	echConfigList      []byte
++	echQueryServerName string
++	echMutex           sync.RWMutex
++}
++
+@@ -106,0 +120,8 @@
 +
 +	// OnIdle may run on a native callback thread and must not block on Close.
 +	OnIdle func()
@@ -420,11 +446,81 @@
 +	// in one or more calls as unused slots or destroyed engines are freed.
 +	// Both callbacks must be nonblocking and may run under the lifecycle lock.
 +	ReserveEngines func(ctx context.Context, count int) (release func(int), err error)
-@@ -180,0 +196,2 @@
+@@ -114,2 +135,3 @@
+-	if !config.ServerAddress.IsValid() {
+-		return nil, E.New("invalid server address")
++	server, err := newNaiveServer(config)
++	if err != nil {
++		return nil, err
+@@ -121,16 +142,0 @@
+-	serverName := config.ServerName
+-	if serverName == "" {
+-		serverName = config.ServerAddress.AddrString()
+-	}
+-
+-	serverURL := &url.URL{
+-		Scheme: "https",
+-		Host:   net.JoinHostPort(serverName, F.ToString(config.ServerAddress.Port)),
+-	}
+-
+-	var authorization string
+-	if config.Username != "" {
+-		authorization = "Basic " + base64.StdEncoding.EncodeToString(
+-			[]byte(config.Username+":"+config.Password))
+-	}
+-
+@@ -161,5 +167 @@
+-		serverAddress:            config.ServerAddress,
+-		serverName:               serverName,
+-		serverURL:                serverURL.String(),
+-		authorization:            authorization,
+-		extraHeaders:             config.ExtraHeaders,
++		server:                   server,
+@@ -170,2 +171,0 @@
+-		echConfigList:            config.ECHConfigList,
+-		echQueryServerName:       config.ECHQueryServerName,
+@@ -180,0 +181,2 @@
 +		onIdle:                   config.OnIdle,
 +		reserveEngines:           config.ReserveEngines,
-@@ -184 +201,7 @@
+@@ -184 +186,44 @@
 -func (c *NaiveClient) Start() (startResult error) {
++func newNaiveServer(config NaiveClientOptions) (*NaiveServer, error) {
++	if !config.ServerAddress.IsValid() {
++		return nil, E.New("invalid server address")
++	}
++
++	serverName := config.ServerName
++	if serverName == "" {
++		serverName = config.ServerAddress.AddrString()
++	}
++
++	serverURL := &url.URL{
++		Scheme: "https",
++		Host:   net.JoinHostPort(serverName, F.ToString(config.ServerAddress.Port)),
++	}
++
++	var authorization string
++	if config.Username != "" {
++		authorization = "Basic " + base64.StdEncoding.EncodeToString(
++			[]byte(config.Username+":"+config.Password))
++	}
++
++	echQueryServerName := config.ECHQueryServerName
++	if echQueryServerName == "" {
++		echQueryServerName = serverName
++	}
++
++	return &NaiveServer{
++		address:            config.ServerAddress,
++		name:               serverName,
++		url:                serverURL.String(),
++		authorization:      authorization,
++		extraHeaders:       config.ExtraHeaders,
++		echConfigList:      config.ECHConfigList,
++		echQueryServerName: echQueryServerName,
++	}, nil
++}
++
 +// Start starts a new or prepared client without waiting for its first dial.
 +func (c *NaiveClient) Start() error {
 +	return c.start(c.ctx, false)
@@ -432,7 +528,7 @@
 +
 +// StartOnDemand validates custom roots before the first dial starts the engine.
 +func (c *NaiveClient) StartOnDemand(ctx context.Context) error {
-@@ -186,10 +209,23 @@
+@@ -186,10 +231,23 @@
 -	if !c.state.CompareAndSwap(uint32(clientStateCreated), uint32(clientStateStarting)) {
 -		state := clientState(c.state.Load())
 -		c.lifecycle.Unlock()
@@ -466,11 +562,11 @@
 +			close(c.started)
 +			close(c.closed)
 +			return c.startError
-@@ -197,0 +234,3 @@
+@@ -197,0 +256,3 @@
 +	c.state.Store(uint32(clientStateDormant))
 +	return nil
 +}
-@@ -198,0 +238,50 @@
+@@ -198,0 +260,50 @@
 +func (c *NaiveClient) validateTrustedRoots() bool {
 +	// An unstarted engine owns the verifier. Create and destroy it on
 +	// the same OS thread, as required by Cronet's thread checker.
@@ -521,28 +617,40 @@
 +		c.releaseEngines = release
 +	}
 +	c.state.Store(uint32(clientStateStarting))
-@@ -205,0 +295,3 @@
+@@ -205,0 +317,3 @@
 +			if c.releaseEngines != nil && len(engines) < engineCount {
 +				c.releaseEngines(engineCount - len(engines))
 +			}
-@@ -206,0 +299 @@
+@@ -206,0 +321 @@
 +			c.startError = startError
-@@ -238 +331 @@
+@@ -222,2 +337,2 @@
+-	if c.serverName != c.serverAddress.AddrString() {
+-		dnsResolver = wrapDNSResolverForServerRedirect(dnsResolver, c.serverName, c.serverAddress)
++	if c.server.name != c.server.address.AddrString() {
++		dnsResolver = wrapDNSResolverForServerRedirect(dnsResolver, c.server.name, c.server.address)
+@@ -227,5 +342 @@
+-		echQueryServerName := c.echQueryServerName
+-		if echQueryServerName == "" {
+-			echQueryServerName = c.serverName
+-		}
+-		dnsResolver = wrapDNSResolverWithECH(dnsResolver, c.serverName, echQueryServerName, c.getECHConfigList, c.quicEnabled, c.logger)
++		dnsResolver = wrapDNSResolverWithECH(dnsResolver, c.server.name, c.server.echQueryServerName, c.server.getECHConfigList, c.quicEnabled, c.logger)
+@@ -238 +349 @@
 -		defer c.callbacks.Done()
 +		defer c.finishOperation(&c.callbacks)
-@@ -294 +387 @@
+@@ -294 +405 @@
 -		defer c.callbacks.Done()
 +		defer c.finishOperation(&c.callbacks)
-@@ -363,4 +455,0 @@
+@@ -363,4 +473,0 @@
 -	engineCount := 1
 -	if c.concurrency > 1 && !c.singleEngine {
 -		engineCount = c.concurrency
 -	}
-@@ -382,0 +472,3 @@
+@@ -382,0 +490,3 @@
 +	if version := c.Version(); version != "" {
 +		c.logger.Info("NaiveProxy started, version: ", version)
 +	}
-@@ -415,0 +508,10 @@
+@@ -415,0 +526,10 @@
 +			sessionReceiveWindow := c.quicSessionReceiveWindow
 +			if runtime.GOOS == "ios" {
 +				// Same receive backlog bound as the HTTP/2 default below.
@@ -553,15 +661,21 @@
 +					sessionReceiveWindow = 4 * 1024 * 1024
 +				}
 +			}
-@@ -419 +520,0 @@
+@@ -419 +538,0 @@
 -			sessionReceiveWindow := c.quicSessionReceiveWindow
-@@ -465 +566 @@
+@@ -465 +584 @@
 -	defer c.pending.Done()
 +	defer c.finishOperation(&c.pending)
-@@ -477 +578 @@
+@@ -477 +596 @@
 -	defer c.pending.Done()
 +	defer c.finishOperation(&c.pending)
-@@ -494,5 +595,13 @@
+@@ -484 +603 @@
+-	return c.dialEarly(ctx, destination, StreamEngine.CreateConn, (*BidirectionalConn).Start)
++	return c.dialEarly(ctx, c.server, destination, StreamEngine.CreateConn, (*BidirectionalConn).Start)
+@@ -489 +608 @@
+-func (c *NaiveClient) dialEarly(ctx context.Context, destination M.Socksaddr,
++func (c *NaiveClient) dialEarly(ctx context.Context, server *NaiveServer, destination M.Socksaddr,
+@@ -494,5 +613,13 @@
 -	switch state {
 -	case clientStateRunning:
 -	case clientStateClosed, clientStateClosing:
@@ -580,12 +694,12 @@
 +		state = clientState(c.state.Load())
 +	}
 +	if state < clientStateRunning {
-@@ -501,3 +610 @@
+@@ -501,3 +628 @@
 -			if clientState(c.state.Load()) != clientStateRunning {
 -				return nil, net.ErrClosed
 -			}
 +			state = clientState(c.state.Load())
-@@ -509,0 +617,7 @@
+@@ -509,0 +635,7 @@
 +	if state != clientStateRunning {
 +		// A terminal startup error is published before the closing state.
 +		if c.startError != nil {
@@ -593,19 +707,39 @@
 +		}
 +		return nil, net.ErrClosed
 +	}
-@@ -513 +627 @@
+@@ -513 +645 @@
 -	defer c.pending.Done()
 +	defer c.finishOperation(&c.pending)
-@@ -576 +690 @@
+@@ -521,2 +653,2 @@
+-	if c.authorization != "" {
+-		headers["proxy-authorization"] = c.authorization
++	if server.authorization != "" {
++		headers["proxy-authorization"] = server.authorization
+@@ -527 +659 @@
+-	for key, value := range c.extraHeaders {
++	for key, value := range server.extraHeaders {
+@@ -542 +674 @@
+-	err := startConn(conn, "CONNECT", c.serverURL, headers, 0, false)
++	err := startConn(conn, "CONNECT", server.url, headers, 0, false)
+@@ -576 +708 @@
 -		case clientStateCreated:
 +		case clientStateCreated, clientStateDormant:
-@@ -588 +702 @@
+@@ -588 +720 @@
 -		case clientStateRunning:
 +		case clientStateRunning, clientStateSealed:
-@@ -624 +738 @@
+@@ -624 +756 @@
 -		closeError = errors.Join(closeError, shutdownNaiveEngine(engine.Shutdown, engine.Destroy))
 +		closeError = errors.Join(closeError, shutdownNaiveEngine(engine.Shutdown, engine.Destroy, c.releaseEngines))
-@@ -655 +768,0 @@
+@@ -634,4 +766,4 @@
+-func (c *NaiveClient) getECHConfigList() []byte {
+-	c.echMutex.RLock()
+-	defer c.echMutex.RUnlock()
+-	return c.echConfigList
++func (s *NaiveServer) getECHConfigList() []byte {
++	s.echMutex.RLock()
++	defer s.echMutex.RUnlock()
++	return s.echConfigList
+@@ -655 +786,0 @@
 -
 --- a/naive_client_lifecycle.go
 +++ b/naive_client_lifecycle.go
@@ -669,6 +803,9 @@
 @@ -11,0 +17,2 @@
 +
 +	mDNS "github.com/miekg/dns"
+@@ -15 +22 @@
+-	c := &NaiveClient{ctx: context.Background(), started: make(chan struct{}), closed: make(chan struct{}), connections: make(map[*BidirectionalConn]struct{})}
++	c := &NaiveClient{ctx: context.Background(), server: &NaiveServer{}, started: make(chan struct{}), closed: make(chan struct{}), connections: make(map[*BidirectionalConn]struct{})}
 @@ -31,0 +39,188 @@
 +func TestNaiveDormantClientControlsAndClose(t *testing.T) {
 +	c := lifecycleTestClient(clientStateCreated)
@@ -912,7 +1049,13 @@
 +			}
 +			released += count
 +		})
-@@ -128,0 +368,3 @@
-+		}
+@@ -129,0 +369,3 @@
 +		if (success && released != 1) || (!success && released != 0) {
 +			t.Fatalf("success=%v released=%d", success, released)
++		}
+@@ -157 +399 @@
+-		_, err := c.dialEarly(context.Background(), M.Socksaddr{},
++		_, err := c.dialEarly(context.Background(), c.server, M.Socksaddr{},
+@@ -206 +448 @@
+-		_, err := c.dialEarly(context.Background(), M.Socksaddr{},
++		_, err := c.dialEarly(context.Background(), c.server, M.Socksaddr{},
