@@ -53,7 +53,12 @@ func (r *RuleSetItem) Close() error {
 
 func (r *RuleSetItem) Match(metadata *adapter.InboundContext) bool {
 	snapshot := snapshotRuleMatch(metadata)
-	for _, ruleSet := range r.setList {
+	for i, ruleSet := range r.setList {
+		if metadata.RuleSetRouter != nil {
+			if current, loaded := metadata.RuleSetRouter.RuleSet(r.tagList[i]); loaded {
+				ruleSet = current
+			}
+		}
 		r.prepareNestedMatch(metadata)
 		if ruleSet.Match(metadata) {
 			snapshot.restore(metadata)
@@ -71,7 +76,12 @@ func (r *RuleSetItem) matchWithOuterGroups(metadata *adapter.InboundContext, out
 		deferredGroups uint8
 	)
 	snapshot := snapshotRuleMatch(metadata)
-	for _, ruleSet := range r.setList {
+	for i, ruleSet := range r.setList {
+		if metadata.RuleSetRouter != nil {
+			if current, loaded := metadata.RuleSetRouter.RuleSet(r.tagList[i]); loaded {
+				ruleSet = current
+			}
+		}
 		r.prepareNestedMatch(metadata)
 		var pinned *ruleSetSnapshot
 		if provider, ok := ruleSet.(ruleSetSnapshotProvider); ok {

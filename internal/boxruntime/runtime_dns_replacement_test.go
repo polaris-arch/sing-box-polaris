@@ -3,11 +3,15 @@ package boxruntime
 import (
 	"context"
 	"net"
+	"slices"
+	"strings"
 	"sync/atomic"
 	"testing"
 
 	"github.com/sagernet/sing-box/adapter"
+	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/option"
+	"github.com/sagernet/sing/common/json"
 	M "github.com/sagernet/sing/common/metadata"
 
 	mdns "github.com/miekg/dns"
@@ -21,6 +25,90 @@ func TestRuntimeDNSOptionsReplaceActualTargetAndRetainOldLease(t *testing.T) {
 	// reused router: it follows the admitted view, never the constructor graph.
 	for _, detour := range []string{"a", "select"} {
 		t.Run(detour, func(t *testing.T) { runtimeTestDNSOptionsReplace(t, detour) })
+	}
+}
+
+// A pure-domain rule set used by DNS rules is late-bound by tag in each query's
+// admitted view: a content change replaces only the set and the route router,
+// while each lease matches its own generation through the retained DNS router.
+func TestRuntimeDNSRuleSetContentKeepsRouter(t *testing.T) {
+	config := func(port int, domain string, ruleSet string) []byte {
+		content := strings.Replace(string(runtimeTestConfig(port, domain)), `"final":"resolver"}`,
+			`"final":"resolver","rules":[{"rule_set":"sites","action":"predefined","answer":["hit. IN A 198.51.100.1"]},{"action":"predefined","answer":["miss. IN A 198.51.100.2"]}]}`, 1)
+		return []byte(strings.Replace(content, `{"domain_suffix":["`+domain+`"]}`, ruleSet, 1))
+	}
+	sites := func(domain string) string { return `{"domain_suffix":["` + domain + `"]}` }
+	f, options := newRuntimeTestConstruction(t, config(1080, "old.test", sites("old.test")), nil)
+	runtimeResourceNew(t, f, options)
+	f.start(t)
+	// The first publication never reuses the initial platform borrowing.
+	_, warm := f.plan(t, config(1081, "old.test", sites("old.test")))
+	runtimeTestReceiveApply(t, runtimeTestApplyAsync(f, context.Background(), warm))
+	oldLease, oldView := f.acquire(t)
+	_, apply := f.plan(t, config(1081, "old.test", sites("new.test")))
+	runtimeTestReceiveApply(t, runtimeTestApplyAsync(f, context.Background(), apply))
+	newLease, newView := f.acquire(t)
+	for name, id := range oldView.componentIDs {
+		if replaced := newView.componentIDs[name] != id; replaced != (name == "rule-set:sites" || name == "route-router") {
+			t.Fatalf("%s replaced=%t", name, replaced)
+		}
+	}
+	answer := func(lease adapter.RuntimeLease, name string) string {
+		t.Helper()
+		ctx := runtimeTestContext(t)
+		if lease != nil {
+			ctx = adapter.ContextWithRuntimeLease(ctx, lease)
+		}
+		message := new(mdns.Msg)
+		message.SetQuestion(name, mdns.TypeA)
+		response, err := newView.DNSRouter().Exchange(ctx, message, adapter.DNSQueryOptions{})
+		if err != nil || len(response.Answer) != 1 {
+			t.Fatal(response, err)
+		}
+		return response.Answer[0].(*mdns.A).A.String()
+	}
+	for _, query := range []struct {
+		lease adapter.RuntimeLease
+		name  string
+		want  string
+	}{
+		{oldLease, "a.old.test.", "198.51.100.1"},
+		{oldLease, "a.new.test.", "198.51.100.2"},
+		{newLease, "a.new.test.", "198.51.100.1"},
+		{newLease, "a.old.test.", "198.51.100.2"},
+		{nil, "b.new.test.", "198.51.100.1"},
+	} {
+		if got := answer(query.lease, query.name); got != query.want {
+			t.Fatalf("%s: %s, want %s", query.name, got, query.want)
+		}
+	}
+	addresses, err := newView.DNSRouter().Lookup(adapter.ContextWithRuntimeLease(runtimeTestContext(t), newLease), "c.new.test", adapter.DNSQueryOptions{Strategy: C.DomainStrategyIPv4Only})
+	if err != nil || len(addresses) != 1 || addresses[0].String() != "198.51.100.1" {
+		t.Fatal("lookup did not match the admitted view's rule set", addresses, err)
+	}
+	// Adding or removing a set, or an IP predicate, still binds the router.
+	router := func(content []byte) runtimeNodeOptions {
+		t.Helper()
+		options, err := json.UnmarshalExtendedContext[option.Options](f.ctx, content)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, configs, err := runtimeConfigNodes(f.ctx, options)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return configs["dns-router"]
+	}
+	current := router(config(1081, "old.test", sites("new.test")))
+	if slices.Contains(current.node.Dependencies, "rule-set:sites") {
+		t.Fatal("pure-domain set remained a DNS router dependency")
+	}
+	if withIP := router(config(1081, "old.test", sites("new.test")+`,{"ip_cidr":["192.0.2.0/24"]}`)); !slices.Contains(withIP.node.Dependencies, "rule-set:sites") {
+		t.Fatal("IP predicate did not bind the set to the DNS router")
+	}
+	removed := strings.Replace(string(config(1081, "old.test", sites("new.test"))), `{"type":"inline","tag":"sites","rules":[{"domain_suffix":["new.test"]}]}`, `{"type":"inline","tag":"other","rules":[{"domain_suffix":["new.test"]}]}`, 1)
+	if router([]byte(removed)).node.Fingerprint == current.node.Fingerprint {
+		t.Fatal("removing a late-bound set kept the DNS router fingerprint")
 	}
 }
 

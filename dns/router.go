@@ -1205,6 +1205,7 @@ func (r *Router) prepareExchange(ctx context.Context, message *mDNS.Msg) (*dnsEx
 	r.logger.DebugContext(ctx, "exchange ", FormatQuestion(message.Question[0].String()))
 	ctx, metadata := adapter.ExtendContext(ctx)
 	metadata.DNSResolverPolicy = ""
+	metadata.RuleSetRouter = r.ruleSetRouter(ctx)
 	metadata.Destination = M.Socksaddr{}
 	metadata.QueryType = message.Question[0].Qtype
 	metadata.DNSResponse = nil
@@ -1452,6 +1453,7 @@ func (r *Router) Lookup(ctx context.Context, domain string, options adapter.DNSQ
 	r.logger.DebugContext(ctx, "lookup domain ", domain)
 	ctx, metadata := adapter.ExtendContext(ctx)
 	metadata.DNSResolverPolicy = ""
+	metadata.RuleSetRouter = r.ruleSetRouter(ctx)
 	metadata.Destination = M.Socksaddr{}
 	metadata.Domain = FqdnToDomain(domain)
 	metadata.DNSResponse = nil
@@ -1572,6 +1574,17 @@ func (r *Router) transports(ctx context.Context) adapter.DNSTransportManager {
 		return lease.View().DNSTransportManager()
 	}
 	return r.transport
+}
+
+// ruleSetRouter is the admitted view's route leaf under the same condition, so
+// late-bound rule sets (not dependencies of this router) match in that view.
+// Otherwise rule items use their captured sets. For a retired router those
+// late-bound sets may be closed and then intentionally match nothing.
+func (r *Router) ruleSetRouter(ctx context.Context) adapter.Router {
+	if lease, loaded := adapter.RuntimeLeaseFromContext(ctx); loaded && lease.View().DNSRouter() == adapter.DNSRouter(r) {
+		return lease.View().Router()
+	}
+	return nil
 }
 
 // acquireRuntimeOperation first admits current for a caller without a graph,

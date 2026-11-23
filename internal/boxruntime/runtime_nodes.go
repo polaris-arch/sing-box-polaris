@@ -18,6 +18,7 @@ import (
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing-box/protocol/naive"
 	"github.com/sagernet/sing-box/route"
+	R "github.com/sagernet/sing-box/route/rule"
 	"github.com/sagernet/sing/common"
 	"github.com/sagernet/sing/common/domain"
 	"github.com/sagernet/sing/common/json"
@@ -80,7 +81,7 @@ func runtimeConfigNodes(ctx context.Context, options option.Options) ([]runtimeg
 		sort.Strings(dependencies)
 		return runtimegraph.DependencyNode{Name: name, Fingerprint: runtimeDigest(encoded), Dependencies: dependencies}, nil
 	}
-	var sets, transports, outbounds, inbounds []string
+	var sets, dnsDeps, transports, outbounds, inbounds []string
 	var endpointDNS runtimeconfig.EndpointDNS
 	// Inline provider HTTP clients are owned by the receiving HTTP manager.
 	// Its fingerprint must include them, rather than merely retaining a provider
@@ -143,6 +144,12 @@ func runtimeConfigNodes(ctx context.Context, options option.Options) ([]runtimeg
 		}
 		configs[name] = runtimeNodeOptions{node: node, ruleSet: &set}
 		sets = append(sets, name)
+		// The DNS router's build-time rule modes read only these predicates. A set
+		// without them is found by tag in each query's admitted view instead, so
+		// its content alone no longer replaces the router and its consumers.
+		if metadata := R.RuntimeRuleSetMetadata(set.InlineOptions.Rules); metadata.ContainsProcessRule || metadata.ContainsWIFIRule || metadata.ContainsIPCIDRRule || metadata.ContainsDNSQueryTypeRule {
+			dnsDeps = append(dnsDeps, name)
+		}
 	}
 	for i := range dnsOptions.Servers {
 		server := dnsOptions.Servers[i]
@@ -539,7 +546,6 @@ func runtimeConfigNodes(ctx context.Context, options option.Options) ([]runtimeg
 			}
 		}
 	}
-	dnsDeps := append([]string(nil), sets...)
 	var lateDeps []string
 	for _, name := range transports {
 		if lateBound[name] {
@@ -555,6 +561,9 @@ func runtimeConfigNodes(ctx context.Context, options option.Options) ([]runtimeg
 	if err != nil {
 		return nil, nil, err
 	}
+	// Adding or removing a set still rebuilds the router and reruns its
+	// rule-set lookups and mode checks.
+	dnsNode.Fingerprint = runtimeDigest([]byte(dnsNode.Fingerprint + ":" + strings.Join(slices.Sorted(slices.Values(sets)), "\x00")))
 	configs["dns-router"] = runtimeNodeOptions{node: dnsNode}
 	// FakeIP and resolve actions look up transports in the captured manager.
 	routeDeps := append(append(append(append([]string{"dns-router", "http-manager"}, sets...), outbounds...), inbounds...), lateDeps...)

@@ -226,6 +226,7 @@ func (t *dnsPolicyTransport) Exchange(ctx context.Context, message *mDNS.Msg) (*
 		DNSResolverPolicy: t.policy,
 		Domain:            FqdnToDomain(message.Question[0].Name),
 		QueryType:         message.Question[0].Qtype,
+		RuleSetRouter:     t.router.ruleSetRouter(ctx),
 	})
 	ctx = withLookupQueryMetadata(ctx, message.Question[0].Qtype)
 	result := t.router.exchangeWithRules(ctx, t.rules, message, t.options, false)
