@@ -1075,9 +1075,9 @@
       "after": {
         "path": "naive_client.go",
         "mode": "100644",
-        "bytes": 33271,
-        "sha256": "4d90def819e040e32f9f373ad16f3743e1140db160cbd988dd769fba9ebb5fd9",
-        "gitBlob": "20ebebab70515a8c8c184f980a48ed6c9c778a30"
+        "bytes": 33614,
+        "sha256": "d23d7ff738943f38ec5d1b7406cb6e9bceec1216704dfc26713186eceef64391",
+        "gitBlob": "871517229d1d971661a196fe51e3df0886e27473"
       }
     },
     {
@@ -1111,14 +1111,14 @@
       "after": {
         "path": "naive_client_lifecycle_test.go",
         "mode": "100644",
-        "bytes": 23228,
-        "sha256": "712c63006108fe1c25225c6048c3aec36eefd3e5bd281dd2ac12052d973b1afa",
-        "gitBlob": "3898de4059ffe78e9e90fec6bd0bd3ffe7626f93"
+        "bytes": 23457,
+        "sha256": "06b156ec71f9ea5f9d3cf488c0a8064d45356bbc26d1cc804868de558cd66e21",
+        "gitBlob": "84e642976cdc4cfe2154dda93206f78a4982e80d"
       }
     }
   ],
   "patch": "release/dependency-sources/cronet-go-windows-native-observation.patch",
-  "patchSHA256": "7e61d961d58cdc494efa8447cd1a3de87bf5955ad969d6f847fb733afdc1477e",
+  "patchSHA256": "a5c4723dc24dfa9897be9f38da934ae9f2aa05cb4af6ddf73c8d0e45b6ebbb1b",
   "historicalMaterials": {
     "release/dependency-sources/cronet-go-replacement.json": {
       "bytes": 54745,

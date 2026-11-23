@@ -144,6 +144,13 @@ func (r *NaiveServerRegistry) Register(config NaiveClientOptions) (*NaiveServer,
 	if err != nil {
 		return nil, err
 	}
+	for key := range server.extraHeaders {
+		// Chromium reads its control headers case-insensitively, so one server
+		// could otherwise replace the isolation key of every stream it opens.
+		if key == "" || key[0] == '-' || key[0] == ':' || strings.EqualFold(key, "host") {
+			return nil, E.New("reserved header on shared server: ", key)
+		}
+	}
 	name := naiveServerKey(server.name)
 	r.access.Lock()
 	defer r.access.Unlock()

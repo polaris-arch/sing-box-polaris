@@ -580,9 +580,16 @@ func TestNaiveServerDialKeysAndStreams(t *testing.T) {
 	c := lifecycleTestClient(clientStateRunning)
 	c.registry = r
 	c.streamEngines = []StreamEngine{{}}
+	for _, key := range []string{"-Network-Isolation-Key", ":authority", "HOST"} {
+		if _, err := r.Register(NaiveClientOptions{
+			ServerAddress: M.ParseSocksaddrHostPort("192.0.2.1", 443),
+			ExtraHeaders:  map[string]string{key: "x"},
+		}); err == nil {
+			t.Fatalf("registered reserved header %s", key)
+		}
+	}
 	server, err := r.Register(NaiveClientOptions{
 		ServerAddress: M.ParseSocksaddrHostPort("192.0.2.1", 443), Username: "user",
-		ExtraHeaders: map[string]string{"-network-isolation-key": "https://other:443"},
 	})
 	if err != nil {
 		t.Fatal(err)
