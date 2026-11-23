@@ -60,7 +60,7 @@ func (c *NaiveClient) finishOperation(pending *sync.WaitGroup) {
 
 // Called with one pending operation held. Close cannot begin its active-stream
 // join until that pending operation has installed this terminal callback.
-func (c *NaiveClient) trackConnection(conn *BidirectionalConn) {
+func (c *NaiveClient) trackConnection(conn *BidirectionalConn, entry *naiveServerEntry) {
 	c.lifecycle.Lock()
 	c.activeConnections.Add(1)
 	c.connections[conn] = struct{}{}
@@ -73,6 +73,9 @@ func (c *NaiveClient) trackConnection(conn *BidirectionalConn) {
 			delete(c.connections, conn)
 			idle := c.onIdle != nil && c.idleLocked()
 			c.lifecycle.Unlock()
+			if entry != nil {
+				c.registry.finishStream(entry)
+			}
 			// terminate has queued native stream deletion. Native Shutdown's
 			// later thread join, not this signal, proves final destruction.
 			if idle {

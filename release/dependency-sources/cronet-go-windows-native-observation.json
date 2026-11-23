@@ -1075,9 +1075,9 @@
       "after": {
         "path": "naive_client.go",
         "mode": "100644",
-        "bytes": 22696,
-        "sha256": "22aa42433490b1aed5f9d890395fa07dfef4696c674fa64fb15d7d3292931cae",
-        "gitBlob": "db7f21cd4614f6c3d409c8d588d8084f2b030f75"
+        "bytes": 33271,
+        "sha256": "4d90def819e040e32f9f373ad16f3743e1140db160cbd988dd769fba9ebb5fd9",
+        "gitBlob": "20ebebab70515a8c8c184f980a48ed6c9c778a30"
       }
     },
     {
@@ -1093,9 +1093,9 @@
       "after": {
         "path": "naive_client_lifecycle.go",
         "mode": "100644",
-        "bytes": 2661,
-        "sha256": "209b0b14f5fbb2f42802997e639ec26c277681ee9d694dbdd0f80b6d9e6731b6",
-        "gitBlob": "d0cecddfe0721676fbf42a5c18a72135d0d1fa1a"
+        "bytes": 2747,
+        "sha256": "deea75a65375b62af51305bb1b1ff0d9ea8a8eb4f5184eff6bfefbfecac165c1",
+        "gitBlob": "6be647bdeb6e841807c69fdaf8bd46a599aa9a5d"
       }
     },
     {
@@ -1111,14 +1111,14 @@
       "after": {
         "path": "naive_client_lifecycle_test.go",
         "mode": "100644",
-        "bytes": 14573,
-        "sha256": "ec7bd8bc4134a6f2533f3e44a2ac9b6fe907e4b8f88def5a49012c3e59322bae",
-        "gitBlob": "7e0904b41da60a37e42d02a2937a691c6ec9b033"
+        "bytes": 23228,
+        "sha256": "712c63006108fe1c25225c6048c3aec36eefd3e5bd281dd2ac12052d973b1afa",
+        "gitBlob": "3898de4059ffe78e9e90fec6bd0bd3ffe7626f93"
       }
     }
   ],
   "patch": "release/dependency-sources/cronet-go-windows-native-observation.patch",
-  "patchSHA256": "2e4dc72e8b147d345128fb47afc58b25285a779cbd96d7356797528cf16942fc",
+  "patchSHA256": "7e61d961d58cdc494efa8447cd1a3de87bf5955ad969d6f847fb733afdc1477e",
   "historicalMaterials": {
     "release/dependency-sources/cronet-go-replacement.json": {
       "bytes": 54745,
@@ -1130,6 +1130,6 @@
     }
   },
   "nativeBinaryValidated": false,
-  "scope": "P2 source base to Windows retained-object and loaded-module observation plus Naive demand startup, idle retirement, and probe lifecycle, and native engine reservations. Historical receipts and native binary validation are outside this source proof.",
+  "scope": "P2 source base to Windows retained-object and loaded-module observation plus Naive demand startup, idle retirement, and probe lifecycle, native engine reservations, and registry-shared engines. Historical receipts and native binary validation are outside this source proof.",
   "patchContextLines": 0
 }
