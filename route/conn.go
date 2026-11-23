@@ -62,15 +62,27 @@ func NewConnectionManager(logger logger.ContextLogger) *ConnectionManager {
 	}
 }
 
-// reserveDial waits for a dial slot. Direct and block outbounds start no remote
-// handshake, so they never queue behind proxy dials to a slow node.
-func (m *ConnectionManager) reserveDial(ctx context.Context, this N.Dialer) (func(), error) {
-	if outbound, isOutbound := this.(adapter.Outbound); isOutbound && (outbound.Type() == C.TypeDirect || outbound.Type() == C.TypeBlock) {
+// reserveDial waits for a dial slot for a proxy handshake. Direct and block
+// outbounds start none, bridge dialers already run under their outer flow's
+// slot, and probes must not measure the queue. A wait past the connect timeout
+// dials without a slot rather than queue behind dials to an unreachable node.
+func (m *ConnectionManager) reserveDial(ctx context.Context, this N.Dialer, probe bool) (func(), error) {
+	outbound, isOutbound := this.(adapter.Outbound)
+	if probe || !isOutbound || outbound.Type() == C.TypeDirect || outbound.Type() == C.TypeBlock {
 		return func() {}, nil
 	}
 	select {
 	case m.dialing <- struct{}{}:
 		return func() { <-m.dialing }, nil
+	default:
+	}
+	timeout := time.NewTimer(C.TCPConnectTimeout)
+	defer timeout.Stop()
+	select {
+	case m.dialing <- struct{}{}:
+		return func() { <-m.dialing }, nil
+	case <-timeout.C:
+		return func() {}, nil
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}
@@ -155,7 +167,7 @@ func (m *ConnectionManager) newConnection(ctx context.Context, this N.Dialer, co
 		remoteConn net.Conn
 		err        error
 	)
-	dialDone, err := m.reserveDial(ctx, this)
+	dialDone, err := m.reserveDial(ctx, this, verifyProbe != nil)
 	if err != nil {
 		N.CloseOnHandshakeFailure(m.closer(ctx, conn), onClose, err)
 		return
@@ -273,7 +285,7 @@ func (m *ConnectionManager) NewPacketConnection(ctx context.Context, this N.Dial
 		destinationAddress netip.Addr
 		err                error
 	)
-	dialDone, err := m.reserveDial(ctx, this)
+	dialDone, err := m.reserveDial(ctx, this, false)
 	if err != nil {
 		N.CloseOnHandshakeFailure(m.closer(ctx, conn), onClose, err)
 		return
