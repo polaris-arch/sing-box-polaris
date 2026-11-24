@@ -2,10 +2,13 @@ package hysteria2
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"io"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"net/netip"
 	"strings"
 	"sync"
@@ -13,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sagernet/quic-go"
 	qtls "github.com/sagernet/sing-quic"
 	"github.com/sagernet/sing-quic/hysteria"
 	"github.com/sagernet/sing-quic/hysteria2/realm"
@@ -20,6 +24,67 @@ import (
 	M "github.com/sagernet/sing/common/metadata"
 	aTLS "github.com/sagernet/sing/common/tls"
 )
+
+func TestClientStreamCloseReleasesPeerReset(t *testing.T) {
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancel()
+	fixture := httptest.NewTLSServer(nil)
+	fixture.Close()
+	protocols := []string{"hysteria2-test"}
+	fixture.TLS.NextProtos = protocols
+	listener, err := quic.ListenAddr("127.0.0.1:0", fixture.TLS, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer listener.Close()
+	certs := x509.NewCertPool()
+	certs.AddCert(fixture.Certificate())
+	clientTLS := &tls.Config{ServerName: "127.0.0.1", RootCAs: certs, NextProtos: protocols}
+	client, err := quic.DialAddr(ctx, listener.Addr().String(), clientTLS, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer client.CloseWithError(0, "")
+	server, err := listener.Accept(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer server.CloseWithError(0, "")
+	stream, err := client.OpenStreamSync(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	deadline, _ := ctx.Deadline()
+	stream.SetWriteDeadline(deadline)
+	if _, err = stream.Write([]byte("x")); err != nil {
+		t.Fatal(err)
+	}
+	peer, err := server.AcceptStream(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	peer.CancelRead(42)
+	select {
+	case <-stream.Context().Done():
+	case <-ctx.Done():
+		t.Fatal("peer reset did not reach the client")
+	}
+	cause := context.Cause(stream.Context())
+	var reset *quic.StreamError
+	if !errors.As(cause, &reset) || !reset.Remote || reset.StreamID != stream.StreamID() {
+		t.Fatalf("expected this stream's peer reset, got %v", cause)
+	}
+	owner := &clientQUICConnection{streams: 1, closeIdle: new(atomic.Bool)}
+	conn := &clientConn{Stream: stream, parent: owner}
+	for range 2 {
+		if err = conn.Close(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if owner.streams != 0 {
+		t.Fatalf("client owns %d streams after close", owner.streams)
+	}
+}
 
 func TestClientRuntimeJoinsActualWorkerAndRejectsNewWork(t *testing.T) {
 	c := &Client{ctx: context.Background()}
