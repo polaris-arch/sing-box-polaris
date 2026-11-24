@@ -134,7 +134,7 @@ func runtimeTestPublishBootstrapPlatformClosure(t *testing.T, f *runtimeTestFixt
 	}
 	plan, request := f.plan(t, content)
 	if plan.NoOp {
-		t.Fatal("NoOp cannot establish a private platform generation")
+		t.Fatal("NoOp cannot exercise the first publication")
 	}
 	op, err := f.box.ApplyRuntimeConfig(context.Background(), "actor-a", request)
 	if err != nil || op.Active.Revision != before.Revision+1 || len(op.Errors) != 0 {
