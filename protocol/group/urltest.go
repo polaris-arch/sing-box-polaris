@@ -171,26 +171,26 @@ func (s *URLTest) InterfaceUpdated(_ context.Context) {
 
 func (s *URLTest) DialContext(ctx context.Context, network string, destination M.Socksaddr) (net.Conn, error) {
 	s.group.Touch()
-	var outbound adapter.Outbound
+	var selected adapter.Outbound
 	switch N.NetworkName(network) {
 	case N.NetworkTCP:
-		outbound = s.group.selected().tcp
+		selected = s.group.selected().tcp
 	case N.NetworkUDP:
-		outbound = s.group.selected().udp
+		selected = s.group.selected().udp
 	default:
 		return nil, E.Extend(N.ErrUnknownNetwork, network)
 	}
-	if outbound == nil {
-		outbound, _ = s.group.Select(network)
+	if selected == nil {
+		selected, _ = s.group.Select(network)
 	}
-	if outbound == nil {
+	if selected == nil {
 		return nil, E.New("missing supported outbound")
 	}
 	epoch := s.group.history.Epoch()
-	historyTag := outbound.Tag()
-	conn, err := outbound.DialContext(ctx, network, destination)
+	historyTag := selected.Tag()
+	conn, err := selected.DialContext(ctx, network, destination)
 	if err == nil {
-		return s.group.interruptGroup.NewConn(conn, interrupt.IsExternalConnectionFromContext(ctx)), nil
+		return outbound.NewRuntimeInterruptConn(s.group.interruptGroup, conn, interrupt.IsExternalConnectionFromContext(ctx)), nil
 	}
 	s.logger.ErrorContext(ctx, err)
 	s.group.deleteHistory(epoch, historyTag)

@@ -2,12 +2,15 @@ package outbound
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"net"
 	"os"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/sagernet/sing-box/common/interrupt"
 )
 
 func TestRuntimeFinalNestedExternalCloseJoinsPending(t *testing.T) {
@@ -84,6 +87,29 @@ func TestRuntimeFinalUnknownWrapperHasNoPrivateWaiter(t *testing.T) {
 	wait, _ := RuntimeConnectionCloseWaiter(conn)
 	if err := wait(); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestRuntimeFinalLegacyInterruptCloseRemainsSynchronous(t *testing.T) {
+	failure := errors.New("physical close failed")
+	for _, withTLSState := range []bool{false, true} {
+		raw := &lifecycleConn{closeErr: failure}
+		leaf, _ := WrapRuntimeOwnedConn(raw)
+		if withTLSState {
+			leaf = PreserveRuntimeTLSState(leaf, tls.ConnectionState{})
+		}
+		group := interrupt.NewGroup()
+		registered := NewRuntimeInterruptConn(group, runtimeLegacyConn(leaf), false)
+		if _, known := RuntimeConnectionCloseWaiter(registered); known {
+			t.Fatalf("legacy wrapper with TLS state %v changed its synchronous Close contract", withTLSState)
+		}
+		group.Interrupt(false)
+		if raw.closes.Load() != 1 {
+			t.Fatal("interrupt returned before the legacy carrier closed")
+		}
+		if err := registered.Close(); !errors.Is(err, failure) || raw.closes.Load() != 1 {
+			t.Fatalf("legacy Close = %v, physical close calls = %d", err, raw.closes.Load())
+		}
 	}
 }
 

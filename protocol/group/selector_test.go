@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 	"sync"
+	"sync/atomic"
 	"testing"
 
 	"github.com/sagernet/sing-box/adapter"
@@ -157,6 +158,103 @@ func TestSelectorLateDialAfterSwitch(t *testing.T) {
 					}
 				} else if err != nil || closed {
 					t.Fatalf("valid dial interrupted: err=%v closed=%v", err, closed)
+				}
+			})
+		}
+	}
+}
+
+type selectorGatedCloseConn struct {
+	net.Conn
+	entered  chan struct{}
+	release  chan struct{}
+	closeErr error
+	closes   atomic.Int32
+}
+
+func (c *selectorGatedCloseConn) Close() error {
+	if c.closes.Add(1) == 1 {
+		close(c.entered)
+	}
+	<-c.release
+	_ = c.Conn.Close()
+	return c.closeErr
+}
+
+func TestSelectorOwnedCarrierCloseWaitsForTerminalResult(t *testing.T) {
+	physicalFailure := errors.New("physical close failed")
+	for _, order := range []struct {
+		name        string
+		switchFirst bool
+	}{{"switch-first", true}, {"owner-first", false}} {
+		for _, closeResult := range []struct {
+			name string
+			err  error
+		}{{"success", nil}, {"failure", physicalFailure}} {
+			t.Run(order.name+"/"+closeResult.name, func(t *testing.T) {
+				conn, peer := net.Pipe()
+				t.Cleanup(func() { _ = conn.Close(); _ = peer.Close() })
+				raw := &selectorGatedCloseConn{
+					Conn: conn, entered: make(chan struct{}), release: make(chan struct{}), closeErr: closeResult.err,
+				}
+				var release sync.Once
+				releaseClose := func() { release.Do(func() { close(raw.release) }) }
+				t.Cleanup(releaseClose)
+				parent, _ := outbound.WrapRuntimeOwnedConn(raw)
+				leaf := outbound.PreserveRuntimeConnClose(struct{ net.Conn }{parent}, parent)
+				dialReady := make(chan struct{})
+				close(dialReady)
+				old := &selectorDelayedOutbound{entered: make(chan struct{}), release: dialReady, stream: leaf}
+				s := &Selector{
+					ctx:            context.Background(),
+					outbounds:      map[string]adapter.Outbound{"new": &selectorDelayedOutbound{}},
+					interruptGroup: interrupt.NewGroup(),
+				}
+				s.selected.Store(&selectorSelection{outbound: old})
+				registered, err := s.DialContext(context.Background(), N.NetworkTCP, M.Socksaddr{})
+				if err != nil {
+					t.Fatal(err)
+				}
+				_, fence := outbound.WrapRuntimeOwnedConn(registered)
+				stop := func() {
+					done := make(chan struct{})
+					go func() {
+						defer close(done)
+						s.SelectOutbound("new")
+					}()
+					awaitEpochSignal(t, done)
+				}
+				if order.switchFirst {
+					stop()
+				}
+				var finalErr error
+				finalDone := make(chan struct{})
+				go func() {
+					defer close(finalDone)
+					finalErr = fence.RuntimeCloseAndWait()
+				}()
+				awaitEpochSignal(t, raw.entered)
+				if !order.switchFirst {
+					stop()
+				}
+				if err := registered.Close(); err != outbound.ErrRuntimeClosePending {
+					t.Fatalf("close before physical completion = %v, want pending", err)
+				}
+				select {
+				case <-finalDone:
+					t.Fatalf("owner reported completion before physical Close returned: %v", finalErr)
+				default:
+				}
+				releaseClose()
+				awaitEpochSignal(t, finalDone)
+				if !errors.Is(finalErr, closeResult.err) {
+					t.Fatalf("owner close = %v, want %v", finalErr, closeResult.err)
+				}
+				if err := registered.Close(); !errors.Is(err, closeResult.err) {
+					t.Fatalf("registered close after completion = %v, want %v", err, closeResult.err)
+				}
+				if raw.closes.Load() != 1 {
+					t.Fatalf("physical Close called %d times", raw.closes.Load())
 				}
 			})
 		}

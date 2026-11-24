@@ -11,18 +11,31 @@ import (
 
 type Conn struct {
 	net.Conn
-	group     *Group
-	element   *list.Element[*groupConnItem]
-	closeOnce sync.Once
-	closeErr  error
+	group        *Group
+	element      *list.Element[*groupConnItem]
+	closeRequest bool
+	closeOnce    sync.Once
+	closeErr     error
 }
 
 func (c *Conn) Close() error {
 	c.group.access.Lock()
 	c.group.connections.Remove(c.element)
 	c.group.access.Unlock()
+	if c.closeRequest {
+		return c.Conn.Close()
+	}
 	c.closeOnce.Do(func() { c.closeErr = c.Conn.Close() })
 	return c.closeErr
+}
+
+// CloseRequestParent exposes the exact connection with an idempotent, deferred
+// Close contract captured at registration, so its owner can join completion.
+func (c *Conn) CloseRequestParent() net.Conn {
+	if c.closeRequest {
+		return c.Conn
+	}
+	return nil
 }
 
 func (c *Conn) ReaderReplaceable() bool {

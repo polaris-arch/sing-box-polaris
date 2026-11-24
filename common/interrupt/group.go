@@ -34,9 +34,19 @@ func (g *Group) Add(closer io.Closer, isExternal bool) (remove func()) {
 }
 
 func (g *Group) NewConn(conn net.Conn, isExternal bool) net.Conn {
+	return g.newConn(conn, isExternal, false)
+}
+
+// NewConnWithCloseRequest registers a connection whose Close starts an
+// idempotent request and can report a different result once it completes.
+func (g *Group) NewConnWithCloseRequest(conn net.Conn, isExternal bool) net.Conn {
+	return g.newConn(conn, isExternal, true)
+}
+
+func (g *Group) newConn(conn net.Conn, isExternal, closeRequest bool) net.Conn {
 	g.access.Lock()
 	defer g.access.Unlock()
-	wrapper := &Conn{Conn: conn, group: g}
+	wrapper := &Conn{Conn: conn, group: g, closeRequest: closeRequest}
 	wrapper.element = g.connections.PushBack(&groupConnItem{wrapper, isExternal})
 	return wrapper
 }

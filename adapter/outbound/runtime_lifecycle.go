@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/sagernet/sing-box/adapter"
+	"github.com/sagernet/sing-box/common/interrupt"
 	"github.com/sagernet/sing/common"
 	"github.com/sagernet/sing/common/logger"
 )
@@ -605,9 +606,9 @@ func (f *RuntimeIOFence) Wait() error {
 	return err
 }
 
-// Only these exact private carriers carry this completion contract. A nested
-// external carrier can also already be closing; treating its pending request
-// as a final error would permanently poison the outer carrier's result.
+// Completion belongs to the exact private carrier, including when an interrupt
+// wrapper was registered with its deferred Close contract. A nested external
+// carrier can also be closing and return a pending request instead of a result.
 func runtimeCarrierState(conn io.Closer) *runtimeCarrier {
 	switch c := conn.(type) {
 	case *runtimeConn:
@@ -624,8 +625,34 @@ func runtimeCarrierState(conn io.Closer) *runtimeCarrier {
 		return c.state
 	case *runtimeLegacyPacketConn:
 		return c.state
+	case *interrupt.Conn:
+		return runtimeCarrierState(c.CloseRequestParent())
 	default:
 		return nil
+	}
+}
+
+// NewRuntimeInterruptConn carries the exact private completion through group
+// registration when the supplied connection has a deferred Close contract.
+func NewRuntimeInterruptConn(group *interrupt.Group, conn net.Conn, isExternal bool) net.Conn {
+	if runtimeConnCloseIsDeferred(conn) {
+		return group.NewConnWithCloseRequest(conn, isExternal)
+	}
+	return group.NewConn(conn, isExternal)
+}
+
+func runtimeConnCloseIsDeferred(conn net.Conn) bool {
+	switch c := conn.(type) {
+	case *runtimeConn:
+		return c.state.owned
+	case *runtimeConnPacket:
+		return c.state.owned
+	case *runtimeTLSStateConn:
+		return runtimeConnCloseIsDeferred(c.Conn)
+	case *interrupt.Conn:
+		return c.CloseRequestParent() != nil
+	default:
+		return false
 	}
 }
 

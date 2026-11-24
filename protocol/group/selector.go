@@ -285,7 +285,7 @@ func (s *Selector) DialContext(ctx context.Context, network string, destination 
 		return nil, err
 	}
 	isExternal := interrupt.IsExternalConnectionFromContext(ctx)
-	registered := s.interruptGroup.NewConn(conn, isExternal)
+	registered := outbound.NewRuntimeInterruptConn(s.interruptGroup, conn, isExternal)
 	// Register before checking so a concurrent switch cannot miss this dial.
 	if scoped && s.selected.Load() != selection {
 		closeErr := registered.Close()
