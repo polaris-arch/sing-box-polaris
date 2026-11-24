@@ -262,6 +262,18 @@ type runtimeClientDialer struct {
 	base    N.Dialer
 }
 
+type runtimeCSTPConn struct{ net.Conn }
+
+func (c *runtimeCSTPConn) Close() error {
+	err := c.Conn.Close()
+	if err == outbound.ErrRuntimeClosePending {
+		// The carrier is already registered. The endpoint waits for its actual
+		// close result before releasing the runtime owner.
+		return nil
+	}
+	return err
+}
+
 func (d *runtimeClientDialer) DialContext(ctx context.Context, network string, destination M.Socksaddr) (net.Conn, error) {
 	r := d.runtime
 	creation, err := r.carriers.Begin()
@@ -286,6 +298,9 @@ func (d *runtimeClientDialer) DialContext(ctx context.Context, network string, d
 	registered := creation.Register(fence)
 	if err != nil || registered != nil || r.ctx.Err() != nil {
 		return nil, errors.Join(err, registered, r.ctx.Err(), fence.RuntimeCloseAndWait())
+	}
+	if N.NetworkName(network) == N.NetworkTCP {
+		return &runtimeCSTPConn{wrapped}, nil
 	}
 	return wrapped, nil
 }

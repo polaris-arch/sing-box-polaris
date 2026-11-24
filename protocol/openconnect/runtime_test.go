@@ -2,9 +2,12 @@ package openconnect
 
 import (
 	"context"
+	stdtls "crypto/tls"
 	"errors"
+	"net"
 	"path/filepath"
 	"runtime"
+	"sync"
 	"testing"
 	"time"
 
@@ -135,5 +138,82 @@ func TestRuntimeClientNativeCloseErrorIsSticky(t *testing.T) {
 	second := r.close()
 	if !tls.IsRuntimeCleanupIncomplete(first) || second != first || calls != 1 {
 		t.Fatal("native cleanup result changed")
+	}
+}
+
+type blockedRuntimeClientConn struct {
+	net.Conn
+	started chan struct{}
+	release chan struct{}
+	err     error
+}
+
+func (c *blockedRuntimeClientConn) Close() error {
+	close(c.started)
+	<-c.release
+	return errors.Join(c.Conn.Close(), c.err)
+}
+
+func TestRuntimeClientJoinsPendingTLSCarrierClose(t *testing.T) {
+	for _, tt := range []struct {
+		name string
+		err  error
+	}{
+		{name: "successful carrier close"},
+		{name: "failed carrier close", err: errors.New("physical close failed")},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			r := fixtureRuntimeClient()
+			conn, peer := net.Pipe()
+			defer peer.Close()
+			raw := &blockedRuntimeClientConn{Conn: conn, started: make(chan struct{}), release: make(chan struct{}), err: tt.err}
+			wrapped, fence := outbound.WrapRuntimeOwnedConn(raw)
+			creation, err := r.carriers.Begin()
+			if err != nil {
+				t.Fatal(err)
+			}
+			err = creation.Register(fence)
+			creation.Done()
+			if err != nil {
+				t.Fatal(err)
+			}
+			release := sync.OnceFunc(func() { close(raw.release) })
+			defer release()
+			nativeResult := make(chan error, 1)
+			r.nativeClose = func() error {
+				err := stdtls.Client(&runtimeCSTPConn{wrapped}, &stdtls.Config{}).Close()
+				nativeResult <- err
+				return err
+			}
+			done := make(chan error, 1)
+			go func() { done <- r.close() }()
+			select {
+			case <-raw.started:
+			case <-time.After(5 * time.Second):
+				t.Fatal("carrier close was not requested")
+			}
+			select {
+			case err := <-nativeResult:
+				if err != nil {
+					t.Errorf("native TLS close rejected the pending request: %v", err)
+				}
+			case <-time.After(5 * time.Second):
+				t.Fatal("native TLS close blocked on physical completion")
+			}
+			select {
+			case err := <-done:
+				t.Fatalf("runtime returned before physical close: %v", err)
+			default:
+			}
+			release()
+			select {
+			case err := <-done:
+				if !errors.Is(err, raw.err) {
+					t.Fatalf("runtime close = %v; want %v", err, raw.err)
+				}
+			case <-time.After(5 * time.Second):
+				t.Fatal("runtime did not join physical close")
+			}
+		})
 	}
 }
