@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/sagernet/sing-box/adapter/outbound"
 	"github.com/sagernet/sing/common/bufio"
 	E "github.com/sagernet/sing/common/exceptions"
 	"github.com/sagernet/sing/common/logger"
@@ -72,6 +73,7 @@ func (c *ClientBind) connect(ctx context.Context) (*wireConn, error) {
 		}
 	}
 	var packet net.PacketConn
+	var closeWait func() error
 	if c.isConnect {
 		raw, err := c.dialer.DialContext(ctx, N.NetworkUDP, M.SocksaddrFromNetIP(c.connectAddr))
 		if err != nil {
@@ -80,6 +82,8 @@ func (c *ClientBind) connect(ctx context.Context) (*wireConn, error) {
 			}
 			return nil, err
 		}
+		// The packet adapter hides the exact connected carrier's completion.
+		closeWait, _ = outbound.RuntimeConnectionCloseWaiter(raw)
 		packet = bufio.NewUnbindPacketConn(raw)
 	} else {
 		raw, err := c.dialer.ListenPacket(ctx, M.Socksaddr{Addr: netip.IPv4Unspecified()})
@@ -89,9 +93,10 @@ func (c *ClientBind) connect(ctx context.Context) (*wireConn, error) {
 			}
 			return nil, err
 		}
+		closeWait, _ = outbound.RuntimeConnectionCloseWaiter(raw)
 		packet = raw
 	}
-	candidate := &wireConn{PacketConn: packet, done: make(chan struct{})}
+	candidate := &wireConn{PacketConn: packet, closeWait: closeWait, done: make(chan struct{})}
 	if ctx.Err() != nil {
 		c.record(candidate.Close())
 		return nil, net.ErrClosed
@@ -259,6 +264,7 @@ func (c *ClientBind) SetReservedForEndpoint(destination netip.AddrPort, reserved
 type wireConn struct {
 	net.PacketConn
 	conn      net.Conn
+	closeWait func() error
 	closeOnce sync.Once
 	closeErr  error
 	done      chan struct{}
@@ -275,7 +281,11 @@ func (w *wireConn) Close() error {
 	w.closeOnce.Do(func() {
 		defer close(w.done)
 		w.closeErr = errors.New("WireGuard socket close did not return")
-		w.closeErr = w.PacketConn.Close()
+		if w.closeWait != nil {
+			w.closeErr = w.closeWait()
+		} else {
+			w.closeErr = w.PacketConn.Close()
+		}
 	})
 	<-w.done
 	return w.closeErr
