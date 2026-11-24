@@ -43,18 +43,25 @@ type selectorTrackedConn struct {
 }
 
 func (c *selectorTrackedConn) Close() error {
+	if c.closed {
+		return net.ErrClosed
+	}
 	c.closed = true
 	return c.closeErr
 }
 
 type selectorTrackedPacketConn struct {
 	net.PacketConn
-	closed bool
+	closed   bool
+	closeErr error
 }
 
 func (c *selectorTrackedPacketConn) Close() error {
+	if c.closed {
+		return net.ErrClosed
+	}
 	c.closed = true
-	return nil
+	return c.closeErr
 }
 
 func TestSelectorLateDialAfterSwitch(t *testing.T) {
@@ -66,19 +73,22 @@ func TestSelectorLateDialAfterSwitch(t *testing.T) {
 			switchNode        bool
 			wantClosed        bool
 			scoped            bool
+			registered        bool
+			closeErr          error
 		}{
 			{name: "internal", switchNode: true, wantClosed: true},
 			{name: "external-preserved", external: true, switchNode: true},
 			{name: "external-interrupted", external: true, interruptExternal: true, switchNode: true, wantClosed: true},
 			{name: "scoped-probe", external: true, switchNode: true, wantClosed: true, scoped: true},
 			{name: "unchanged"},
+			{name: "registered-interrupted", switchNode: true, registered: true, closeErr: errors.New("interrupted carrier close failed")},
 		} {
 			if tc.scoped && network != N.NetworkTCP {
 				continue
 			}
 			t.Run(network+"/"+tc.name, func(t *testing.T) {
-				stream := &selectorTrackedConn{}
-				packet := &selectorTrackedPacketConn{}
+				stream := &selectorTrackedConn{closeErr: tc.closeErr}
+				packet := &selectorTrackedPacketConn{closeErr: tc.closeErr}
 				old := &selectorDelayedOutbound{
 					entered: make(chan struct{}), release: make(chan struct{}),
 					stream: stream, packet: packet,
@@ -119,6 +129,10 @@ func TestSelectorLateDialAfterSwitch(t *testing.T) {
 					}
 				}()
 				awaitEpochSignal(t, old.entered)
+				if tc.registered {
+					release.Do(func() { close(old.release) })
+					awaitEpochSignal(t, done)
+				}
 				if tc.switchNode && !s.SelectOutbound("new") {
 					t.Fatal("selection rejected")
 				}
@@ -129,7 +143,15 @@ func TestSelectorLateDialAfterSwitch(t *testing.T) {
 				if conn != nil && err == nil {
 					t.Cleanup(func() { conn.Close() })
 				}
-				if tc.wantClosed {
+				if tc.registered {
+					// The interrupted carrier's first close result reaches its owner.
+					if err != nil || !closed {
+						t.Fatalf("registered dial was not interrupted: err=%v closed=%v", err, closed)
+					}
+					if got := conn.Close(); got != tc.closeErr {
+						t.Fatalf("owner close after interrupt = %v, want first result %v", got, tc.closeErr)
+					}
+				} else if tc.wantClosed {
 					if !errors.Is(err, wantErr) || !closed || (tc.scoped && !errors.Is(err, stream.closeErr)) {
 						t.Fatalf("old dial survived switch: err=%v closed=%v", err, closed)
 					}

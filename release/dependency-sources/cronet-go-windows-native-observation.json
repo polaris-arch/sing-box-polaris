@@ -967,6 +967,24 @@
   "unchangedGitlinks": [],
   "changes": [
     {
+      "path": "bidirectional_conn.go",
+      "operation": "modify",
+      "before": {
+        "path": "bidirectional_conn.go",
+        "mode": "100644",
+        "bytes": 8231,
+        "sha256": "12743a6f923849c4c822b4a030b5363f70cde95581016815573da97bf1f099af",
+        "gitBlob": "786ee8dd30f00bfd3e59b7576a9aa1d5a4ba8cbc"
+      },
+      "after": {
+        "path": "bidirectional_conn.go",
+        "mode": "100644",
+        "bytes": 8361,
+        "sha256": "20bf54e29f32d6e9d462300a768f49172489d52e04bbcf20c9ef4fefbbe75830",
+        "gitBlob": "362fe802ebb67181a7df9a3940bb046581c6ccd8"
+      }
+    },
+    {
       "path": "internal/cronet/loader_observation.go",
       "operation": "modify",
       "before": {
@@ -1118,7 +1136,7 @@
     }
   ],
   "patch": "release/dependency-sources/cronet-go-windows-native-observation.patch",
-  "patchSHA256": "a5c4723dc24dfa9897be9f38da934ae9f2aa05cb4af6ddf73c8d0e45b6ebbb1b",
+  "patchSHA256": "0c192626094bf4f8545dfe760ab9cca1425b96a5ff39c4df66066dc13543e758",
   "historicalMaterials": {
     "release/dependency-sources/cronet-go-replacement.json": {
       "bytes": 54745,
