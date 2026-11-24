@@ -3,13 +3,114 @@ package boxruntime
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/sagernet/sing-box/adapter"
+	"github.com/sagernet/sing-box/adapter/endpoint"
 	"github.com/sagernet/sing-box/common/urltest"
+	C "github.com/sagernet/sing-box/constant"
+	"github.com/sagernet/sing-box/log"
+	"github.com/sagernet/sing-box/option"
+	"github.com/sagernet/sing/common/json"
+	N "github.com/sagernet/sing/common/network"
 	"github.com/sagernet/sing/service"
 )
+
+type runtimeHistoryTestEndpoint struct {
+	endpoint.Adapter
+	N.Dialer
+	id adapter.RuntimeResourceID
+}
+
+func (*runtimeHistoryTestEndpoint) Start(adapter.StartStage, *adapter.Scope) error { return nil }
+func (*runtimeHistoryTestEndpoint) PrepareRuntime(adapter.StartStage, *adapter.Scope) error {
+	return nil
+}
+func (*runtimeHistoryTestEndpoint) RuntimeValidate() error { return nil }
+func (e *runtimeHistoryTestEndpoint) RuntimeResourceID() adapter.RuntimeResourceID {
+	return e.id
+}
+
+func TestRuntimeEndpointHistoryFollowsActualOwner(t *testing.T) {
+	const tag = "vpn"
+	config := func(mtu uint32) []byte {
+		return fmt.Appendf(nil, `{
+			"log":{"disabled":true},
+			"dns":{"servers":[{"type":"udp","tag":"resolver","server":"192.0.2.53"}],"final":"resolver"},
+			"endpoints":[{"type":"wireguard","tag":"vpn","mtu":%d}],
+			"outbounds":[{"type":"direct","tag":"direct"},{"type":"selector","tag":"select","outbounds":["direct","vpn"],"default":"direct"}],
+			"route":{"final":"select"}
+		}`, mtu)
+	}
+	f, options := newRuntimeTestConstruction(t, runtimeTestConfig(1080, "example.org"), nil)
+	var rejected *urltest.HistoryStorage
+	registry := service.FromContext[adapter.EndpointRegistry](f.ctx).(*endpoint.Registry)
+	endpoint.Register[option.WireGuardEndpointOptions](registry, C.TypeWireGuard, func(ctx context.Context, _ adapter.Router, _ log.ContextLogger, tag string, options option.WireGuardEndpointOptions) (adapter.Endpoint, error) {
+		if options.MTU == 1300 {
+			rejected = service.PtrFromContext[urltest.HistoryStorage](ctx)
+			return nil, errors.New("injected endpoint constructor failure")
+		}
+		source, _ := adapter.RuntimeResourceSourceFromContext(ctx)
+		return &runtimeHistoryTestEndpoint{Adapter: endpoint.NewAdapter(C.TypeWireGuard, tag, []string{N.NetworkTCP}, nil), id: source.ID()}, nil
+	})
+	options.Options = option.Options{}
+	if err := json.UnmarshalContext(f.ctx, config(1400), &options.Options); err != nil {
+		t.Fatal(err)
+	}
+	var err error
+	f.box, err = New(options)
+	if err != nil {
+		t.Fatal(err)
+	}
+	clientShapeFinish(t, f)
+	f.start(t)
+	_, oldView := f.acquire(t)
+	ownerID := oldView.componentIDs["endpoint:"+tag]
+	member, _ := oldView.EndpointManager().Get(tag)
+	probe, connected, err := f.box.AcquireRuntimeURLTest(context.Background(), tag)
+	if !connected || err != nil {
+		t.Fatalf("endpoint probe admission failed: connected=%t, err=%v", connected, err)
+	}
+	defer probe.Release()
+	history, id, ok := oldView.RuntimeURLTestHistory(tag)
+	resource, retained := adapter.RuntimeResourceLeaseFromContext(probe.Context(), ownerID)
+	if !ok || id != ownerID || !retained || resource.ID() != ownerID || probe.Outbound() != member || probe.History() != history {
+		t.Fatal("endpoint probe did not retain the published endpoint owner and its history")
+	}
+	root := service.PtrFromContext[urltest.HistoryStorage](f.box.runtime.ctx)
+	group, _, _ := oldView.RuntimeURLTestHistory("select")
+	if history == root || !urltest.PublishRuntimeResult(probe.Context(), probe.Epoch(), tag, &adapter.URLTestHistory{Delay: 10}) {
+		t.Fatal("endpoint owner could not publish an isolated probe result")
+	}
+	if got := group.LoadURLTestHistory(tag); got == nil || got.Delay != 10 {
+		t.Fatal("endpoint result did not reach its declared group")
+	}
+	before := f.identity()
+	_, request := f.plan(t, config(1300))
+	operation, err := f.box.applyRuntimeConfig(context.Background(), "actor-a", request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	runtimeTestRequireCleanSourceAbort(t, f, operation, before)
+	if got := root.LoadURLTestHistory(tag); rejected == nil || rejected == root || rejected == history || rejected.Epoch() != nil || !probe.IsCurrent() || got == nil || got.Delay != 10 {
+		t.Fatal("failed endpoint replacement did not close its private history or displaced the current result")
+	}
+	_, request = f.plan(t, config(1280))
+	operation, err = f.box.applyRuntimeConfig(context.Background(), "actor-a", request)
+	if err != nil || operation.Active.Revision != before.Revision+1 {
+		t.Fatalf("endpoint replacement failed: %+v %v", operation, err)
+	}
+	_, newView := f.acquire(t)
+	replacement, replacementID, ok := newView.RuntimeURLTestHistory(tag)
+	if !ok || replacement == history || replacementID == ownerID || probe.IsCurrent() {
+		t.Fatal("same-tag replacement did not create a new owner and history")
+	}
+	if !urltest.PublishRuntimeResult(probe.Context(), probe.Epoch(), tag, &adapter.URLTestHistory{Delay: 99}) || root.LoadURLTestHistory(tag) != nil {
+		t.Fatal("late endpoint result lost its private graph or reached the replacement")
+	}
+}
 
 func TestRuntimeBoxHistoryFollowsActualPublicationAndBorrowedIncarnation(t *testing.T) {
 	f := newRuntimeTestFixture(t, runtimeTestConfig(1080, "example.org"), nil)

@@ -10,8 +10,8 @@ import (
 
 func (v *runtimeView) RuntimeURLTestHistory(tag string) (*urltest.HistoryStorage, adapter.RuntimeResourceID, bool) {
 	history := v.histories[tag]
-	id, ok := v.componentIDs["outbound:"+tag]
-	return history, id, ok && history != nil
+	id := runtimeOutboundComponentID(v, tag)
+	return history, id, id != (adapter.RuntimeResourceID{}) && history != nil
 }
 
 func (v *runtimeView) RuntimeURLTestConsumers(tag string) []*urltest.HistoryStorage {
@@ -40,7 +40,7 @@ func (v *runtimeView) bindRuntimeHistoryConsumers() {
 				return
 			}
 			seen[target] = true
-			if _, exists := v.componentIDs["outbound:"+target]; !exists {
+			if _, _, exists := v.RuntimeURLTestHistory(target); !exists {
 				return
 			}
 			v.historyConsumers[target] = append(v.historyConsumers[target], history)

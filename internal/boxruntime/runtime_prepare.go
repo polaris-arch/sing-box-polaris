@@ -583,6 +583,9 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 			if contextErr != nil {
 				return prepared, contextErr
 			}
+			component.history = urltest.NewIncarnationHistory(service.PtrFromContext[urltest.HistoryStorage](c.ctx))
+			service.MustRegisterPtr(ctx, component.history)
+			bindings[node.Name].scope.Add(component.history.Close)
 			value, createErr := service.FromContext[adapter.EndpointRegistry](ctx).Create(ctx, c.gateway, s.logFactory.NewLogger(node.Name), config.endpoint.Tag, config.endpoint.Type, config.endpoint.Options)
 			if createErr != nil {
 				return prepared, E.Cause(createErr, "initialize endpoint[", config.index, "]")
@@ -861,6 +864,7 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 			if !reflect.TypeOf(component.endpoint).Comparable() {
 				return prepared, errors.New("runtime endpoint lacks stable object identity")
 			}
+			view.histories[component.endpoint.Tag()] = component.history
 			view.referenceResources[component.endpoint] = resource.id
 			if port, ok := component.endpoint.(tun.Port); ok {
 				view.ports[port] = resource.id
