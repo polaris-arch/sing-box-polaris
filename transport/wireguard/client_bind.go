@@ -23,6 +23,7 @@ var _ conn.Bind = (*ClientBind)(nil)
 
 type ClientBind struct {
 	ctx                 context.Context
+	openContext         func() context.Context
 	logger              logger.Logger
 	pauseManager        pause.Manager
 	bindAccess          sync.Mutex
@@ -149,7 +150,11 @@ func (c *ClientBind) Open(port uint16) (fns []conn.ReceiveFunc, actualPort uint1
 		return nil, 0, conn.ErrBindAlreadyOpen
 	}
 	c.done = make(chan struct{})
-	c.bindCtx, c.bindDone = context.WithCancel(c.ctx)
+	parent := c.ctx
+	if c.openContext != nil {
+		parent = c.openContext()
+	}
+	c.bindCtx, c.bindDone = context.WithCancel(parent)
 	ctx := c.bindCtx
 	// Capture the exact epoch: a retiring receive routine must never reconnect
 	// against a later Open's context, socket, or done channel.

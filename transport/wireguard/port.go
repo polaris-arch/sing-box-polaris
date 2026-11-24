@@ -1,6 +1,7 @@
 package wireguard
 
 import (
+	"net"
 	"net/netip"
 	"sync/atomic"
 
@@ -59,7 +60,7 @@ func (e *Endpoint) WritePackets(packets [][]byte) error {
 	if len(packetRefs) == 0 {
 		return nil
 	}
-	if err := e.resume(); err != nil {
+	if err := e.resumeRaw(wgDevice); err != nil {
 		return err
 	}
 	unmatchedRefs := wgDevice.InputPackets(packetRefs)
@@ -90,10 +91,34 @@ func (e *Endpoint) WritePackets(packets [][]byte) error {
 	return nil
 }
 
+func (e *Endpoint) resumeRaw(wgDevice *device.Device) error {
+	if !e.suspended.Load() && e.probe.Load() == nil && !e.suspended.Load() {
+		return nil
+	}
+	e.stateAccess.Lock()
+	defer e.stateAccess.Unlock()
+	if e.device.Load() != wgDevice {
+		return net.ErrClosed
+	}
+	if probe := e.probe.Load(); probe != nil && !probe.promote() {
+		return net.ErrClosed
+	}
+	return e.resumeLocked(wgDevice)
+}
+
 func (e *Endpoint) AttachReturn(returnPath tun.Return) error {
 	headroom := returnPath.ReturnHeadroom()
 	if headroom > device.MessageTransportOffsetContent {
 		return E.New("return path headroom ", headroom, " exceeds available ", device.MessageTransportOffsetContent)
+	}
+	if e.options.StartSuspended {
+		e.stateAccess.Lock()
+		defer e.stateAccess.Unlock()
+		if probe := e.probe.Load(); probe != nil && !probe.promote() {
+			return net.ErrClosed
+		}
+		// A detached Return may still be executing on a native peer worker.
+		e.returnAttached.Store(true)
 	}
 	newState := &returnPathState{
 		returnPath: returnPath,

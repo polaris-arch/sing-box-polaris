@@ -21,6 +21,7 @@ import (
 
 	"github.com/sagernet/sing-box/adapter/outbound"
 	"github.com/sagernet/sing-box/common/interrupt"
+	"github.com/sagernet/sing-box/common/urltest"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing/common/control"
 	M "github.com/sagernet/sing/common/metadata"
@@ -37,7 +38,8 @@ func (d wireguardIdleTestDialer) UDPListenerControl() (control.Func, bool) {
 	return d.control, false
 }
 
-func TestEndpointStartsSuspendedAndRetriesActivation(t *testing.T) {
+func newIdleTestEndpoint(t *testing.T, dialer N.Dialer, resolve func(context.Context, string) ([]netip.Addr, error)) (*Endpoint, *net.UDPConn) {
+	t.Helper()
 	peer, err := net.ListenUDP("udp4", &net.UDPAddr{IP: net.IPv4(127, 0, 0, 1)})
 	if err != nil {
 		t.Fatal(err)
@@ -51,31 +53,36 @@ func TestEndpointStartsSuspendedAndRetriesActivation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	attempted := make(chan struct{}, 1)
-	bindFailure := errors.New("test bind failure")
-	var failBind atomic.Bool
+	peerAddress := M.SocksaddrFromNet(peer.LocalAddr())
+	if resolve != nil {
+		address := peerAddress.Addr
+		peerAddress = M.Socksaddr{Fqdn: "peer.test", Port: peerAddress.Port}
+		originalResolve := resolve
+		resolve = func(ctx context.Context, name string) ([]netip.Addr, error) {
+			addrs, err := originalResolve(ctx, name)
+			if addrs == nil && err == nil {
+				addrs = []netip.Addr{address}
+			}
+			return addrs, err
+		}
+	}
+	if dialer == nil {
+		dialer = wireguardIdleTestDialer{}
+	}
 	endpoint, err := NewEndpoint(EndpointOptions{
 		Context:        t.Context(),
 		Logger:         log.NewNOPFactory().Logger(),
 		StartSuspended: true,
 		Address:        []netip.Prefix{netip.MustParsePrefix("192.0.2.1/32")},
 		PrivateKey:     base64.StdEncoding.EncodeToString(privateKey.Bytes()),
+		ResolvePeer:    resolve,
 		Peers: []PeerOptions{{
-			Endpoint:                    M.SocksaddrFromNet(peer.LocalAddr()),
+			Endpoint:                    peerAddress,
 			PublicKey:                   base64.StdEncoding.EncodeToString(peerKey.PublicKey().Bytes()),
 			AllowedIPs:                  []netip.Prefix{netip.MustParsePrefix("192.0.2.2/32")},
 			PersistentKeepaliveInterval: 25,
 		}},
-		Dialer: wireguardIdleTestDialer{control: func(_, _ string, _ syscall.RawConn) error {
-			select {
-			case attempted <- struct{}{}:
-			default:
-			}
-			if failBind.Load() {
-				return bindFailure
-			}
-			return nil
-		}},
+		Dialer:  dialer,
 		Workers: 1,
 	})
 	if err != nil {
@@ -89,9 +96,26 @@ func TestEndpointStartsSuspendedAndRetriesActivation(t *testing.T) {
 	if err := endpoint.Initialize(nil); err != nil {
 		t.Fatal(err)
 	}
-	if err := endpoint.Start(false); err != nil {
+	if err := endpoint.Start(resolve != nil); err != nil {
 		t.Fatal(err)
 	}
+	return endpoint, peer
+}
+
+func TestEndpointStartsSuspendedAndRetriesActivation(t *testing.T) {
+	attempted := make(chan struct{}, 1)
+	bindFailure := errors.New("test bind failure")
+	var failBind atomic.Bool
+	endpoint, peer := newIdleTestEndpoint(t, wireguardIdleTestDialer{control: func(_, _ string, _ syscall.RawConn) error {
+		select {
+		case attempted <- struct{}{}:
+		default:
+		}
+		if failBind.Load() {
+			return bindFailure
+		}
+		return nil
+	}}, nil)
 	destination := M.ParseSocksaddr("192.0.2.2:443")
 	canceled, cancel := context.WithCancel(t.Context())
 	cancel()
@@ -126,6 +150,200 @@ func TestEndpointStartsSuspendedAndRetriesActivation(t *testing.T) {
 	}
 	if size != 148 || binary.LittleEndian.Uint32(packet[:4]) != 1 {
 		t.Fatalf("activation did not send a WireGuard handshake initiation: size %d, type %d", size, binary.LittleEndian.Uint32(packet[:4]))
+	}
+}
+
+func TestBackgroundWireGuardProbeReleasesOnlyItsOwnActivation(t *testing.T) {
+	endpoint, _ := newIdleTestEndpoint(t, nil, nil)
+	destination := M.ParseSocksaddr("192.0.2.2:443")
+	probeCtx := urltest.ContextWithBackgroundProbe(t.Context())
+	first, err := endpoint.ListenPacket(probeCtx, destination)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = first.Close() })
+	second, err := endpoint.ListenPacket(probeCtx, destination)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = second.Close() })
+	activation := endpoint.probe.Load()
+	if activation == nil {
+		t.Fatal("cold probe did not own the activation")
+	}
+	if err = first.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if endpoint.suspended.Load() {
+		t.Fatal("closing one of two probe carriers brought the device down")
+	}
+	if err = second.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if !endpoint.suspended.Load() || endpoint.probe.Load() != nil || activation.ctx.Err() == nil {
+		t.Fatal("closing the last probe did not cancel its resolver and suspend the device")
+	}
+
+	// A failed TCP setup must release its activation even without a carrier.
+	failed, err := endpoint.DialContext(probeCtx, N.NetworkTCP, M.ParseSocksaddr("2001:db8::2:443"))
+	if failed != nil || err == nil || !endpoint.suspended.Load() || endpoint.probe.Load() != nil {
+		t.Fatalf("failed probe retained its activation: connection %v, error %v", failed, err)
+	}
+
+	probeCarrier, err := endpoint.ListenPacket(probeCtx, destination)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = probeCarrier.Close() })
+	foreground, err := endpoint.ListenPacket(t.Context(), destination)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = foreground.Close() })
+	if urltest.IsBackgroundProbe(endpoint.activationContext()) {
+		t.Fatal("foreground takeover retained background attribution for native work")
+	}
+	if err = probeCarrier.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if endpoint.suspended.Load() {
+		t.Fatal("closing a probe suspended a device already taken over by foreground traffic")
+	}
+}
+
+func TestBackgroundWireGuardProbeOpeningCancelsPeerResolution(t *testing.T) {
+	entered := make(chan context.Context, 1)
+	resolverUnwind := make(chan struct{})
+	var allowResolverUnwind sync.Once
+	var first atomic.Bool
+	endpoint, _ := newIdleTestEndpoint(t, nil, func(ctx context.Context, _ string) ([]netip.Addr, error) {
+		if first.CompareAndSwap(false, true) {
+			entered <- ctx
+			<-ctx.Done()
+			<-resolverUnwind
+			return nil, ctx.Err()
+		}
+		return nil, nil
+	})
+	background, cancel := context.WithCancel(urltest.ContextWithBackgroundProbe(t.Context()))
+	defer cancel()
+	destination := M.ParseSocksaddr("192.0.2.2:443")
+	probeDone := make(chan error, 1)
+	go func() {
+		carrier, err := endpoint.ListenPacket(background, destination)
+		if carrier != nil {
+			_ = carrier.Close()
+		}
+		probeDone <- err
+	}()
+	defer allowResolverUnwind.Do(func() { close(resolverUnwind) })
+	var lookup context.Context
+	select {
+	case lookup = <-entered:
+	case <-time.After(3 * time.Second):
+		t.Fatal("initial keepalive did not enter the real WireGuard resolver")
+	}
+	if !urltest.IsBackgroundProbe(lookup) {
+		t.Fatal("native peer resolution lost the probe attribution")
+	}
+	cancel()
+	select {
+	case <-lookup.Done():
+	case <-time.After(3 * time.Second):
+		t.Fatal("probe cancellation did not reach native peer resolution")
+	}
+	foreground, stop := context.WithTimeout(t.Context(), 50*time.Millisecond)
+	defer stop()
+	carrier, err := endpoint.ListenPacket(foreground, destination)
+	if carrier != nil {
+		_ = carrier.Close()
+	}
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("foreground did not honor its own deadline while old native Up was joining: %v", err)
+	}
+	allowResolverUnwind.Do(func() { close(resolverUnwind) })
+	select {
+	case err := <-probeDone:
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("cancelled probe returned %v", err)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("old probe did not retire after its native resolver unwound")
+	}
+	if !endpoint.suspended.Load() || endpoint.probe.Load() != nil {
+		t.Fatal("old activation remained published after cancellation")
+	}
+	carrier, err = endpoint.ListenPacket(t.Context(), destination)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = carrier.Close()
+}
+
+type probeBindTestCarrier struct{ *clientBindCloseCarrier }
+
+func (c probeBindTestCarrier) Read(p []byte) (int, error) { return c.Conn.Read(p) }
+func (probeBindTestCarrier) Write(p []byte) (int, error)  { return len(p), nil }
+
+func TestBackgroundWireGuardProbeCoolingWaitsForNativeBind(t *testing.T) {
+	pipe, peer := net.Pipe()
+	t.Cleanup(func() { _ = pipe.Close(); _ = peer.Close() })
+	physical := &clientBindCloseCarrier{Conn: pipe, started: make(chan struct{}), release: make(chan struct{})}
+	releasePhysical := sync.OnceFunc(func() { close(physical.release) })
+	defer releasePhysical()
+	detourContext := make(chan context.Context, 1)
+	endpoint, _ := newIdleTestEndpoint(t, clientBindCloseDialer{
+		stream: probeBindTestCarrier{physical},
+		onDial: func(ctx context.Context) {
+			select {
+			case detourContext <- ctx:
+			default:
+			}
+		},
+	}, nil)
+	destination := M.ParseSocksaddr("192.0.2.2:443")
+	probe, err := endpoint.ListenPacket(urltest.ContextWithBackgroundProbe(t.Context()), destination)
+	if err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case ctx := <-detourContext:
+		if !urltest.IsBackgroundProbe(ctx) {
+			t.Fatal("the physical ClientBind detour lost background attribution")
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("the ClientBind detour did not open")
+	}
+	closed := make(chan error, 1)
+	go func() { closed <- probe.Close() }()
+	select {
+	case <-physical.started:
+	case <-time.After(3 * time.Second):
+		t.Fatal("native Down did not start closing the ClientBind carrier")
+	}
+	if endpoint.AdmitInbound() {
+		t.Fatal("retiring native ingress incorrectly took ownership")
+	}
+	foreground, stop := context.WithTimeout(t.Context(), 50*time.Millisecond)
+	defer stop()
+	carrier, err := endpoint.ListenPacket(foreground, destination)
+	if carrier != nil {
+		_ = carrier.Close()
+	}
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("foreground bypassed the native Down join: %v", err)
+	}
+	releasePhysical()
+	select {
+	case err = <-closed:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("probe Close did not finish after its original native bind closed")
+	}
+	if !endpoint.suspended.Load() || endpoint.probe.Load() != nil || physical.closes.Load() != 1 {
+		t.Fatal("probe did not suspend exactly its own native bind")
 	}
 }
 
@@ -210,9 +428,13 @@ func (c *clientBindCloseCarrier) Close() error {
 type clientBindCloseDialer struct {
 	stream net.Conn
 	packet net.PacketConn
+	onDial func(context.Context)
 }
 
-func (d clientBindCloseDialer) DialContext(context.Context, string, M.Socksaddr) (net.Conn, error) {
+func (d clientBindCloseDialer) DialContext(ctx context.Context, _ string, _ M.Socksaddr) (net.Conn, error) {
+	if d.onDial != nil {
+		d.onDial(ctx)
+	}
 	return d.stream, nil
 }
 

@@ -13,6 +13,7 @@ import (
 	"sync/atomic"
 
 	"github.com/sagernet/sing-box/adapter"
+	"github.com/sagernet/sing-box/adapter/outbound"
 	"github.com/sagernet/sing-box/common/dialer"
 	"github.com/sagernet/sing-box/service/powerreport"
 	"github.com/sagernet/sing-tun"
@@ -45,6 +46,8 @@ type Endpoint struct {
 	stateAccess    sync.Mutex
 	suspended      atomic.Bool
 	networkPaused  bool
+	probe          atomic.Pointer[probeActivation]
+	returnAttached atomic.Bool
 	closeOnce      sync.Once
 	closeDone      chan struct{}
 	closeErr       error
@@ -215,6 +218,9 @@ func (e *Endpoint) Start(postStart bool) error {
 			}
 		}
 		clientBind := NewClientBind(e.options.Context, e.options.Logger, e.options.Dialer, isConnect, connectAddr, reserved)
+		if e.options.StartSuspended {
+			clientBind.openContext = e.activationContext
+		}
 		bind = clientBind
 		if e.runtime != nil {
 			bind = &runtimeClientBind{ClientBind: clientBind, owner: e.runtime}
@@ -252,7 +258,7 @@ func (e *Endpoint) Start(postStart bool) error {
 			if !found {
 				return nil, nil
 			}
-			addresses, lookupErr := e.options.ResolvePeer(peer.destination.Fqdn)
+			addresses, lookupErr := e.options.ResolvePeer(e.activationContext(), peer.destination.Fqdn)
 			if lookupErr != nil {
 				return nil, lookupErr
 			}
@@ -313,10 +319,19 @@ func (e *Endpoint) DialContext(ctx context.Context, network string, destination 
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	if err := e.resume(); err != nil {
+	release, err := e.acquireFlow(ctx)
+	if err != nil {
 		return nil, err
 	}
-	return e.tunDevice.DialContext(ctx, network, destination)
+	connection, err := e.tunDevice.DialContext(ctx, network, destination)
+	if release != nil {
+		if err != nil || connection == nil {
+			release()
+		} else {
+			connection = outbound.WrapRuntimeConn(context.Background(), release, connection)
+		}
+	}
+	return connection, err
 }
 
 func (e *Endpoint) ListenPacket(ctx context.Context, destination M.Socksaddr) (net.PacketConn, error) {
@@ -326,19 +341,43 @@ func (e *Endpoint) ListenPacket(ctx context.Context, destination M.Socksaddr) (n
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	if err := e.resume(); err != nil {
+	release, err := e.acquireFlow(ctx)
+	if err != nil {
 		return nil, err
 	}
-	return e.tunDevice.ListenPacket(ctx, destination)
+	connection, err := e.tunDevice.ListenPacket(ctx, destination)
+	if release != nil {
+		if err != nil || connection == nil {
+			release()
+		} else {
+			connection = outbound.WrapRuntimePacketConn(context.Background(), release, connection)
+		}
+	}
+	return connection, err
 }
 
 func (e *Endpoint) SetIdle(idle bool) {
-	e.stateAccess.Lock()
-	defer e.stateAccess.Unlock()
-	wgDevice := e.device.Load()
-	if wgDevice == nil {
+	if err := e.lockState(e.options.Context); err != nil {
 		return
 	}
+	wgDevice := e.device.Load()
+	if wgDevice == nil {
+		e.stateAccess.Unlock()
+		return
+	}
+	if probe := e.probe.Load(); probe != nil {
+		if !idle {
+			probe.promote()
+		} else if probe.phase.Load() != probePromoted {
+			// A reference refresh does not withdraw a live scoped demand.
+			e.stateAccess.Unlock()
+			return
+		} else {
+			e.retireProbeLocked(probe, true)
+			return
+		}
+	}
+	defer e.stateAccess.Unlock()
 	if !idle {
 		if err := e.resumeLocked(wgDevice); err != nil {
 			e.options.Logger.Error(err)
@@ -351,15 +390,20 @@ func (e *Endpoint) SetIdle(idle bool) {
 	}
 }
 
-func (e *Endpoint) resume() error {
-	if !e.suspended.Load() {
+func (e *Endpoint) resume(ctx context.Context) error {
+	if !e.suspended.Load() && e.probe.Load() == nil && !e.suspended.Load() {
 		return nil
 	}
-	e.stateAccess.Lock()
+	if err := e.lockState(ctx); err != nil {
+		return err
+	}
 	defer e.stateAccess.Unlock()
 	wgDevice := e.device.Load()
 	if wgDevice == nil {
 		return net.ErrClosed
+	}
+	if probe := e.probe.Load(); probe != nil {
+		probe.promote()
 	}
 	return e.resumeLocked(wgDevice)
 }
@@ -396,12 +440,27 @@ func (e *Endpoint) close() error {
 	}
 	e.stateAccess.Lock()
 	wgDevice := e.device.Swap(nil)
+	probe := e.probe.Load()
+	if probe != nil {
+		// Keep the cancelled activation visible to any resolver started as the
+		// original native timers and workers are joining.
+		e.suspended.Store(true)
+		probe.cancel()
+	}
 	e.stateAccess.Unlock()
+	if probe != nil && probe.phase.Load() == probeRetiring {
+		<-probe.done
+	} else if probe != nil {
+		<-probe.ready
+	}
 	// Native shutdown and its nested Device.Close run outside stateAccess:
 	// copied packet callbacks may need resume, which takes that same guard.
 	if wgDevice != nil {
 		wgDevice.Down()
 		wgDevice.Close()
+	}
+	if probe != nil {
+		e.probe.CompareAndSwap(probe, nil)
 	}
 	var closeErr error
 	if e.tunDevice != nil {
@@ -450,12 +509,28 @@ func (e *Endpoint) onPauseUpdated(event int) {
 
 func (e *Endpoint) setNetworkPaused(paused bool) {
 	e.stateAccess.Lock()
-	defer e.stateAccess.Unlock()
 	wgDevice := e.device.Load()
 	if wgDevice == nil {
+		e.stateAccess.Unlock()
 		return
 	}
 	e.networkPaused = paused
+	if probe := e.probe.Load(); probe != nil {
+		phase := probe.phase.Load()
+		if phase == probeOpening || phase == probeRetiring {
+			if paused {
+				probe.cancel()
+			}
+			e.stateAccess.Unlock()
+			return
+		}
+		if paused {
+			phase = probe.phase.Swap(probeRetiring)
+			e.retireProbeLocked(probe, phase != probePromoted)
+			return
+		}
+	}
+	defer e.stateAccess.Unlock()
 	if paused {
 		wgDevice.Down()
 	} else if !e.suspended.Load() {

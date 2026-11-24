@@ -132,12 +132,11 @@ func NewEndpoint(ctx context.Context, router adapter.Router, logger log.ContextL
 		Address:    options.Address,
 		PrivateKey: options.PrivateKey,
 		ListenPort: options.ListenPort,
-		ResolvePeer: func(domain string) ([]netip.Addr, error) {
-			lookupContext := ctx
+		ResolvePeer: func(lookupContext context.Context, domain string) ([]netip.Addr, error) {
 			release := func() {}
 			if ep.runtimePhysical != nil {
 				var err error
-				lookupContext, release, err = ep.runtimePhysical.begin(ctx)
+				lookupContext, release, err = ep.runtimePhysical.begin(lookupContext)
 				if err != nil {
 					return nil, err
 				}
@@ -366,6 +365,9 @@ func (w *Endpoint) NewDNSPacketEx(ctx context.Context, payload []byte, source M.
 		defer release()
 		ctx = owned
 	}
+	if w.onDemand && !w.endpoint.AdmitInbound() {
+		return
+	}
 
 	ctx = log.ContextWithNewID(ctx)
 	var metadata adapter.InboundContext
@@ -417,6 +419,10 @@ func (w *Endpoint) NewConnectionEx(ctx context.Context, conn net.Conn, source M.
 			return
 		}
 	}
+	if w.onDemand && !w.endpoint.AdmitInbound() {
+		N.CloseOnHandshakeFailure(conn, onClose, net.ErrClosed)
+		return
+	}
 
 	var metadata adapter.InboundContext
 	metadata.Inbound = w.Tag()
@@ -460,6 +466,10 @@ func (w *Endpoint) NewPacketConnectionEx(ctx context.Context, conn N.PacketConn,
 			N.CloseOnHandshakeFailure(conn, onClose, err)
 			return
 		}
+	}
+	if w.onDemand && !w.endpoint.AdmitInbound() {
+		N.CloseOnHandshakeFailure(conn, onClose, net.ErrClosed)
+		return
 	}
 
 	var metadata adapter.InboundContext
