@@ -25,6 +25,7 @@ import (
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing-box/route"
+	"github.com/sagernet/sing-box/service/oomkiller"
 	"github.com/sagernet/sing/common"
 	"github.com/sagernet/sing/common/json"
 	"github.com/sagernet/sing/service"
@@ -258,6 +259,21 @@ func newRuntimeBox(options Options, scope *adapter.Scope, factory log.Factory, c
 		}
 		if err := instance.service.Create(ctx, factory.NewLogger("service/api["+tag+"]"), tag, item.Type, item.Options); err != nil {
 			return nil, err
+		}
+	}
+	if oomOptions, _ := oomkiller.HostOptionsFromContext(ctx); oomOptions.Enabled {
+		tag := fmt.Sprint(len(options.Services))
+		if _, exists := instance.service.Get(tag); exists {
+			return nil, fmt.Errorf("duplicate service tag: %s", tag)
+		}
+		// Resource constructors inherit the same pressure provider from the
+		// stable context. The Box owns its timer across all publications.
+		name := fmt.Sprintf("service/%s[%s]", C.TypeOOMKiller, tag)
+		instance.hostOOMKillerScope = adapter.NewScope(ctx, factory.Logger())
+		oomContext := adapter.ContextWithConstructionScope(instance.hostOOMKillerScope.Context(), instance.hostOOMKillerScope)
+		instance.hostOOMKiller, err = service.FromContext[adapter.ServiceRegistry](ctx).Create(oomContext, factory.NewLogger(name), tag, C.TypeOOMKiller, oomOptions.ServiceOptions())
+		if err != nil {
+			return nil, fmt.Errorf("initialize service[%s]: %w", tag, err)
 		}
 	}
 	canonical, err := json.MarshalContext(ctx, options.Options)

@@ -13,6 +13,7 @@ import (
 	"github.com/sagernet/sing-box/adapter/inbound"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
+	"github.com/sagernet/sing-box/service/oomkiller"
 	"github.com/sagernet/sing/service"
 )
 
@@ -201,11 +202,10 @@ func TestPreparedInstanceSnapshotsOOMWithoutConstructing(t *testing.T) {
 		t.Fatal(err)
 	}
 	host.SetOOMKillerOptions(false, false, 456)
-	if len(prepared.options.Services) != 1 {
-		t.Fatal("missing prepared OOM override")
+	if len(prepared.options.Services) != 0 || !prepared.runtimeGraph {
+		t.Fatal("host OOM override affected user config or graph admission")
 	}
-	oom, ok := prepared.options.Services[0].Options.(*option.OOMKillerServiceOptions)
-	if !ok || !oom.KillerDisabled || oom.MemoryLimitOverride != 123 {
+	if oom, ok := oomkiller.HostOptionsFromContext(prepared.ctx); !ok || !oom.Enabled || !oom.KillerDisabled || oom.MemoryLimitOverride != 123 {
 		t.Fatal("prepared options followed a later host setting")
 	}
 	if len(host.tailscaleRetirementRuns) != 0 {

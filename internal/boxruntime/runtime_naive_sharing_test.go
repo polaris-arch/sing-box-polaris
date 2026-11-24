@@ -31,11 +31,13 @@ import (
 	"github.com/sagernet/quic-go/http3"
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/adapter/outbound"
+	boxService "github.com/sagernet/sing-box/adapter/service"
 	"github.com/sagernet/sing-box/common/urltest"
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/internal/runtimegraph"
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing-box/protocol/naive"
+	"github.com/sagernet/sing-box/service/oomkiller"
 	"github.com/sagernet/sing/common/json"
 	"github.com/sagernet/sing/common/json/badoption"
 	M "github.com/sagernet/sing/common/metadata"
@@ -165,12 +167,16 @@ func TestRuntimeNaiveSharedClientThroughPublication(t *testing.T) {
 			}
 			f, options := newRuntimeTestConstruction(t, runtimeTestConfig(1080, "example.org"), nil)
 			naive.RegisterOutbound(service.FromContext[adapter.OutboundRegistry](f.ctx).(*outbound.Registry))
+			oomkiller.RegisterService(service.FromContext[adapter.ServiceRegistry](f.ctx).(*boxService.Registry))
+			options.Context = oomkiller.ContextWithHostOptions(options.Context, oomkiller.HostOptions{Enabled: true, KillerDisabled: true, MemoryLimitOverride: 1 << 40})
 			require.NoError(t, json.UnmarshalContext(f.ctx, config(1080, true, "b"), &options.Options))
 			instance, err := New(options)
 			require.NoError(t, err)
 			f.box = instance
 			t.Cleanup(func() { require.NoError(t, instance.CloseWithResult()) })
 			require.NotNil(t, instance.runtime)
+			pressure := service.FromContext[*oomkiller.Service](f.object(t, "a", 0).ctx)
+			require.NotNil(t, pressure)
 			f.start(t)
 			runtimeTestPublishBootstrapPlatformClosure(t, f)
 
@@ -282,6 +288,7 @@ func TestRuntimeNaiveSharedClientThroughPublication(t *testing.T) {
 				return operation
 			}
 			require.Equal(t, "COMMITTED_DURABILITY_PENDING", apply(config(1081, true, "b")).State)
+			require.Same(t, pressure, service.FromContext[*oomkiller.Service](f.object(t, "a", 1).ctx))
 			nextLease, next := f.acquire(t)
 			require.Equal(t, view.componentIDs["outbound:proxy-b"], next.componentIDs["outbound:proxy-b"])
 			borrowed, _ := next.outbounds.Outbound("proxy-b")

@@ -3,6 +3,7 @@ package boxruntime
 import (
 	"context"
 	"io"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -31,6 +32,7 @@ import (
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing-box/protocol/direct"
 	"github.com/sagernet/sing-box/route"
+	"github.com/sagernet/sing-box/service/oomkiller"
 	"github.com/sagernet/sing/common"
 	E "github.com/sagernet/sing/common/exceptions"
 	F "github.com/sagernet/sing/common/format"
@@ -53,6 +55,8 @@ type Box struct {
 	inbound             *inbound.Manager
 	outbound            *outbound.Manager
 	service             *boxService.Manager
+	hostOOMKiller       adapter.Service
+	hostOOMKillerScope  *adapter.Scope
 	certificateProvider *boxCertificate.Manager
 	dnsTransport        *dns.TransportManager
 	dnsRouter           *dns.Router
@@ -420,7 +424,11 @@ func newBox(options Options, constructionScope **adapter.Scope) (*Box, error) {
 			return nil, E.Cause(err, "initialize inbound[", i, "]")
 		}
 	}
-	for i, serviceOptions := range options.Services {
+	services := options.Services
+	if oomOptions, _ := oomkiller.HostOptionsFromContext(ctx); oomOptions.Enabled {
+		services = append(slices.Clone(services), option.Service{Type: C.TypeOOMKiller, Options: oomOptions.ServiceOptions()})
+	}
+	for i, serviceOptions := range services {
 		var tag string
 		if serviceOptions.Tag != "" {
 			tag = serviceOptions.Tag

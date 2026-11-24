@@ -26,7 +26,18 @@ func (s *Box) runtimeStableStage(stage adapter.StartStage) error {
 			return err
 		}
 	}
+	if stage != adapter.StartStateStart {
+		return s.startHostOOMKiller(stage)
+	}
 	return nil
+}
+
+func (s *Box) startHostOOMKiller(stage adapter.StartStage) error {
+	if s.hostOOMKiller == nil {
+		return nil
+	}
+	name := fmt.Sprintf("service/%s[%s]", C.TypeOOMKiller, s.hostOOMKiller.Tag())
+	return s.hostOOMKillerScope.Start(name, s.hostOOMKiller, stage)
 }
 
 func (s *Box) preStartRuntime() error {
@@ -94,6 +105,11 @@ func (s *Box) startRuntime() error {
 	c.workDone = make(chan struct{})
 	c.access.Unlock()
 	defer func() { c.access.Lock(); c.preparing = false; close(c.workDone); c.access.Unlock() }()
+	// Like the legacy service, the host timer starts at Start, after PreStart
+	// and before post-start admissions.
+	if err := s.startHostOOMKiller(adapter.StartStateStart); err != nil {
+		return err
+	}
 	for _, stage := range []adapter.StartStage{adapter.StartStatePostStart, adapter.StartStateStarted} {
 		if err := s.startRuntimeGraphStage(c.initialPrepared, stage); err != nil {
 			return err
@@ -286,6 +302,18 @@ func (s *Box) closeRuntimeResourcesContext(ctx context.Context) error {
 			workDone = c.workDone
 		}
 		c.access.Unlock()
+		// Stop process-wide OOM monitoring even when ingress or a retained
+		// generation prevents the stable resource from closing.
+		var oomDone chan error
+		if s.hostOOMKillerScope != nil {
+			oomDone = make(chan error, 1)
+			go func() {
+				if workDone != nil {
+					<-workDone
+				}
+				oomDone <- s.hostOOMKillerScope.Close()
+			}()
+		}
 		go func() {
 			c.shutdownDiagnosticPhase.Store(1) // preparation join
 			c.access.Lock()
@@ -356,6 +384,11 @@ func (s *Box) closeRuntimeResourcesContext(ctx context.Context) error {
 					referenceReservation.Release()
 				}
 			}
+			// Keep the stable logger and providers alive through OOM shutdown.
+			var oomErr error
+			if oomDone != nil {
+				oomErr = <-oomDone
+			}
 			if ingressErr != nil || referenceErr != nil {
 				// Keep the original stable reservation charged on uncertainty.
 				c.access.Lock()
@@ -368,6 +401,9 @@ func (s *Box) closeRuntimeResourcesContext(ctx context.Context) error {
 				}
 				c.shutdownDiagnosticPhase.Store(7) // resource owner drain
 				c.shutdownError = waitRuntimeResources(context.Background(), resources)
+			}
+			if oomErr != nil {
+				c.shutdownError = errors.Join(c.shutdownError, oomErr)
 			}
 			c.shutdownDiagnosticPhase.Store(8) // actual shutdown worker returned
 			close(c.shutdownDone)

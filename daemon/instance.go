@@ -15,6 +15,7 @@ import (
 	"github.com/sagernet/sing-box/experimental/locale"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
+	"github.com/sagernet/sing-box/service/oomkiller"
 	"github.com/sagernet/sing-box/service/powerreport"
 	"github.com/sagernet/sing/common"
 	E "github.com/sagernet/sing/common/exceptions"
@@ -142,20 +143,13 @@ func (s *StartedService) prepareInstance(ctx context.Context, profileContent str
 			}
 		}
 	}
-	if oomEnabled {
-		if !common.Any(options.Services, func(it option.Service) bool {
-			return it.Type == C.TypeOOMKiller
-		}) {
-			oomOptions := &option.OOMKillerServiceOptions{
-				KillerDisabled:      oomDisabled,
-				MemoryLimitOverride: oomLimit,
-			}
-			options.Services = append(options.Services, option.Service{
-				Type:    C.TypeOOMKiller,
-				Options: oomOptions,
-			})
-		}
+	var oomOptions oomkiller.HostOptions
+	if oomEnabled && !common.Any(options.Services, func(it option.Service) bool {
+		return it.Type == C.TypeOOMKiller
+	}) {
+		oomOptions = oomkiller.HostOptions{Enabled: true, KillerDisabled: oomDisabled, MemoryLimitOverride: oomLimit}
 	}
+	ctx = oomkiller.ContextWithHostOptions(ctx, oomOptions)
 	return &preparedInstance{runtimeOverrides: cloneRuntimeOverrides(overrideOptions), ctx: ctx, profileContent: profileContent, options: options, request: request, runtimeGraph: box.RuntimeUsesResourceGraph(ctx, options)}, nil
 }
 

@@ -3,7 +3,10 @@ package daemon
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/hex"
+	"errors"
 	"net"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -16,8 +19,10 @@ import (
 	"github.com/sagernet/sing-box/adapter/outbound"
 	boxService "github.com/sagernet/sing-box/adapter/service"
 	"github.com/sagernet/sing-box/common/urltest"
+	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/dns"
 	"github.com/sagernet/sing-box/dns/transport"
+	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing-box/protocol/direct"
 	"github.com/sagernet/sing-box/protocol/group"
@@ -98,6 +103,145 @@ func TestRuntimePlanRejectsUnknownImpactPolicyBeforeInstanceOrConfigPreparation(
 	ctx := ContextWithRuntimeActor(context.Background(), "authenticated-a")
 	if _, err := service.PlanRuntimeConfig(ctx, request); status.Code(err) != codes.InvalidArgument || status.Convert(err).Message() != "unsupported client impact policy version" {
 		t.Fatalf("unknown policy was read as legacy or reached preparation: %v", err)
+	}
+}
+
+type observedHostOOMKiller struct {
+	boxService.Adapter
+	options    option.OOMKillerServiceOptions
+	stages     []adapter.StartStage
+	closeCount int
+	closeErr   error
+}
+
+func (s *observedHostOOMKiller) Start(stage adapter.StartStage, scope *adapter.Scope) error {
+	s.stages = append(s.stages, stage)
+	if stage == adapter.StartStateStart {
+		scope.Add(func() error { s.closeCount++; return s.closeErr })
+	}
+	return nil
+}
+
+func observeRuntimeHostOOMKiller(host *StartedService) *[]*observedHostOOMKiller {
+	owners := new([]*observedHostOOMKiller)
+	registry := service.FromContext[adapter.ServiceRegistry](host.ctx).(*boxService.Registry)
+	boxService.Register[option.OOMKillerServiceOptions](registry, C.TypeOOMKiller, func(_ context.Context, _ log.ContextLogger, tag string, options option.OOMKillerServiceOptions) (adapter.Service, error) {
+		owner := &observedHostOOMKiller{Adapter: boxService.NewAdapter(C.TypeOOMKiller, tag), options: options}
+		*owners = append(*owners, owner)
+		return owner, nil
+	})
+	return owners
+}
+
+func TestRuntimeHostOOMKillerStaysOwnedAcrossPublicationAndReplay(t *testing.T) {
+	host, _ := retirementPureHost(t)
+	observed := observeRuntimeHostOOMKiller(host)
+	var persisted string
+	ctx, err := ContextWithRuntimePersistenceMode(ContextWithRuntimeActor(t.Context(), "local-owner"), func(_ box.RuntimeIdentity, content []byte) error {
+		persisted = string(content)
+		return nil
+	}, "exact_configuration_file")
+	if err != nil {
+		t.Fatal(err)
+	}
+	const initial = `{"log":{"disabled":true}}`
+	const candidate = `{"log":{"disabled":true,"level":"warn"}}`
+	const explicit = `{"log":{"disabled":true},"services":[{"type":"oom-killer"}]}`
+	host.SetOOMKillerOptions(true, true, 123)
+	if err := host.StartOrReloadService(ctx, initial, nil); err != nil {
+		t.Fatal(err)
+	}
+	owners := *observed
+	active := host.instance.instance.RuntimeCapabilities().Identity
+	initialDigest := sha256.Sum256([]byte(initial))
+	if active.Revision != 1 || active.EffectiveDigest != hex.EncodeToString(initialDigest[:]) {
+		t.Fatalf("startup digest did not represent the profile: %+v", active)
+	}
+	if len(owners) != 1 || !owners[0].options.KillerDisabled || owners[0].options.MemoryLimitOverride != 123 || !slices.Equal(owners[0].stages, adapter.ListStartStages) || owners[0].closeCount != 0 {
+		t.Fatalf("startup lost the OOM policy or lifecycle: %+v", owners)
+	}
+	plan := func(content string) *RuntimeConfigPlan {
+		t.Helper()
+		result, err := host.PlanRuntimeConfig(ctx, &PlanRuntimeConfigRequest{
+			ContractVersion: box.RuntimeConfigContractVersion, ConfigContent: content,
+			Expected: runtimeIdentity(active), ExpectedControlRevision: active.ControlRevision,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return result
+	}
+	for _, change := range []struct {
+		enabled, reportOnly bool
+		limit               uint64
+		content             string
+	}{
+		{false, true, 123, candidate},
+		{true, false, 123, candidate},
+		{true, true, 456, candidate},
+		{true, true, 123, explicit},
+	} {
+		host.SetOOMKillerOptions(change.enabled, change.reportOnly, change.limit)
+		rejected := plan(change.content)
+		if rejected.Applicable || len(rejected.Errors) != 1 || rejected.Errors[0].Code != "RESTART_REQUIRED" || rejected.Errors[0].EffectivePath != "services.oom-killer" {
+			t.Fatalf("changed OOM policy was not classified as restart-only: %+v", rejected)
+		}
+	}
+	host.SetOOMKillerOptions(true, true, 123)
+	if result := plan(initial); !result.Applicable || !result.NoOp {
+		t.Fatalf("host OOM changed the profile's no-op comparison: %+v", result)
+	}
+	planned := plan(candidate)
+	if !planned.Applicable || planned.NoOp || len(planned.Errors) != 0 {
+		t.Fatalf("plain profile change did not plan with host OOM: %+v", planned)
+	}
+	result, err := host.ApplyRuntimeConfig(ctx, &ApplyRuntimeConfigRequest{
+		ContractVersion: box.RuntimeConfigContractVersion, Expected: runtimeIdentity(active), ExpectedControlRevision: active.ControlRevision,
+		PlanId: planned.PlanId, TransactionId: planned.TransactionId, CandidateDigest: planned.CandidateDigest, AcceptedImpactDigest: planned.ImpactDigest,
+	})
+	if err != nil || result.State != RuntimeOperationState_COMMITTED || persisted != candidate {
+		t.Fatalf("apply or persistence failed: %+v, %v; content = %q", result, err, persisted)
+	}
+	owners = *observed
+	if len(owners) != 1 || !slices.Equal(owners[0].stages, adapter.ListStartStages) || owners[0].closeCount != 0 {
+		t.Fatal("graph publication restarted or closed the host OOM service")
+	}
+	if err := host.StartOrReloadService(ctx, persisted, nil); err != nil {
+		t.Fatal(err)
+	}
+	owners = *observed
+	if len(owners) != 2 || owners[0].closeCount != 1 || !slices.Equal(owners[1].stages, adapter.ListStartStages) || owners[1].options != owners[0].options {
+		t.Fatal("reload did not close and reapply the same host OOM policy")
+	}
+	if err := host.CloseService(); err != nil || owners[0].closeCount != 1 || owners[1].closeCount != 1 {
+		t.Fatalf("host OOM close did not run exactly once per Box: %v", err)
+	}
+}
+
+func TestRuntimeHostOOMKillerClosesWhenIngressCleanupFails(t *testing.T) {
+	host, _ := retirementPureHost(t)
+	owners := observeRuntimeHostOOMKiller(host)
+	ingressFailure := errors.New("test ingress cleanup failure")
+	oomFailure := errors.New("test host OOM cleanup failure")
+	registry := service.FromContext[adapter.ServiceRegistry](host.ctx).(*boxService.Registry)
+	boxService.Register[option.APIServiceOptions](registry, C.TypeAPI, func(context.Context, log.ContextLogger, string, option.APIServiceOptions) (adapter.Service, error) {
+		return &failingTransientService{closeErr: ingressFailure}, nil
+	})
+	host.SetOOMKillerOptions(true, true, 123)
+	config := `{"log":{"disabled":true},"services":[{"type":"api","listen":"127.0.0.1","secret":"local-test-secret"}]}`
+	if err := host.StartOrReloadService(t.Context(), config, nil); err != nil {
+		t.Fatal(err)
+	}
+	if !host.instance.instance.RuntimeCapabilities().Enabled || len(*owners) != 1 {
+		t.Fatal("startup did not create a graph and its host OOM service")
+	}
+	owner := (*owners)[0]
+	owner.closeErr = oomFailure
+	for range 2 {
+		err := host.CloseService()
+		if !errors.Is(err, ingressFailure) || !errors.Is(err, oomFailure) || owner.closeCount != 1 {
+			t.Fatalf("close lost a cleanup result or repeated OOM cleanup: count = %d, error = %v", owner.closeCount, err)
+		}
 	}
 }
 

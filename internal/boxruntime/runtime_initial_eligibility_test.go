@@ -11,10 +11,15 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sagernet/sing-box/adapter"
+	boxService "github.com/sagernet/sing-box/adapter/service"
 	C "github.com/sagernet/sing-box/constant"
+	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
+	"github.com/sagernet/sing-box/service/oomkiller"
 	"github.com/sagernet/sing/common/json"
 	"github.com/sagernet/sing/common/json/badoption"
+	"github.com/sagernet/sing/service"
 )
 
 const runtimeEligibilitySecret = "private-eligibility-value-must-not-appear"
@@ -115,6 +120,11 @@ func TestRuntimeInitialEligibilityReasonsPreserveInventory(t *testing.T) {
 			paths:   []string{"services"},
 		},
 		{
+			name:    "profile OOM service retains its legacy lifecycle",
+			options: option.Options{Services: []option.Service{{Type: C.TypeOOMKiller, Options: &option.OOMKillerServiceOptions{}}}},
+			paths:   []string{"services"},
+		},
+		{
 			name: "remote source without bootstrap",
 			options: option.Options{Route: &option.RouteOptions{RuleSet: []option.RuleSet{{
 				Type: "remote", Tag: []string{runtimeEligibilitySecret}, Format: "source",
@@ -209,6 +219,33 @@ func TestRuntimeEligibleConstructionFailureDoesNotFallBack(t *testing.T) {
 	instance, err, _ := NewWithConstructionReport(options)
 	if instance != nil || !errors.Is(err, failure) || f.count("a") != 1 {
 		t.Fatal("eligible construction failed to preserve its original failure", instance, err, f.count("a"))
+	}
+}
+
+func TestRuntimeHostOOMKillerClosesOnFailedConstruction(t *testing.T) {
+	failure := errors.New("test constructor failure")
+	for _, stage := range []string{"OOM service", "graph outbound"} {
+		t.Run(stage, func(t *testing.T) {
+			f, options := newRuntimeTestConstruction(t, runtimeTestConfig(1080, "example.org"), func(*runtimeTestSocks) error {
+				return failure
+			})
+			options.Context = oomkiller.ContextWithHostOptions(options.Context, oomkiller.HostOptions{Enabled: true})
+			closed := 0
+			registry := service.FromContext[adapter.ServiceRegistry](f.ctx).(*boxService.Registry)
+			boxService.Register[option.OOMKillerServiceOptions](registry, C.TypeOOMKiller, func(ctx context.Context, logger log.ContextLogger, tag string, options option.OOMKillerServiceOptions) (adapter.Service, error) {
+				if err := adapter.DeferConstructionCleanup(ctx, func() error { closed++; return nil }); err != nil {
+					return nil, err
+				}
+				if stage == "OOM service" {
+					return nil, failure
+				}
+				return oomkiller.NewService(ctx, logger, tag, options)
+			})
+			instance, err, report := NewWithConstructionReport(options)
+			if instance != nil || !errors.Is(err, failure) || report.CleanupError != nil || closed != 1 {
+				t.Fatalf("failed construction lost host OOM cleanup: count = %d, error = %v, report = %+v", closed, err, report)
+			}
+		})
 	}
 }
 

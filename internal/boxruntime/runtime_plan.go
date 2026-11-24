@@ -19,6 +19,7 @@ import (
 	"github.com/sagernet/sing-box/internal/runtimegraph"
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing-box/route"
+	"github.com/sagernet/sing-box/service/oomkiller"
 	"github.com/sagernet/sing/common"
 	"github.com/sagernet/sing/common/json"
 )
@@ -265,6 +266,15 @@ func (s *Box) planRuntimeConfigInternal(ctx context.Context, actor string, expec
 		return plan, errors.New("source producer cannot edit the accepted configuration")
 	}
 	plan.CandidateDigest = runtimeDigest(canonical)
+	if candidate, supplied := oomkiller.HostOptionsFromContext(ctx); supplied {
+		active, _ := oomkiller.HostOptionsFromContext(parseContext)
+		if candidate != active {
+			const path = "services.oom-killer"
+			plan.Errors = []RuntimePlanError{{Code: "RESTART_REQUIRED", Path: path, Message: "changing the host OOM policy requires an explicit application-managed restart"}}
+			plan.Impacts = []RuntimeImpact{{Path: path, UpdateClass: "RESTART_REQUIRED", Reason: "host OOM policy changes", ReconnectRequired: true, AffectedSessionClasses: []string{"none; candidate not applied"}}}
+			return plan, nil
+		}
+	}
 	plan.Impacts, plan.Errors = runtimeConfigCompatibilityWithClientImpactPolicy(parseContext, base, canonical, options, version, s.logFactory)
 	if len(plan.Errors) != 0 {
 		return cloneRuntimePlan(plan), nil

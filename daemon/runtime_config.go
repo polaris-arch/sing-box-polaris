@@ -14,6 +14,7 @@ import (
 	"github.com/sagernet/sing-box/common/urltest"
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/protocol/direct"
+	"github.com/sagernet/sing-box/service/oomkiller"
 	"github.com/sagernet/sing/common/json"
 	M "github.com/sagernet/sing/common/metadata"
 	N "github.com/sagernet/sing/common/network"
@@ -333,6 +334,8 @@ func (s *StartedService) PlanRuntimeConfig(ctx context.Context, request *PlanRun
 		}
 		intents = append(intents, box.RuntimeSelectorIntent{Group: intent.Group, Selected: intent.Selected, PinCurrentTCP: intent.PinCurrentTcp, ExpectedSelectionPath: append([]string(nil), intent.ExpectedSelectionPath...)})
 	}
+	oomOptions, _ := oomkiller.HostOptionsFromContext(prepared.ctx)
+	ctx = oomkiller.ContextWithHostOptions(ctx, oomOptions)
 	plan, err := instance.PlanRuntimeConfigWithClientImpactPolicy(ctx, actor, expected, effective, intents, policy)
 	if err != nil {
 		return nil, status.Error(codes.FailedPrecondition, err.Error())

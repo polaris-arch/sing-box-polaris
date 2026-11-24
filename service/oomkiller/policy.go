@@ -16,6 +16,29 @@ const (
 	AppleNetworkExtensionGoMemoryLimit      = 32 * 1024 * 1024
 )
 
+// HostOptions is the process owner's default OOM configuration. Profile JSON
+// can declare its own OOM service but cannot set these host options.
+type HostOptions struct {
+	Enabled             bool
+	KillerDisabled      bool
+	MemoryLimitOverride uint64
+}
+
+type hostOptionsKey struct{}
+
+func ContextWithHostOptions(ctx context.Context, options HostOptions) context.Context {
+	return context.WithValue(ctx, hostOptionsKey{}, options)
+}
+
+func HostOptionsFromContext(ctx context.Context) (HostOptions, bool) {
+	options, ok := ctx.Value(hostOptionsKey{}).(HostOptions)
+	return options, ok
+}
+
+func (o HostOptions) ServiceOptions() *option.OOMKillerServiceOptions {
+	return &option.OOMKillerServiceOptions{KillerDisabled: o.KillerDisabled, MemoryLimitOverride: o.MemoryLimitOverride}
+}
+
 type policyMode uint8
 
 const (
