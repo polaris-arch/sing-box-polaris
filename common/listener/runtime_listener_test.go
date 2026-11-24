@@ -504,6 +504,10 @@ func TestOwnedListenerTerminalCallbackIncludesSuccessfulCompletion(t *testing.T)
 		case <-time.After(5 * time.Second):
 			t.Fatal("handler did not receive terminal ownership")
 		}
+		// Receiving the callback can precede the handler's deferred release.
+		for range 2 {
+			waitFixture(t, a.released)
+		}
 		if physical.closed.Load() {
 			t.Fatal("handler return closed the admitted carrier")
 		}
