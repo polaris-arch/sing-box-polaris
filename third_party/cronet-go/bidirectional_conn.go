@@ -255,10 +255,12 @@ func (c *BidirectionalConn) Err() error {
 func (c *BidirectionalConn) Close() error {
 	c.access.Lock()
 
+	// Close only requests cancellation, so a repeated request reports the
+	// first one's result instead of failing a second owner's cleanup.
 	select {
 	case <-c.close:
 		c.access.Unlock()
-		return net.ErrClosed
+		return nil
 	case <-c.done:
 		c.access.Unlock()
 		return nil
