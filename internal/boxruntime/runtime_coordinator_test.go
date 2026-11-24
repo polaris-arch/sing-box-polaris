@@ -370,8 +370,11 @@ func TestRuntimePreparationCancellationIsPrivateAndExactRetryDoesNotRestart(t *t
 	cancel()
 	barrier.open()
 	operation := runtimeTestReceiveApply(t, result)
-	if operation.State != "ABORTING_UNAPPLIED" || f.identity() != before {
-		t.Fatal("canceled candidate was published")
+	if operation.State != "ABORTING_UNAPPLIED" && operation.State != "ABORTED_UNAPPLIED" {
+		t.Fatalf("canceled candidate did not return an unapplied abort: %+v", operation)
+	}
+	if active := f.identity(); operation.Before != before || operation.Active != before || active != before {
+		t.Fatalf("canceled candidate changed the active identity: before=%+v active=%+v current=%+v want=%+v", operation.Before, operation.Active, active, before)
 	}
 	if got := operation.Errors; len(got) != 2 || got[0].Code != "PREPARATION_FAILED" || got[1].Code != "PREPARATION_CANCELED" {
 		t.Fatalf("canceled candidate receipt lacks cancellation detail: %+v", got)
