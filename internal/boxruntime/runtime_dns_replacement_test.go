@@ -41,7 +41,7 @@ func TestRuntimeDNSRuleSetContentKeepsRouter(t *testing.T) {
 	f, options := newRuntimeTestConstruction(t, config(1080, "old.test", sites("old.test")), nil)
 	runtimeResourceNew(t, f, options)
 	f.start(t)
-	// The first publication never reuses the initial platform borrowing.
+	// Publish once so the measured apply runs between two published generations.
 	_, warm := f.plan(t, config(1081, "old.test", sites("old.test")))
 	runtimeTestReceiveApply(t, runtimeTestApplyAsync(f, context.Background(), warm))
 	oldLease, oldView := f.acquire(t)
@@ -132,8 +132,7 @@ func runtimeTestDNSOptionsReplace(t *testing.T, detour string) {
 	options.DNS.Final = "fixture"
 	runtimeResourceNew(t, f, options)
 	f.start(t)
-	// The first publication never reuses the initial platform borrowing, so it
-	// also replaces its DNS router.
+	// Publish once so the measured apply runs between two published generations.
 	options.Outbounds[1].Options.(*option.SOCKSOutboundOptions).ServerPort++
 	_, warm := f.plan(t, runtimeResourceEncode(t, f, options.Options))
 	runtimeTestReceiveApply(t, runtimeTestApplyAsync(f, context.Background(), warm))

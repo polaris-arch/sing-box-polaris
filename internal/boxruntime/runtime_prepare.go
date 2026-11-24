@@ -133,16 +133,6 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 	if err != nil {
 		return prepared, err
 	}
-	// Initial platform borrowing is never reused as a private provision owner.
-	// In particular, an initially requested but failed monitor must not satisfy
-	// a later graph merely because its requirement fingerprint is unchanged.
-	if prepared.initial {
-		for index := range nodes {
-			if nodes[index].Name == "platform-runtime" {
-				nodes[index].Fingerprint = runtimeDigest([]byte("bootstrap:" + nodes[index].Fingerprint))
-			}
-		}
-	}
 	runtimeBindRootFingerprints(nodes, configs, prepared.rootDigest)
 	runtimeBindSelectorIntentFingerprints(nodes, intents)
 	for _, intent := range intents {

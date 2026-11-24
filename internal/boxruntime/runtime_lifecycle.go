@@ -221,7 +221,18 @@ func (s *Box) startRuntime() error {
 		}
 	}
 	c.access.Lock()
-	c.platformRequirements = c.initialRouter.RuntimeProvisionedRequirements(c.platformRequirements)
+	provisioned := c.initialRouter.RuntimeProvisionedRequirements(c.platformRequirements)
+	// The cold-start platform only borrows stable providers. A requested monitor
+	// that failed to start must not satisfy a later graph merely because its
+	// requirement fingerprint is unchanged: quarantine it from reuse.
+	if !runtimeSourceRequirementsCovered(provisioned, c.platformRequirements) {
+		for _, resource := range c.resources {
+			if resource.components["platform-runtime"] != nil {
+				resource.fingerprint = "bootstrap:" + resource.fingerprint
+			}
+		}
+	}
+	c.platformRequirements = provisioned
 	c.initialPrepared = nil
 	c.initialSources = nil
 	if c.pendingPrepared == prepared {
