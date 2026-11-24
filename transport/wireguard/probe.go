@@ -18,7 +18,23 @@ const (
 
 type probeDialPathKey struct{}
 
-type probeDialPath struct{ parent *probeDialPath }
+type probeDialPath struct {
+	parent *probeDialPath
+	phase  atomic.Uint32
+}
+
+func (path *probeDialPath) hasForeground() bool {
+	for ; path != nil; path = path.parent {
+		if path.phase.Load() == probePromoted {
+			return true
+		}
+	}
+	return false
+}
+
+func (path *probeDialPath) isBackground(func(context.Context) bool) bool {
+	return path.phase.Load() <= probeBorrowed && !path.parent.hasForeground()
+}
 
 type probeActivation struct {
 	device    *device.Device
@@ -26,7 +42,6 @@ type probeActivation struct {
 	cancel    context.CancelFunc
 	ready     chan struct{}
 	done      chan struct{}
-	phase     atomic.Uint32
 	path      *probeDialPath
 	borrowers int // protected by Endpoint.stateAccess
 }
@@ -42,15 +57,19 @@ func (e *Endpoint) activationContext() context.Context {
 // AdmitInbound transfers a probe's wake to accepted application traffic.
 // Native receive callbacks must never wait for a joined Down.
 func (e *Endpoint) AdmitInbound() bool {
+	owner := e.device.Load()
+	if owner == nil {
+		return false
+	}
 	probe := e.probe.Load()
 	if probe == nil {
-		return !e.options.StartSuspended || !e.suspended.Load()
+		return (!e.options.StartSuspended || !e.suspended.Load()) && e.device.Load() == owner
 	}
-	return probe.promote()
+	return probe.promote() && e.device.Load() == owner
 }
 
 func (probe *probeActivation) promote() bool {
-	return probe.phase.CompareAndSwap(probeBorrowed, probePromoted) || probe.phase.Load() == probePromoted
+	return probe.path.phase.CompareAndSwap(probeBorrowed, probePromoted) || probe.path.phase.Load() == probePromoted
 }
 
 func (e *Endpoint) lockState(ctx context.Context) error {
@@ -64,7 +83,7 @@ func (e *Endpoint) lockState(ctx context.Context) error {
 			return nil
 		}
 		var wait <-chan struct{}
-		switch probe.phase.Load() {
+		switch probe.path.phase.Load() {
 		case probeOpening:
 			wait = probe.ready
 		case probeRetiring:
@@ -91,6 +110,7 @@ func (e *Endpoint) acquireFlow(ctx context.Context) (func(), error) {
 	if !e.options.StartSuspended || !urltest.IsBackgroundProbe(ctx) {
 		return nil, e.resume(ctx)
 	}
+	parent, _ := ctx.Value(probeDialPathKey{}).(*probeDialPath)
 	if err := e.lockState(ctx); err != nil {
 		return nil, err
 	}
@@ -99,12 +119,19 @@ func (e *Endpoint) acquireFlow(ctx context.Context) (func(), error) {
 		e.stateAccess.Unlock()
 		return nil, net.ErrClosed
 	}
-	if probe := e.probe.Load(); probe != nil && probe.phase.Load() == probeBorrowed {
+	probe := e.probe.Load()
+	// WireGuard detours can become foreground while this endpoint is waiting.
+	// The path contains only atomic state, so this check is safe under stateAccess.
+	foreground := parent.hasForeground()
+	if foreground && probe != nil {
+		probe.promote()
+	}
+	if probe != nil && probe.path.phase.Load() == probeBorrowed {
 		probe.borrowers++
 		e.stateAccess.Unlock()
 		return func() { e.releaseProbe(probe) }, nil
 	}
-	if !e.suspended.Load() || e.returnAttached.Load() {
+	if foreground || !e.suspended.Load() || e.returnAttached {
 		err := e.resumeLocked(wgDevice)
 		e.stateAccess.Unlock()
 		return nil, err
@@ -113,15 +140,12 @@ func (e *Endpoint) acquireFlow(ctx context.Context) (func(), error) {
 		e.stateAccess.Unlock()
 		return nil, urltest.ErrProbeNotRun
 	}
-	parent, _ := ctx.Value(probeDialPathKey{}).(*probeDialPath)
-	probe := &probeActivation{
+	probe = &probeActivation{
 		device: wgDevice, ready: make(chan struct{}), done: make(chan struct{}),
 		path: &probeDialPath{parent: parent}, borrowers: 1,
 	}
 	probeContext := context.WithValue(e.options.Context, probeDialPathKey{}, probe.path)
-	probeContext = urltest.ContextWithSharedBackgroundProbe(probeContext, func(func(context.Context) bool) bool {
-		return probe.phase.Load() <= probeBorrowed
-	})
+	probeContext = urltest.ContextWithSharedBackgroundProbe(probeContext, probe.path.isBackground)
 	probe.ctx, probe.cancel = context.WithCancel(probeContext)
 	e.probe.Store(probe)
 	e.stateAccess.Unlock()
@@ -151,7 +175,7 @@ func (e *Endpoint) acquireFlow(ctx context.Context) (func(), error) {
 		return nil, urltest.ErrProbeNotRun
 	}
 	e.suspended.Store(false)
-	probe.phase.Store(probeBorrowed)
+	probe.path.phase.Store(probeBorrowed)
 	e.stateAccess.Unlock()
 	return func() { e.releaseProbe(probe) }, nil
 }
@@ -160,7 +184,7 @@ func (e *Endpoint) releaseProbe(probe *probeActivation) {
 	e.stateAccess.Lock()
 	if e.probe.Load() == probe && e.device.Load() == probe.device {
 		probe.borrowers--
-		if probe.borrowers == 0 && probe.phase.CompareAndSwap(probeBorrowed, probeRetiring) {
+		if probe.borrowers == 0 && probe.path.phase.CompareAndSwap(probeBorrowed, probeRetiring) {
 			e.retireProbeLocked(probe, true)
 			return
 		}
@@ -171,7 +195,7 @@ func (e *Endpoint) releaseProbe(probe *probeActivation) {
 // retireProbeLocked consumes stateAccess. Keep the old owner visible until
 // Down has joined its native workers, without holding their admission lock.
 func (e *Endpoint) retireProbeLocked(probe *probeActivation, suspended bool) {
-	probe.phase.Store(probeRetiring)
+	probe.path.phase.Store(probeRetiring)
 	e.suspended.Store(suspended)
 	probe.cancel()
 	e.stateAccess.Unlock()

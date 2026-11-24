@@ -47,7 +47,7 @@ type Endpoint struct {
 	suspended      atomic.Bool
 	networkPaused  bool
 	probe          atomic.Pointer[probeActivation]
-	returnAttached atomic.Bool
+	returnAttached bool // protected by stateAccess
 	closeOnce      sync.Once
 	closeDone      chan struct{}
 	closeErr       error
@@ -368,7 +368,7 @@ func (e *Endpoint) SetIdle(idle bool) {
 	if probe := e.probe.Load(); probe != nil {
 		if !idle {
 			probe.promote()
-		} else if probe.phase.Load() != probePromoted {
+		} else if probe.path.phase.Load() != probePromoted {
 			// A reference refresh does not withdraw a live scoped demand.
 			e.stateAccess.Unlock()
 			return
@@ -441,17 +441,20 @@ func (e *Endpoint) close() error {
 	e.stateAccess.Lock()
 	wgDevice := e.device.Swap(nil)
 	probe := e.probe.Load()
+	var wait <-chan struct{}
 	if probe != nil {
+		wait = probe.ready
+		if probe.path.phase.Swap(probeRetiring) == probeRetiring {
+			wait = probe.done
+		}
 		// Keep the cancelled activation visible to any resolver started as the
 		// original native timers and workers are joining.
 		e.suspended.Store(true)
 		probe.cancel()
 	}
 	e.stateAccess.Unlock()
-	if probe != nil && probe.phase.Load() == probeRetiring {
-		<-probe.done
-	} else if probe != nil {
-		<-probe.ready
+	if wait != nil {
+		<-wait
 	}
 	// Native shutdown and its nested Device.Close run outside stateAccess:
 	// copied packet callbacks may need resume, which takes that same guard.
@@ -516,7 +519,7 @@ func (e *Endpoint) setNetworkPaused(paused bool) {
 	}
 	e.networkPaused = paused
 	if probe := e.probe.Load(); probe != nil {
-		phase := probe.phase.Load()
+		phase := probe.path.phase.Load()
 		if phase == probeOpening || phase == probeRetiring {
 			if paused {
 				probe.cancel()
@@ -525,7 +528,7 @@ func (e *Endpoint) setNetworkPaused(paused bool) {
 			return
 		}
 		if paused {
-			phase = probe.phase.Swap(probeRetiring)
+			phase = probe.path.phase.Swap(probeRetiring)
 			e.retireProbeLocked(probe, phase != probePromoted)
 			return
 		}

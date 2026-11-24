@@ -118,7 +118,7 @@ func (e *Endpoint) AttachReturn(returnPath tun.Return) error {
 			return net.ErrClosed
 		}
 		// A detached Return may still be executing on a native peer worker.
-		e.returnAttached.Store(true)
+		e.returnAttached = true
 	}
 	newState := &returnPathState{
 		returnPath: returnPath,

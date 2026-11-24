@@ -195,6 +195,16 @@ func TestBackgroundWireGuardProbeReleasesOnlyItsOwnActivation(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = probeCarrier.Close() })
+	detour, _ := newIdleTestEndpoint(t, nil, nil)
+	detourCarrier, err := detour.ListenPacket(endpoint.activationContext(), destination)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = detourCarrier.Close() })
+	detourContext := detour.activationContext()
+	if !urltest.IsBackgroundProbe(detourContext) {
+		t.Fatal("probe attribution did not reach the downstream WireGuard activation")
+	}
 	foreground, err := endpoint.ListenPacket(t.Context(), destination)
 	if err != nil {
 		t.Fatal(err)
@@ -203,11 +213,23 @@ func TestBackgroundWireGuardProbeReleasesOnlyItsOwnActivation(t *testing.T) {
 	if urltest.IsBackgroundProbe(endpoint.activationContext()) {
 		t.Fatal("foreground takeover retained background attribution for native work")
 	}
+	if urltest.IsBackgroundProbe(detourContext) {
+		t.Fatal("foreground takeover did not reach the already open WireGuard detour")
+	}
 	if err = probeCarrier.Close(); err != nil {
 		t.Fatal(err)
 	}
 	if endpoint.suspended.Load() {
 		t.Fatal("closing a probe suspended a device already taken over by foreground traffic")
+	}
+	if err = endpoint.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if !urltest.IsBackgroundProbe(detourContext) {
+		t.Fatal("a closed ancestor retained foreground priority for the surviving detour")
+	}
+	if err = detourCarrier.Close(); err != nil || !detour.suspended.Load() {
+		t.Fatalf("detour priority changed its existing carrier ownership: %v", err)
 	}
 }
 
@@ -280,12 +302,87 @@ func TestBackgroundWireGuardProbeOpeningCancelsPeerResolution(t *testing.T) {
 	_ = carrier.Close()
 }
 
+func TestBackgroundWireGuardProbeRechecksDetourPriorityAfterOpening(t *testing.T) {
+	entered := make(chan struct{})
+	unwind := make(chan struct{})
+	unblock := sync.OnceFunc(func() { close(unwind) })
+	notify := sync.OnceFunc(func() { close(entered) })
+	endpoint, _ := newIdleTestEndpoint(t, nil, func(ctx context.Context, _ string) ([]netip.Addr, error) {
+		notify()
+		select {
+		case <-unwind:
+			return nil, nil
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	})
+	defer unblock()
+	destination := M.ParseSocksaddr("192.0.2.2:443")
+	type result struct {
+		carrier net.PacketConn
+		err     error
+	}
+	open := func(ctx context.Context) <-chan result {
+		finished := make(chan result, 1)
+		go func() {
+			carrier, err := endpoint.ListenPacket(ctx, destination)
+			finished <- result{carrier, err}
+		}()
+		return finished
+	}
+	first := open(urltest.ContextWithBackgroundProbe(t.Context()))
+	select {
+	case <-entered:
+	case <-time.After(3 * time.Second):
+		t.Fatal("initial WireGuard activation did not enter its resolver")
+	}
+	parent := &probeDialPath{}
+	parent.phase.Store(probeBorrowed)
+	classified := make(chan struct{})
+	notifyClassification := sync.OnceFunc(func() { close(classified) })
+	waiter := urltest.ContextWithSharedBackgroundProbe(context.WithValue(t.Context(), probeDialPathKey{}, parent), func(check func(context.Context) bool) bool {
+		background := parent.isBackground(check)
+		notifyClassification()
+		return background
+	})
+	second := open(waiter)
+	select {
+	case <-classified:
+	case <-time.After(3 * time.Second):
+		t.Fatal("detour request did not reach admission")
+	}
+	parent.phase.Store(probePromoted)
+	unblock()
+	for _, finished := range []<-chan result{first, second} {
+		select {
+		case opened := <-finished:
+			if opened.err != nil {
+				t.Fatal(opened.err)
+			}
+			if err := opened.carrier.Close(); err != nil {
+				t.Fatal(err)
+			}
+		case <-time.After(3 * time.Second):
+			t.Fatal("WireGuard request remained blocked after the original resolver returned")
+		}
+	}
+	if endpoint.suspended.Load() || urltest.IsBackgroundProbe(endpoint.activationContext()) {
+		t.Fatal("the queued foreground detour was admitted with its stale background priority")
+	}
+}
+
 type probeBindTestCarrier struct{ *clientBindCloseCarrier }
 
 func (c probeBindTestCarrier) Read(p []byte) (int, error) { return c.Conn.Read(p) }
 func (probeBindTestCarrier) Write(p []byte) (int, error)  { return len(p), nil }
 
 func TestBackgroundWireGuardProbeCoolingWaitsForNativeBind(t *testing.T) {
+	t.Run("cooling", func(t *testing.T) { testWireGuardProbeStopsNativeBind(t, false) })
+	t.Run("terminal", func(t *testing.T) { testWireGuardProbeStopsNativeBind(t, true) })
+}
+
+func testWireGuardProbeStopsNativeBind(t *testing.T, terminal bool) {
+	t.Helper()
 	pipe, peer := net.Pipe()
 	t.Cleanup(func() { _ = pipe.Close(); _ = peer.Close() })
 	physical := &clientBindCloseCarrier{Conn: pipe, started: make(chan struct{}), release: make(chan struct{})}
@@ -315,7 +412,14 @@ func TestBackgroundWireGuardProbeCoolingWaitsForNativeBind(t *testing.T) {
 		t.Fatal("the ClientBind detour did not open")
 	}
 	closed := make(chan error, 1)
-	go func() { closed <- probe.Close() }()
+	t.Cleanup(func() { _ = probe.Close() })
+	go func() {
+		if terminal {
+			closed <- endpoint.Close()
+		} else {
+			closed <- probe.Close()
+		}
+	}()
 	select {
 	case <-physical.started:
 	case <-time.After(3 * time.Second):
@@ -324,13 +428,17 @@ func TestBackgroundWireGuardProbeCoolingWaitsForNativeBind(t *testing.T) {
 	if endpoint.AdmitInbound() {
 		t.Fatal("retiring native ingress incorrectly took ownership")
 	}
+	want := context.DeadlineExceeded
+	if terminal {
+		want = net.ErrClosed
+	}
 	foreground, stop := context.WithTimeout(t.Context(), 50*time.Millisecond)
 	defer stop()
 	carrier, err := endpoint.ListenPacket(foreground, destination)
 	if carrier != nil {
 		_ = carrier.Close()
 	}
-	if !errors.Is(err, context.DeadlineExceeded) {
+	if !errors.Is(err, want) {
 		t.Fatalf("foreground bypassed the native Down join: %v", err)
 	}
 	releasePhysical()
