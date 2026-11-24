@@ -2,11 +2,16 @@ package wireguard
 
 import (
 	"context"
+	"errors"
+	"net"
 	"testing"
+	"time"
 
 	"github.com/sagernet/sing-box/adapter"
+	"github.com/sagernet/sing-box/adapter/outbound"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-tun"
+	"github.com/sagernet/sing/common/bufio"
 	M "github.com/sagernet/sing/common/metadata"
 	N "github.com/sagernet/sing/common/network"
 )
@@ -64,4 +69,63 @@ func TestDNSPacketExPreservesBorrowedAdmission(t *testing.T) {
 			t.Fatal("legacy method did not delegate")
 		}
 	})
+}
+
+type pendingInboundPacketClose struct {
+	net.Conn
+	started, finish chan struct{}
+	err             error
+}
+
+func (c *pendingInboundPacketClose) Close() error {
+	close(c.started)
+	<-c.finish
+	_ = c.Conn.Close()
+	return c.err
+}
+
+func TestRuntimeInboundPacketPreservesCloseCompletion(t *testing.T) {
+	for name, closeErr := range map[string]error{"success": nil, "failure": errors.New("packet close failed")} {
+		t.Run(name, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+			defer cancel()
+			raw, peer := net.Pipe()
+			defer peer.Close()
+			barrier := &pendingInboundPacketClose{Conn: raw, started: make(chan struct{}), finish: make(chan struct{}), err: closeErr}
+			owned, packet, _, err := (&runtimeEndpointPhysical{}).wrapInboundPacket(ctx, bufio.NewPacketConn(bufio.NewUnbindPacketConn(barrier)), nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			first := make(chan error, 1)
+			go func() { first <- packet.Close() }()
+			defer func() {
+				close(barrier.finish)
+				<-first
+			}()
+			select {
+			case <-barrier.started:
+			case <-ctx.Done():
+				t.Fatal(ctx.Err())
+			}
+			if err = packet.Close(); err != outbound.ErrRuntimeClosePending {
+				t.Fatalf("concurrent close returned %v, want pending", err)
+			}
+			wait, ok := outbound.RuntimeInboundCloseFromContext(owned)
+			if !ok {
+				t.Fatal("packet wrapper hid the exact close completion")
+			}
+			// Release the original close before observing its terminal result.
+			barrier.finish <- struct{}{}
+			result := make(chan error, 1)
+			go func() { result <- wait() }()
+			select {
+			case err = <-result:
+				if !errors.Is(err, closeErr) {
+					t.Fatalf("joined close returned %v, want %v", err, closeErr)
+				}
+			case <-ctx.Done():
+				t.Fatal(ctx.Err())
+			}
+		})
+	}
 }

@@ -561,7 +561,9 @@ func (p *runtimeEndpointPhysical) wrapInboundConn(ctx context.Context, conn net.
 		return ctx, conn, onClose, err
 	}
 	physical, fence := outbound.WrapRuntimeOwnedConn(conn)
-	wrapped := &runtimeInboundConn{Conn: outbound.WrapRuntimeConn(owned, release, physical), runtimeInboundHandshake: runtimeHandshake(conn, owned, fence)}
+	carrier := outbound.WrapRuntimeConn(owned, release, physical)
+	owned = outbound.ContextWithRuntimeInboundClose(owned, carrier)
+	wrapped := &runtimeInboundConn{Conn: carrier, runtimeInboundHandshake: runtimeHandshake(conn, owned, fence)}
 	return owned, wrapped, N.OnceClose(func(err error) {
 		_ = wrapped.Close()
 		if onClose != nil {
@@ -576,7 +578,9 @@ func (p *runtimeEndpointPhysical) wrapInboundPacket(ctx context.Context, conn N.
 		return ctx, conn, onClose, err
 	}
 	physical, fence := outbound.WrapRuntimeOwnedPacketConn(bufio.NewNetPacketConn(conn))
-	wrapped := &runtimeInboundPacket{PacketConn: bufio.NewPacketConn(outbound.WrapRuntimePacketConn(owned, release, physical)), runtimeInboundHandshake: runtimeHandshake(conn, owned, fence)}
+	carrier := outbound.WrapRuntimePacketConn(owned, release, physical)
+	owned = outbound.ContextWithRuntimeInboundClose(owned, carrier)
+	wrapped := &runtimeInboundPacket{PacketConn: bufio.NewPacketConn(carrier), runtimeInboundHandshake: runtimeHandshake(conn, owned, fence)}
 	return owned, wrapped, N.OnceClose(func(err error) {
 		_ = wrapped.Close()
 		if onClose != nil {
