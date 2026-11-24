@@ -290,10 +290,11 @@ func (p *runtimeSourceProducer) refresh() (<-chan struct{}, bool) {
 		CandidateDigest: plan.CandidateDigest, AcceptedImpactDigest: plan.ImpactDigest,
 	})
 	if err != nil {
-		// A competing accepted update may have won. Reconcile using that
-		// graph, never publish this watcher's stale captured configuration.
+		// A competing accepted update may have won, or may still be in flight.
+		// Reconcile using that graph once it settles, never publish this
+		// watcher's stale captured configuration.
 		c.access.Lock()
-		changed := c.active != expected
+		changed := c.active != expected || c.preparing
 		c.access.Unlock()
 		return nil, changed
 	}
