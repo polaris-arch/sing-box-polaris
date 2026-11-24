@@ -20,21 +20,78 @@ const (
 type probeDialPathKey struct{}
 
 type probeDialPath struct {
-	parent     *probeDialPath
+	parent     *probeDialPath // immutable ancestry for native open and close waits
+	creator    atomic.Pointer[probeDialPath]
+	sources    atomic.Pointer[sync.Map] // live additional dial paths and their borrow counts
 	phase      atomic.Uint32
 	foreground atomic.Int32
 }
 
 func (path *probeDialPath) foregroundPriority() (foreground, persistent bool) {
-	for ; path != nil; path = path.parent {
-		switch phase := path.phase.Load(); {
-		case phase == probePromoted:
+	shared := false
+	for current := path; current != nil; current = current.creator.Load() {
+		phase := current.phase.Load()
+		if phase == probeRetiring {
+			break
+		}
+		if phase == probePromoted {
 			return true, true
-		case phase <= probeBorrowed && path.foreground.Load() > 0:
-			foreground = true
+		}
+		foreground = foreground || current.foreground.Load() > 0
+		shared = shared || current.sources.Load() != nil
+	}
+	return foreground || (shared && path.sharedForeground(nil)), false
+}
+
+// Additional borrows can transmit priority only for their own lifetime. A
+// downstream lookup may revisit an active endpoint, so share one visited set.
+func (path *probeDialPath) sharedForeground(visited map[*probeDialPath]bool) bool {
+	for ; path != nil; path = path.creator.Load() {
+		phase := path.phase.Load()
+		if phase == probeRetiring || visited[path] {
+			break
+		}
+		if phase == probePromoted || path.foreground.Load() > 0 {
+			return true
+		}
+		if visited != nil {
+			visited[path] = true
+		}
+		if sources := path.sources.Load(); sources != nil {
+			found := false
+			sources.Range(func(source, _ any) bool {
+				if visited == nil {
+					visited = map[*probeDialPath]bool{path: true}
+				}
+				found = source.(*probeDialPath).sharedForeground(visited)
+				return !found
+			})
+			if found {
+				return true
+			}
 		}
 	}
-	return foreground, false
+	return false
+}
+
+// Source counts are updated under the borrowing endpoint's stateAccess.
+func (path *probeDialPath) addSource(source *probeDialPath, delta int) {
+	sources := path.sources.Load()
+	if sources == nil {
+		sources = new(sync.Map)
+		sources.Store(source, delta)
+		path.sources.Store(sources)
+		return
+	}
+	next := delta
+	if count, exists := sources.Load(source); exists {
+		next += count.(int)
+	}
+	if next == 0 {
+		sources.Delete(source)
+	} else {
+		sources.Store(source, next)
+	}
 }
 
 func (path *probeDialPath) isBackground(func(context.Context) bool) bool {
@@ -124,8 +181,11 @@ func (e *Endpoint) HoldProbe(ctx context.Context) (func(), error) {
 
 func (e *Endpoint) acquireFlow(ctx context.Context, probeOnly bool) (_ func(), retErr error) {
 	scope := urltest.IsScopedProbe(ctx)
-	background := urltest.IsBackgroundProbe(ctx)
 	parent, _ := ctx.Value(probeDialPathKey{}).(*probeDialPath)
+	if probeOnly && !scope && (parent == nil || parent.phase.Load() > probeBorrowed) {
+		return nil, nil
+	}
+	background := urltest.IsBackgroundProbe(ctx)
 	inherited, persistent := parent.foregroundPriority()
 	// An inherited native detour remains scoped while its priority changes.
 	if !e.options.StartSuspended || (!scope && !background && (parent == nil || persistent)) {
@@ -160,7 +220,7 @@ func (e *Endpoint) acquireFlow(ctx context.Context, probeOnly bool) (_ func(), r
 	if probe != nil {
 		phase := probe.path.phase.Load()
 		if phase == probeOpening || phase == probeBorrowed {
-			release := e.borrowProbeLocked(probe, manual)
+			release := e.borrowProbeLocked(probe, manual, parent, false)
 			e.stateAccess.Unlock()
 			if phase == probeOpening {
 				if err := e.waitForProbe(ctx, probe); err != nil {
@@ -187,7 +247,7 @@ func (e *Endpoint) acquireFlow(ctx context.Context, probeOnly bool) (_ func(), r
 	probeContext := context.WithValue(e.options.Context, probeDialPathKey{}, probe.path)
 	probeContext = urltest.ContextWithSharedBackgroundProbe(probeContext, probe.path.isBackground)
 	probe.ctx, probe.cancel = context.WithCancel(probeContext)
-	release := e.borrowProbeLocked(probe, manual)
+	release := e.borrowProbeLocked(probe, manual, parent, true)
 	e.probe.Store(probe)
 	e.stateAccess.Unlock()
 	defer close(probe.ready)
@@ -254,16 +314,26 @@ func (e *Endpoint) waitForProbe(ctx context.Context, probe *probeActivation) err
 	return nil
 }
 
-func (e *Endpoint) borrowProbeLocked(probe *probeActivation, foreground bool) func() {
+func (e *Endpoint) borrowProbeLocked(probe *probeActivation, foreground bool, source *probeDialPath, creator bool) func() {
 	probe.borrowers++
 	if foreground {
 		probe.path.foreground.Add(1)
 	}
-	return sync.OnceFunc(func() { e.releaseProbe(probe, foreground) })
+	if creator {
+		probe.path.creator.Store(source)
+	} else if source != nil && source != probe.path {
+		probe.path.addSource(source, 1)
+	}
+	return sync.OnceFunc(func() { e.releaseProbe(probe, foreground, source, creator) })
 }
 
-func (e *Endpoint) releaseProbe(probe *probeActivation, foreground bool) {
+func (e *Endpoint) releaseProbe(probe *probeActivation, foreground bool, source *probeDialPath, creator bool) {
 	e.stateAccess.Lock()
+	if creator {
+		probe.path.creator.Store(nil)
+	} else if source != nil && source != probe.path {
+		probe.path.addSource(source, -1)
+	}
 	if foreground {
 		probe.path.foreground.Add(-1)
 	}

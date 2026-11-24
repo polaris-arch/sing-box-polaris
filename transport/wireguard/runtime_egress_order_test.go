@@ -169,27 +169,29 @@ func TestWireGuardProbeHoldsOneActivationAcrossDestinationLookup(t *testing.T) {
 		name string
 		hold bool
 	}{
-		{"lookup releases before destination", false},
+		{"legacy background waits for physical dialing", false},
 		{"scoped foreground bridges lookup and destination", true},
 	} {
 		t.Run(scenario.name, func(t *testing.T) {
 			endpoint, peer := newIdleTestEndpoint(t, nil, nil)
 			ctx := urltest.ContextWithBackgroundProbe(t.Context())
-			var release func()
 			if scenario.hold {
-				const resolver = "dns-probe-exit-1"
-				ctx = urltest.ContextWithLegacyPoolProbeDNS(urltest.ContextWithScopedProbe(t.Context()), resolver)
-				var err error
-				release, err = endpoint.HoldProbe(ctx)
-				if err != nil || release == nil {
-					t.Fatalf("scoped lookup hold = %v", err)
-				}
+				ctx = urltest.ContextWithLegacyPoolProbeDNS(urltest.ContextWithScopedProbe(t.Context()), "dns-probe-exit-1")
+			}
+			release, err := endpoint.HoldProbe(ctx)
+			if err != nil || (release != nil) != scenario.hold {
+				t.Fatalf("unexpected lookup hold: %v", err)
+			}
+			if release != nil {
 				defer release()
+				const resolver = "dns-probe-exit-1"
 				if !urltest.IsLegacyPoolProbeDNS(ctx, resolver) ||
 					urltest.IsLegacyPoolProbeDNS(endpoint.activationContext(), resolver) ||
 					urltest.IsBackgroundProbe(endpoint.activationContext()) {
 					t.Fatal("lookup hold changed foreground priority or let its App resolver into a native context")
 				}
+			} else if !endpoint.suspended.Load() || endpoint.probe.Load() != nil {
+				t.Fatal("unverified legacy background opened the endpoint before its first physical dial")
 			}
 			// A resolver that closes its carrier before returning used to leave
 			// nothing to hold the device for the next destination dial.
@@ -330,6 +332,98 @@ func TestWireGuardScopedForegroundBorrowsWhileBackgroundIsOpening(t *testing.T) 
 			}
 		})
 	}
+}
+
+func TestWireGuardProbePriorityFollowsLiveJoinedDetours(t *testing.T) {
+	primary, _ := newIdleTestEndpoint(t, nil, nil)
+	relay, _ := newIdleTestEndpoint(t, nil, nil)
+	manualSource, _ := newIdleTestEndpoint(t, nil, nil)
+	nextPrimary, _ := newIdleTestEndpoint(t, nil, nil)
+	nextRelay, _ := newIdleTestEndpoint(t, nil, nil)
+	background := urltest.ContextWithBackgroundProbe(t.Context())
+	manual := urltest.ContextWithScopedProbe(t.Context())
+	destination := M.ParseSocksaddr("192.0.2.2:443")
+	listen := func(endpoint *Endpoint, ctx context.Context) net.PacketConn {
+		t.Helper()
+		carrier, err := endpoint.ListenPacket(ctx, destination)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = carrier.Close() })
+		return carrier
+	}
+	hold := func(endpoint *Endpoint, ctx context.Context) func() {
+		t.Helper()
+		release, err := endpoint.HoldProbe(ctx)
+		if err != nil || release == nil {
+			t.Fatalf("expected a scoped hold: %v", err)
+		}
+		t.Cleanup(release)
+		return release
+	}
+	closeCarrier := func(carrier net.PacketConn) {
+		t.Helper()
+		if err := carrier.Close(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	assertPriority := func(wantBackground bool) {
+		t.Helper()
+		for name, endpoint := range map[string]*Endpoint{"first relay": relay, "second relay": nextRelay} {
+			foreground, persistent := endpoint.probe.Load().path.foregroundPriority()
+			if urltest.IsBackgroundProbe(endpoint.activationContext()) != wantBackground || foreground == wantBackground || persistent {
+				t.Fatalf("%s priority did not follow current temporary live sources: foreground=%t persistent=%t", name, foreground, persistent)
+			}
+		}
+	}
+
+	listen(primary, background)
+	fromPrimary := listen(relay, primary.activationContext())
+	priorityPath := relay.probe.Load().path
+	var unsharedForeground bool
+	if allocations := testing.AllocsPerRun(20, func() { unsharedForeground, _ = priorityPath.foregroundPriority() }); allocations != 0 || unsharedForeground {
+		t.Fatalf("the unshared path changed priority or allocated: foreground=%t allocations=%g", unsharedForeground, allocations)
+	}
+	listen(nextPrimary, background)
+	fromNextPrimary := listen(nextRelay, nextPrimary.activationContext())
+	fromRelay := listen(nextRelay, relay.activationContext())
+	// An already active return detour can form a read-side cycle. It must
+	// neither manufacture foreground demand nor hide another live source.
+	listen(primary, relay.activationContext())
+	assertPriority(true)
+
+	listen(manualSource, background)
+	releaseManual := hold(manualSource, manual)
+	fromManual := listen(relay, manualSource.activationContext())
+	extraHold := hold(relay, manualSource.activationContext())
+	assertPriority(false)
+	extraHold()
+	assertPriority(false)
+	releaseManual()
+	assertPriority(true)
+
+	hold(manualSource, manual)
+	assertPriority(false)
+	closeCarrier(fromManual)
+	assertPriority(true)
+
+	stillBackground := listen(relay, background)
+	hold(primary, manual)
+	assertPriority(false)
+	closeCarrier(fromPrimary)
+	assertPriority(true)
+
+	ordinary := listen(relay, t.Context())
+	closeCarrier(stillBackground)
+	if relay.suspended.Load() || urltest.IsBackgroundProbe(relay.activationContext()) {
+		t.Fatal("removing probe sources cooled an endpoint taken over by ordinary foreground traffic")
+	}
+	closeCarrier(fromRelay)
+	closeCarrier(fromNextPrimary)
+	if !nextRelay.suspended.Load() {
+		t.Fatal("joined sources permanently promoted the second relay")
+	}
+	closeCarrier(ordinary)
 }
 
 func TestBackgroundWireGuardProbeReleasesOnlyItsOwnActivation(t *testing.T) {
