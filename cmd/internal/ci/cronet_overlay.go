@@ -241,7 +241,7 @@ func readCronetOverlay(root string) (map[string]string, error) {
 		manifest.Scope == "" || utf8.RuneCountInString(manifest.Scope) > 512 {
 		return nil, fmt.Errorf("fixed version/base/history/scope differs")
 	}
-	if len(manifest.BaseTreeProof) != 2 || len(manifest.BaseFiles) != 135 || len(manifest.Changes) != 9 {
+	if len(manifest.BaseTreeProof) != 2 || len(manifest.BaseFiles) != 135 || len(manifest.Changes) != 10 {
 		return nil, fmt.Errorf("tree proof, base or delta count differs")
 	}
 	parent := cronetBaseTree

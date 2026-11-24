@@ -1,3 +1,11 @@
+--- a/bidirectional_conn.go
++++ b/bidirectional_conn.go
+@@ -257,0 +258,2 @@
++	// Close only requests cancellation, so a repeated request reports the
++	// first one's result instead of failing a second owner's cleanup.
+@@ -261 +263 @@
+-		return net.ErrClosed
++		return nil
 --- a/internal/cronet/loader_observation.go
 +++ b/internal/cronet/loader_observation.go
 @@ -1,2 +0,0 @@
