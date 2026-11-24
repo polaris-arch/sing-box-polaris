@@ -52,10 +52,11 @@ func (c *Conn) Upstream() any {
 
 type PacketConn struct {
 	N.NetPacketConn
-	group     *Group
-	element   *list.Element[*groupConnItem]
-	closeOnce sync.Once
-	closeErr  error
+	group              *Group
+	element            *list.Element[*groupConnItem]
+	closeRequestParent net.PacketConn
+	closeOnce          sync.Once
+	closeErr           error
 }
 
 func newPacketConn(group *Group, conn net.PacketConn) *PacketConn {
@@ -66,9 +67,15 @@ func (c *PacketConn) Close() error {
 	c.group.access.Lock()
 	c.group.connections.Remove(c.element)
 	c.group.access.Unlock()
+	if c.closeRequestParent != nil {
+		return c.NetPacketConn.Close()
+	}
 	c.closeOnce.Do(func() { c.closeErr = c.NetPacketConn.Close() })
 	return c.closeErr
 }
+
+// CloseRequestParent returns the exact deferred carrier supplied at registration.
+func (c *PacketConn) CloseRequestParent() net.PacketConn { return c.closeRequestParent }
 
 func (c *PacketConn) ReaderReplaceable() bool {
 	return true

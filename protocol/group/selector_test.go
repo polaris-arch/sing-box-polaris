@@ -13,6 +13,7 @@ import (
 	"github.com/sagernet/sing-box/adapter/outbound"
 	"github.com/sagernet/sing-box/common/interrupt"
 	"github.com/sagernet/sing-box/common/urltest"
+	"github.com/sagernet/sing/common/bufio"
 	M "github.com/sagernet/sing/common/metadata"
 	N "github.com/sagernet/sing/common/network"
 )
@@ -188,10 +189,16 @@ func TestSelectorOwnedCarrierCloseWaitsForTerminalResult(t *testing.T) {
 		switchFirst bool
 	}{{"switch-first", true}, {"owner-first", false}} {
 		for _, closeResult := range []struct {
-			name string
-			err  error
-		}{{"success", nil}, {"failure", physicalFailure}} {
-			t.Run(order.name+"/"+closeResult.name, func(t *testing.T) {
+			network string
+			name    string
+			err     error
+		}{
+			{N.NetworkTCP, "success", nil},
+			{N.NetworkTCP, "failure", physicalFailure},
+			{N.NetworkUDP, "success", nil},
+			{N.NetworkUDP, "failure", physicalFailure},
+		} {
+			t.Run(closeResult.network+"/"+order.name+"/"+closeResult.name, func(t *testing.T) {
 				conn, peer := net.Pipe()
 				t.Cleanup(func() { _ = conn.Close(); _ = peer.Close() })
 				raw := &selectorGatedCloseConn{
@@ -201,21 +208,34 @@ func TestSelectorOwnedCarrierCloseWaitsForTerminalResult(t *testing.T) {
 				releaseClose := func() { release.Do(func() { close(raw.release) }) }
 				t.Cleanup(releaseClose)
 				parent, _ := outbound.WrapRuntimeOwnedConn(raw)
-				leaf := outbound.PreserveRuntimeConnClose(struct{ net.Conn }{parent}, parent)
 				dialReady := make(chan struct{})
 				close(dialReady)
-				old := &selectorDelayedOutbound{entered: make(chan struct{}), release: dialReady, stream: leaf}
+				old := &selectorDelayedOutbound{entered: make(chan struct{}), release: dialReady}
 				s := &Selector{
 					ctx:            context.Background(),
 					outbounds:      map[string]adapter.Outbound{"new": &selectorDelayedOutbound{}},
 					interruptGroup: interrupt.NewGroup(),
 				}
 				s.selected.Store(&selectorSelection{outbound: old})
-				registered, err := s.DialContext(context.Background(), N.NetworkTCP, M.Socksaddr{})
-				if err != nil {
-					t.Fatal(err)
+				var registered io.Closer
+				var fence *outbound.RuntimeIOFence
+				if closeResult.network == N.NetworkUDP {
+					old.packet = outbound.PreserveRuntimePacketConnClose(bufio.NewUnbindPacketConn(parent), parent)
+					packet, err := s.ListenPacket(context.Background(), M.Socksaddr{})
+					if err != nil {
+						t.Fatal(err)
+					}
+					registered = packet
+					_, fence = outbound.WrapRuntimeOwnedPacketConn(packet)
+				} else {
+					old.stream = outbound.PreserveRuntimeConnClose(struct{ net.Conn }{parent}, parent)
+					stream, err := s.DialContext(context.Background(), N.NetworkTCP, M.Socksaddr{})
+					if err != nil {
+						t.Fatal(err)
+					}
+					registered = stream
+					_, fence = outbound.WrapRuntimeOwnedConn(stream)
 				}
-				_, fence := outbound.WrapRuntimeOwnedConn(registered)
 				stop := func() {
 					done := make(chan struct{})
 					go func() {

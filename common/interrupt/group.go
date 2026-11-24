@@ -52,9 +52,22 @@ func (g *Group) newConn(conn net.Conn, isExternal, closeRequest bool) net.Conn {
 }
 
 func (g *Group) NewPacketConn(conn net.PacketConn, isExternal bool) net.PacketConn {
+	return g.newPacketConn(conn, isExternal, false)
+}
+
+// NewPacketConnWithCloseRequest registers a packet connection whose Close
+// starts an idempotent request and can report a different result after completion.
+func (g *Group) NewPacketConnWithCloseRequest(conn net.PacketConn, isExternal bool) net.PacketConn {
+	return g.newPacketConn(conn, isExternal, true)
+}
+
+func (g *Group) newPacketConn(conn net.PacketConn, isExternal, closeRequest bool) net.PacketConn {
 	g.access.Lock()
 	defer g.access.Unlock()
 	wrapper := newPacketConn(g, conn)
+	if closeRequest {
+		wrapper.closeRequestParent = conn
+	}
 	wrapper.element = g.connections.PushBack(&groupConnItem{wrapper, isExternal})
 	return wrapper
 }

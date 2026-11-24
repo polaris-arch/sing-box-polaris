@@ -113,6 +113,33 @@ func TestRuntimeFinalLegacyInterruptCloseRemainsSynchronous(t *testing.T) {
 	}
 }
 
+func TestRuntimeFinalPacketInterruptCloseRemainsSynchronous(t *testing.T) {
+	failure := errors.New("physical packet close failed")
+	for _, bound := range []bool{false, true} {
+		raw := &lifecycleConn{closeErr: failure}
+		leaf, _ := WrapRuntimeOwnedPacketConn(raw)
+		var view net.PacketConn
+		if bound {
+			view = WrapRuntimePacketConn(context.Background(), func() {}, leaf)
+		} else {
+			var err error
+			view, err = ListenRuntimePacket(context.Background(), nil, func(context.Context) (net.PacketConn, error) { return leaf, nil })
+			if err != nil {
+				t.Fatal(err)
+			}
+		}
+		group := interrupt.NewGroup()
+		registered := NewRuntimeInterruptPacketConn(group, view, false)
+		if _, known := RuntimeConnectionCloseWaiter(registered); known {
+			t.Fatalf("packet carrier with runtime binding %v changed its synchronous Close contract", bound)
+		}
+		group.Interrupt(false)
+		if err := registered.Close(); !errors.Is(err, failure) || raw.closes.Load() != 1 {
+			t.Fatalf("packet Close = %v, physical close calls = %d", err, raw.closes.Load())
+		}
+	}
+}
+
 func TestRuntimeFinalInboundCompletionPreservesAndDeduplicates(t *testing.T) {
 	a := &lifecycleConn{closeEntered: make(chan struct{}), closeContinue: make(chan struct{})}
 	b := &lifecycleConn{closeEntered: make(chan struct{}), closeContinue: make(chan struct{})}

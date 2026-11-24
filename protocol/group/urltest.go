@@ -199,18 +199,18 @@ func (s *URLTest) DialContext(ctx context.Context, network string, destination M
 
 func (s *URLTest) ListenPacket(ctx context.Context, destination M.Socksaddr) (net.PacketConn, error) {
 	s.group.Touch()
-	outbound := s.group.selected().udp
-	if outbound == nil {
-		outbound, _ = s.group.Select(N.NetworkUDP)
+	selected := s.group.selected().udp
+	if selected == nil {
+		selected, _ = s.group.Select(N.NetworkUDP)
 	}
-	if outbound == nil {
+	if selected == nil {
 		return nil, E.New("missing supported outbound")
 	}
 	epoch := s.group.history.Epoch()
-	historyTag := outbound.Tag()
-	conn, err := outbound.ListenPacket(ctx, destination)
+	historyTag := selected.Tag()
+	conn, err := selected.ListenPacket(ctx, destination)
 	if err == nil {
-		return s.group.interruptGroup.NewPacketConn(conn, interrupt.IsExternalConnectionFromContext(ctx)), nil
+		return outbound.NewRuntimeInterruptPacketConn(s.group.interruptGroup, conn, interrupt.IsExternalConnectionFromContext(ctx)), nil
 	}
 	s.logger.ErrorContext(ctx, err)
 	s.group.deleteHistory(epoch, historyTag)

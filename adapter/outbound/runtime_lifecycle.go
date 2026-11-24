@@ -627,6 +627,8 @@ func runtimeCarrierState(conn io.Closer) *runtimeCarrier {
 		return c.state
 	case *interrupt.Conn:
 		return runtimeCarrierState(c.CloseRequestParent())
+	case *interrupt.PacketConn:
+		return runtimeCarrierState(c.CloseRequestParent())
 	default:
 		return nil
 	}
@@ -641,15 +643,28 @@ func NewRuntimeInterruptConn(group *interrupt.Group, conn net.Conn, isExternal b
 	return group.NewConn(conn, isExternal)
 }
 
-func runtimeConnCloseIsDeferred(conn net.Conn) bool {
+// NewRuntimeInterruptPacketConn carries the exact private completion through
+// packet group registration when the supplied connection has a deferred Close.
+func NewRuntimeInterruptPacketConn(group *interrupt.Group, conn net.PacketConn, isExternal bool) net.PacketConn {
+	if runtimeConnCloseIsDeferred(conn) {
+		return group.NewPacketConnWithCloseRequest(conn, isExternal)
+	}
+	return group.NewPacketConn(conn, isExternal)
+}
+
+func runtimeConnCloseIsDeferred(conn io.Closer) bool {
 	switch c := conn.(type) {
 	case *runtimeConn:
 		return c.state.owned
 	case *runtimeConnPacket:
 		return c.state.owned
+	case *runtimePacketConn:
+		return c.state.owned
 	case *runtimeTLSStateConn:
 		return runtimeConnCloseIsDeferred(c.Conn)
 	case *interrupt.Conn:
+		return c.CloseRequestParent() != nil
+	case *interrupt.PacketConn:
 		return c.CloseRequestParent() != nil
 	default:
 		return false

@@ -310,7 +310,7 @@ func (s *Selector) ListenPacket(ctx context.Context, destination M.Socksaddr) (n
 		return nil, err
 	}
 	isExternal := interrupt.IsExternalConnectionFromContext(ctx)
-	conn = s.interruptGroup.NewPacketConn(conn, isExternal)
+	conn = outbound.NewRuntimeInterruptPacketConn(s.interruptGroup, conn, isExternal)
 	if s.selectedOutbound() != selected && (!isExternal || s.interruptExternalConnections) {
 		conn.Close()
 		return nil, net.ErrClosed
