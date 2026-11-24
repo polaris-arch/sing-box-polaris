@@ -66,9 +66,35 @@ func (s *Box) applyRuntimeConfig(ctx context.Context, actor string, request Runt
 		coordinator.access.Unlock()
 		return operation, nil
 	}
-	if coordinator.initialPhase != 2 || coordinator.stopped || coordinator.preparing || coordinator.active != request.Expected || record.plan.Expected != request.Expected || coordinator.now().UnixMilli() >= record.plan.ExpiresAtUnixMilli || request.CandidateDigest != record.plan.CandidateDigest || request.AcceptedImpactDigest != record.plan.ImpactDigest {
+	if coordinator.initialPhase != 2 || coordinator.stopped || record.plan.Expected != request.Expected || coordinator.now().UnixMilli() >= record.plan.ExpiresAtUnixMilli || request.CandidateDigest != record.plan.CandidateDigest || request.AcceptedImpactDigest != record.plan.ImpactDigest {
 		coordinator.access.Unlock()
 		return RuntimeConfigOperation{}, errors.New("runtime plan precondition changed")
+	}
+	if coordinator.preparing || coordinator.active != request.Expected {
+		if record.sourceProof != nil {
+			coordinator.access.Unlock()
+			return RuntimeConfigOperation{}, errors.New("runtime plan precondition changed")
+		}
+		// Consume the exact client ticket before exposing the rejection. A replay
+		// cannot apply it after a competing operation finishes preparing.
+		// Status reports the live identity separately from these receipt identities.
+		record.consumed = true
+		record.fingerprint = fingerprint
+		record.operation = &RuntimeConfigOperation{
+			ContractVersion: RuntimeConfigContractVersion,
+			TransactionID:   request.TransactionID,
+			State:           "REJECTED_UNAPPLIED",
+			PersistenceMode: coordinator.persistenceMode,
+			Before:          request.Expected,
+			Active:          request.Expected,
+			CandidateDigest: record.plan.CandidateDigest,
+			ImpactDigest:    record.plan.ImpactDigest,
+			Errors:          []RuntimePlanError{{Code: "PLAN_PRECONDITION_CHANGED", Path: "runtime.apply", Message: "runtime plan precondition changed"}},
+		}
+		record.receiptExpires = coordinator.now().Add(runtimePlanLifetime).UnixMilli()
+		operation := cloneRuntimeOperation(*record.operation)
+		coordinator.access.Unlock()
+		return operation, nil
 	}
 	// Stored Plan authority overrides any inherited private context value.
 	ctx = context.WithValue(ctx, runtimeSourceApplyProofKey{}, record.sourceProof)

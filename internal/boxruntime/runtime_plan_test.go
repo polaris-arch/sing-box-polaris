@@ -12,6 +12,7 @@ func TestRuntimePlanPreconditionsRejectBeforeAnyConstruction(t *testing.T) {
 	f := newRuntimeTestFixture(t, runtimeTestConfig(1080, "example.org"), nil)
 	f.start(t)
 	_, valid := f.plan(t, runtimeTestConfig(1081, "example.org"))
+	_, competing := f.plan(t, runtimeTestConfig(1082, "example.org"))
 	for name, mutate := range map[string]func(*RuntimeConfigApply){
 		"contract":         func(v *RuntimeConfigApply) { v.ContractVersion++ },
 		"incarnation":      func(v *RuntimeConfigApply) { v.Expected.Incarnation = "foreign" },
@@ -51,6 +52,23 @@ func TestRuntimePlanPreconditionsRejectBeforeAnyConstruction(t *testing.T) {
 	operation, err := f.box.applyRuntimeConfig(context.Background(), "actor-a", valid)
 	if err != nil || operation.Active.Revision != 2 {
 		t.Fatalf("valid original request no longer executable: %+v %v", operation, err)
+	}
+	rejected, err := f.box.applyRuntimeConfig(context.Background(), "actor-a", competing)
+	if err != nil || rejected.State != "REJECTED_UNAPPLIED" || rejected.Before != competing.Expected ||
+		rejected.Active != competing.Expected || len(rejected.Errors) != 1 || rejected.Errors[0].Code != "PLAN_PRECONDITION_CHANGED" {
+		t.Fatalf("stale Apply did not return an unapplied receipt: %+v %v", rejected, err)
+	}
+	status, err := f.box.GetRuntimeConfigStatus("actor-a", competing.Expected.Incarnation, competing.TransactionID)
+	if err != nil || status.Active != operation.Active || status.LookupState != "FOUND" || status.Operation == nil ||
+		status.Operation.State != rejected.State || status.Operation.TransactionID != competing.TransactionID {
+		t.Fatalf("stale Apply receipt could not be reconciled: %+v %v", status, err)
+	}
+	competing.CandidateDigest = "changed"
+	if _, err := f.box.applyRuntimeConfig(context.Background(), "actor-a", competing); err == nil {
+		t.Fatal("consumed rejection ticket accepted a different request")
+	}
+	if f.identity() != operation.Active {
+		t.Fatal("the rejected ticket changed the published identity")
 	}
 }
 

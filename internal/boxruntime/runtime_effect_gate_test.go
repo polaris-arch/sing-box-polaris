@@ -101,6 +101,7 @@ func TestRuntimeApplyWaitingForControlEffectCancelsWithoutPublication(t *testing
 	})
 	f.start(t)
 	_, request := f.plan(t, runtimeTestConfig(1081, "example.org"))
+	_, competing := f.plan(t, runtimeTestConfig(1082, "example.org"))
 	f.box.runtime.controlEffects.Lock()
 	var release sync.Once
 	unlock := func() { release.Do(f.box.runtime.controlEffects.Unlock) }
@@ -111,6 +112,10 @@ func TestRuntimeApplyWaitingForControlEffectCancelsWithoutPublication(t *testing
 	done := make(chan RuntimeConfigOperation, 1)
 	go func() { operation, _ := f.box.applyRuntimeConfig(ctx, "actor-a", request); done <- operation }()
 	runtimeTestWait(t, barrier.entered, "candidate reached final lifecycle stage")
+	rejected, err := f.box.applyRuntimeConfig(context.Background(), "actor-a", competing)
+	if err != nil || rejected.State != "REJECTED_UNAPPLIED" || rejected.Active != request.Expected {
+		t.Fatalf("busy Apply was not definitively rejected: %+v %v", rejected, err)
+	}
 	lease, err := f.box.runtime.store.Acquire()
 	if err != nil {
 		t.Fatal("control effect blocked current graph admission:", err)
@@ -127,6 +132,10 @@ func TestRuntimeApplyWaitingForControlEffectCancelsWithoutPublication(t *testing
 		t.Fatal("Apply could not cancel while prior effect remained admitted")
 	}
 	unlock()
+	replayed, err := f.box.applyRuntimeConfig(context.Background(), "actor-a", competing)
+	if err != nil || replayed.State != rejected.State || f.identity() != request.Expected {
+		t.Fatalf("busy rejection ticket changed on replay: %+v %v", replayed, err)
+	}
 }
 
 type runtimeBlockingModeCache struct {
