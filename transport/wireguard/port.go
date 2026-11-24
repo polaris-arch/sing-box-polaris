@@ -114,8 +114,12 @@ func (e *Endpoint) AttachReturn(returnPath tun.Return) error {
 	if e.options.StartSuspended {
 		e.stateAccess.Lock()
 		defer e.stateAccess.Unlock()
-		if probe := e.probe.Load(); probe != nil && !probe.promote() {
-			return net.ErrClosed
+		if probe := e.probe.Load(); probe != nil {
+			if e.device.Load() == nil {
+				return net.ErrClosed
+			}
+			// Register the callback without waiting for the native transition.
+			probe.promote()
 		}
 		// A detached Return may still be executing on a native peer worker.
 		e.returnAttached = true

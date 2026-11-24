@@ -334,6 +334,65 @@ func TestWireGuardScopedForegroundBorrowsWhileBackgroundIsOpening(t *testing.T) 
 	}
 }
 
+type wireguardTestReturn struct{}
+
+func (*wireguardTestReturn) ReturnHeadroom() int                     { return 0 }
+func (*wireguardTestReturn) ReturnPackets(packets [][]byte) [][]byte { return packets }
+
+func TestWireGuardReturnAttachesWhileProbeOpens(t *testing.T) {
+	entered, unwind := make(chan struct{}), make(chan struct{})
+	unblock := sync.OnceFunc(func() { close(unwind) })
+	notify := sync.OnceFunc(func() { close(entered) })
+	defer unblock()
+	endpoint, peer := newIdleTestEndpoint(t, nil, func(ctx context.Context, _ string) ([]netip.Addr, error) {
+		notify()
+		select {
+		case <-unwind:
+			return nil, nil
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	})
+	finished := make(chan error, 1)
+	go func() {
+		carrier, err := endpoint.ListenPacket(urltest.ContextWithBackgroundProbe(t.Context()), M.ParseSocksaddr("192.0.2.2:443"))
+		if err == nil {
+			err = carrier.Close()
+		}
+		finished <- err
+	}()
+	select {
+	case <-entered:
+	case <-time.After(3 * time.Second):
+		t.Fatal("initial WireGuard activation did not enter its resolver")
+	}
+	returnPath := new(wireguardTestReturn)
+	attached := make(chan error, 1)
+	go func() { attached <- endpoint.AttachReturn(returnPath) }()
+	select {
+	case err := <-attached:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("return attachment waited for native WireGuard open")
+	}
+	defer endpoint.DetachReturn(returnPath)
+	unblock()
+	select {
+	case err := <-finished:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("scoped carrier did not finish after native WireGuard open")
+	}
+	readIdleHandshake(t, peer)
+	if endpoint.suspended.Load() || urltest.IsBackgroundProbe(endpoint.activationContext()) {
+		t.Fatal("probe release suspended a native activation with an attached return path")
+	}
+}
+
 func TestWireGuardProbePriorityFollowsLiveJoinedDetours(t *testing.T) {
 	primary, _ := newIdleTestEndpoint(t, nil, nil)
 	relay, _ := newIdleTestEndpoint(t, nil, nil)
@@ -701,6 +760,18 @@ func testWireGuardProbeStopsNativeBind(t *testing.T, terminal bool) {
 	if endpoint.AdmitInbound() {
 		t.Fatal("retiring native ingress incorrectly took ownership")
 	}
+	returnPath := new(wireguardTestReturn)
+	attached := make(chan error, 1)
+	go func() { attached <- endpoint.AttachReturn(returnPath) }()
+	select {
+	case err := <-attached:
+		if terminal && !errors.Is(err, net.ErrClosed) || !terminal && err != nil {
+			t.Fatalf("return attachment while native bind closes: %v", err)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("return attachment waited for native WireGuard close")
+	}
+	defer endpoint.DetachReturn(returnPath)
 	want := context.DeadlineExceeded
 	if terminal {
 		want = net.ErrClosed

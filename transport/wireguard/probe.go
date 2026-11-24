@@ -288,7 +288,11 @@ func (e *Endpoint) acquireFlow(ctx context.Context, probeOnly bool) (_ func(), r
 		return nil, urltest.ErrProbeNotRun
 	}
 	e.suspended.Store(false)
-	probe.path.phase.Store(probeBorrowed)
+	if e.returnAttached {
+		probe.path.phase.Store(probePromoted)
+	} else {
+		probe.path.phase.Store(probeBorrowed)
+	}
 	e.stateAccess.Unlock()
 	if err := ctx.Err(); err != nil {
 		return nil, err
