@@ -36,15 +36,17 @@ func (g *Group) Add(closer io.Closer, isExternal bool) (remove func()) {
 func (g *Group) NewConn(conn net.Conn, isExternal bool) net.Conn {
 	g.access.Lock()
 	defer g.access.Unlock()
-	item := g.connections.PushBack(&groupConnItem{conn, isExternal})
-	return &Conn{Conn: conn, group: g, element: item}
+	wrapper := &Conn{Conn: conn, group: g}
+	wrapper.element = g.connections.PushBack(&groupConnItem{wrapper, isExternal})
+	return wrapper
 }
 
 func (g *Group) NewPacketConn(conn net.PacketConn, isExternal bool) net.PacketConn {
 	g.access.Lock()
 	defer g.access.Unlock()
-	item := g.connections.PushBack(&groupConnItem{conn, isExternal})
-	return newPacketConn(g, conn, item)
+	wrapper := newPacketConn(g, conn)
+	wrapper.element = g.connections.PushBack(&groupConnItem{wrapper, isExternal})
+	return wrapper
 }
 
 func (g *Group) Interrupt(interruptExternalConnections bool) {
