@@ -88,32 +88,14 @@ func TestFW4MissingPrerequisitePreservesCleanupReceipt(t *testing.T) {
 					r.fw4RulesPath = path
 				}
 				calls := 0
-				nft, err := nftables.New(nftables.WithTestDial(func(messages []netlink.Message) ([]netlink.Message, error) {
+				nft := fw4TestTable(t, func() error {
 					calls++
-					if len(messages) != 1 || uint16(messages[0].Header.Type) != unix.NFNL_SUBSYS_NFTABLES<<8|unix.NFT_MSG_GETTABLE {
-						t.Fatalf("unexpected netlink operation: %v", messages)
-					}
 					if tableMissing {
-						return nil, unix.EPERM
+						return unix.EPERM
 					}
-					data, err := netlink.MarshalAttributes([]netlink.Attribute{{Type: unix.NFTA_TABLE_NAME, Data: []byte("fw4\x00")}})
-					if err != nil {
-						return nil, err
-					}
-					return []netlink.Message{{
-						Header: netlink.Header{
-							Type:     netlink.HeaderType(unix.NFNL_SUBSYS_NFTABLES<<8 | unix.NFT_MSG_NEWTABLE),
-							Sequence: messages[0].Header.Sequence,
-							PID:      messages[0].Header.PID,
-						},
-						Data: append([]byte{byte(nftables.TableFamilyINet), 0, 0, 0}, data...),
-					}}, nil
-				}))
-				if err != nil {
-					t.Fatal(err)
-				}
-				defer nft.CloseLasting()
-				err = r.configureOpenWRTFirewall4(nft, cleanup)
+					return nil
+				})
+				err := r.configureOpenWRTFirewall4(nft, cleanup)
 				if cleanup {
 					expected := error(exec.ErrNotFound)
 					if tableMissing {
@@ -138,6 +120,82 @@ func TestFW4MissingPrerequisitePreservesCleanupReceipt(t *testing.T) {
 			})
 		}
 	}
+}
+
+func TestFW4CleanupRetriesOnlyReload(t *testing.T) {
+	for _, mode := range []string{"transient", "persistent"} {
+		t.Run(mode, func(t *testing.T) {
+			dir := t.TempDir()
+			path := filepath.Join(dir, "include.nft")
+			t.Setenv("PATH", dir)
+			t.Setenv("FW4_TEST_INCLUDE", path)
+			t.Setenv("FW4_TEST_MODE", mode)
+			shim := `#!/bin/sh
+set -eu
+[ "$1" = reload ]
+if [ ! -e "$FW4_TEST_INCLUDE" ]; then
+	printf '%s\n' external > "$FW4_TEST_INCLUDE"
+	echo 'first reload failed'
+	exit 73
+fi
+read -r content < "$FW4_TEST_INCLUDE"
+[ "$content" = external ]
+if [ "$FW4_TEST_MODE" = persistent ]; then
+	echo 'second reload failed'
+	exit 74
+fi
+`
+			if err := os.WriteFile(filepath.Join(dir, "fw4"), []byte(shim), 0o700); err != nil {
+				t.Fatal(err)
+			}
+			r := &autoRedirect{}
+			if err := r.createFW4Rules(path, []byte("owned")); err != nil {
+				t.Fatal(err)
+			}
+			err := r.configureOpenWRTFirewall4(fw4TestTable(t, func() error { return nil }), true)
+			if mode == "transient" {
+				if err != nil || r.fw4RulesPath != "" || r.fw4RulesRemoved {
+					t.Fatalf("successful cleanup retained receipt: err=%v path=%q removed=%v", err, r.fw4RulesPath, r.fw4RulesRemoved)
+				}
+			} else if err == nil || !strings.Contains(err.Error(), "first reload failed") ||
+				!strings.Contains(err.Error(), "second reload failed") || r.fw4RulesPath != path || !r.fw4RulesRemoved {
+				t.Fatalf("failed cleanup lost errors or receipt: err=%v path=%q removed=%v", err, r.fw4RulesPath, r.fw4RulesRemoved)
+			}
+			data, err := os.ReadFile(path)
+			if err != nil || string(data) != "external\n" {
+				t.Fatalf("replacement include changed: content=%q err=%v", data, err)
+			}
+		})
+	}
+}
+
+func fw4TestTable(t *testing.T, query func() error) *nftables.Conn {
+	t.Helper()
+	nft, err := nftables.New(nftables.WithTestDial(func(messages []netlink.Message) ([]netlink.Message, error) {
+		if len(messages) != 1 || uint16(messages[0].Header.Type) != unix.NFNL_SUBSYS_NFTABLES<<8|unix.NFT_MSG_GETTABLE {
+			t.Fatalf("unexpected netlink operation: %v", messages)
+		}
+		if err := query(); err != nil {
+			return nil, err
+		}
+		data, err := netlink.MarshalAttributes([]netlink.Attribute{{Type: unix.NFTA_TABLE_NAME, Data: []byte("fw4\x00")}})
+		if err != nil {
+			return nil, err
+		}
+		return []netlink.Message{{
+			Header: netlink.Header{
+				Type:     netlink.HeaderType(unix.NFNL_SUBSYS_NFTABLES<<8 | unix.NFT_MSG_NEWTABLE),
+				Sequence: messages[0].Header.Sequence,
+				PID:      messages[0].Header.PID,
+			},
+			Data: append([]byte{byte(nftables.TableFamilyINet), 0, 0, 0}, data...),
+		}}, nil
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = nft.CloseLasting() })
+	return nft
 }
 
 func TestFW4CleanupWithoutReceiptDoesNotQuery(t *testing.T) {

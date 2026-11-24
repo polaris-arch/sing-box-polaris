@@ -3,6 +3,7 @@
 package tun
 
 import (
+	"errors"
 	"os"
 	"os/exec"
 
@@ -53,9 +54,27 @@ chain forward {
 		}
 		r.fw4RulesRemoved = true
 	}
-	output, err := shell.Exec(fw4Path, "reload").Read()
+	reload := func() error {
+		output, reloadErr := shell.Exec(fw4Path, "reload").Read()
+		if reloadErr == nil {
+			return nil
+		}
+		return E.Extend(E.Cause(reloadErr, "reload fw4 rules"), output)
+	}
+	err = reload()
 	if err != nil {
-		return E.Extend(E.Cause(err, "reload fw4 rules"), output)
+		var exitErr *exec.ExitError
+		if !cleanup || !errors.As(err, &exitErr) || !exitErr.Exited() {
+			return err
+		}
+		// Retry only the reload while the owner is still open. The include is
+		// already gone, and an external process may have recreated that path.
+		if retryErr := reload(); retryErr != nil {
+			return E.Errors(err, E.Cause(retryErr, "retry fw4 cleanup"))
+		}
+		if r.logger != nil {
+			r.logger.Warn("fw4 cleanup reload succeeded on retry after: ", err)
+		}
 	}
 	if cleanup {
 		r.fw4RulesPath = ""
