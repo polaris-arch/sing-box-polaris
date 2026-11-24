@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/sagernet/sing-box/adapter"
@@ -90,11 +91,25 @@ func proxyInfo(server *Server, detour adapter.Outbound) *badjson.JSONObject {
 
 func getProxies(server *Server) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		outboundManager, endpointManager := server.outbound, server.endpoint
+		release := func() {}
+		if admission, ok := urltest.RuntimeAdmissionFromContext(server.ctx); ok {
+			lease, err := admission.Acquire()
+			if err != nil {
+				render.Status(r, http.StatusServiceUnavailable)
+				render.JSON(w, r, newError("Runtime graph is not ready"))
+				return
+			}
+			release = sync.OnceFunc(lease.Release)
+			defer release()
+			view := lease.View()
+			outboundManager, endpointManager = view.OutboundManager(), view.EndpointManager()
+		}
 		var proxyMap badjson.JSONObject
-		outbounds := common.Filter(server.outbound.Outbounds(), func(detour adapter.Outbound) bool {
+		outbounds := common.Filter(outboundManager.Outbounds(), func(detour adapter.Outbound) bool {
 			return detour.Tag() != ""
 		})
-		outbounds = append(outbounds, common.Map(common.Filter(server.endpoint.Endpoints(), func(detour adapter.Endpoint) bool {
+		outbounds = append(outbounds, common.Map(common.Filter(endpointManager.Endpoints(), func(detour adapter.Endpoint) bool {
 			return detour.Tag() != ""
 		}), func(it adapter.Endpoint) adapter.Outbound {
 			return it
@@ -110,7 +125,7 @@ func getProxies(server *Server) func(w http.ResponseWriter, r *http.Request) {
 			allProxies = append(allProxies, detour.Tag())
 		}
 
-		defaultTag := server.outbound.Default().Tag()
+		defaultTag := outboundManager.Default().Tag()
 
 		sort.SliceStable(allProxies, func(i, j int) bool {
 			return allProxies[i] == defaultTag
@@ -138,6 +153,8 @@ func getProxies(server *Server) func(w http.ResponseWriter, r *http.Request) {
 		var responseMap badjson.JSONObject
 		responseMap.Put("proxies", &proxyMap)
 		response, err := responseMap.MarshalJSON()
+		// The serialized response no longer needs graph owners while the client reads it.
+		release()
 		if err != nil {
 			render.Status(r, http.StatusInternalServerError)
 			render.JSON(w, r, newError(err.Error()))

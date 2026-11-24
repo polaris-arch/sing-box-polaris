@@ -7,12 +7,14 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/common/urltest"
+	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/internal/runtimegraph"
 	"github.com/sagernet/sing-box/log"
 	M "github.com/sagernet/sing/common/metadata"
@@ -39,6 +41,8 @@ func (m *runtimeProxyManager) Outbounds() []adapter.Outbound {
 	return append([]adapter.Outbound{m.actual}, m.extra...)
 }
 
+func (m *runtimeProxyManager) Default() adapter.Outbound { return m.actual }
+
 func (m *runtimeProxyManager) Outbound(tag string) (adapter.Outbound, bool) {
 	for _, outbound := range m.extra {
 		if outbound.Tag() == tag {
@@ -51,6 +55,7 @@ func (m *runtimeProxyManager) Outbound(tag string) (adapter.Outbound, bool) {
 type runtimeProxyView struct {
 	adapter.RuntimeView
 	manager  *runtimeProxyManager
+	endpoint adapter.EndpointManager
 	history  *urltest.HistoryStorage
 	id       adapter.RuntimeResourceID
 	revision uint64
@@ -60,6 +65,7 @@ func (v *runtimeProxyView) Identity() adapter.RuntimeRevision {
 	return adapter.RuntimeRevision{Incarnation: v.id.Incarnation, Revision: v.revision}
 }
 func (v *runtimeProxyView) OutboundManager() adapter.OutboundManager { return v.manager }
+func (v *runtimeProxyView) EndpointManager() adapter.EndpointManager { return v.endpoint }
 func (v *runtimeProxyView) RuntimeURLTestHistory(tag string) (*urltest.HistoryStorage, adapter.RuntimeResourceID, bool) {
 	_, ok := v.manager.Outbound(tag)
 	return v.history, v.id, ok
@@ -233,6 +239,94 @@ func TestRuntimeProxyDelayRejectsBeforeFirstPublication(t *testing.T) {
 	if recorder.Code != http.StatusServiceUnavailable {
 		t.Fatal("unready graph entered manual dial")
 	}
+}
+
+type proxyListMember struct {
+	adapter.Endpoint
+	tag, kind string
+}
+
+func (m *proxyListMember) Tag() string     { return m.tag }
+func (m *proxyListMember) Type() string    { return m.kind }
+func (*proxyListMember) Network() []string { return []string{N.NetworkTCP} }
+
+type proxyListEndpoints struct {
+	adapter.EndpointManager
+	members []adapter.Endpoint
+}
+
+func (m *proxyListEndpoints) Endpoints() []adapter.Endpoint { return m.members }
+
+type proxyListRecorder struct {
+	*httptest.ResponseRecorder
+	beforeWrite func()
+}
+
+func (r *proxyListRecorder) Write(p []byte) (int, error) {
+	r.beforeWrite()
+	return r.ResponseRecorder.Write(p)
+}
+
+func TestRuntimeProxiesUsePublishedEndpointInventory(t *testing.T) {
+	history := urltest.NewHistoryStorage()
+	defer history.Close()
+	store, err := runtimegraph.NewStore("proxy-history")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Seal()
+	server := &Server{
+		ctx:            urltest.ContextWithRuntimeAdmission(t.Context(), store),
+		outbound:       &runtimeProxyManager{actual: &proxyListMember{tag: "stable", kind: C.TypeDirect}},
+		endpoint:       &proxyListEndpoints{},
+		urlTestHistory: history,
+	}
+	handler := getProxies(server)
+	t.Run("unpublished", func(t *testing.T) {
+		recorder := httptest.NewRecorder()
+		handler(recorder, httptest.NewRequest(http.MethodGet, "/proxies", nil))
+		if recorder.Code != http.StatusServiceUnavailable {
+			t.Fatalf("unpublished graph returned status %d", recorder.Code)
+		}
+	})
+	view := &runtimeProxyView{
+		manager:  &runtimeProxyManager{actual: &proxyListMember{tag: "node", kind: C.TypeSOCKS}},
+		endpoint: &proxyListEndpoints{members: []adapter.Endpoint{&proxyListMember{tag: "wg-ep", kind: C.TypeWireGuard}}},
+		id:       adapter.RuntimeResourceID{Incarnation: "proxy-history", Sequence: 1},
+		revision: 1,
+	}
+	graph, err := runtimegraph.NewGraph(view, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.Publish(adapter.RuntimeRevision{Incarnation: view.id.Incarnation}, graph); err != nil {
+		t.Fatal(err)
+	}
+	t.Run("published", func(t *testing.T) {
+		recorder := &proxyListRecorder{ResponseRecorder: httptest.NewRecorder(), beforeWrite: func() {
+			store.Seal()
+			select {
+			case <-graph.Drained():
+			default:
+				t.Error("writing the response still held the graph lease")
+			}
+		}}
+		handler(recorder, httptest.NewRequest(http.MethodGet, "/proxies", nil))
+		var result struct {
+			Proxies map[string]struct {
+				Type string   `json:"type"`
+				Now  string   `json:"now"`
+				All  []string `json:"all"`
+			} `json:"proxies"`
+		}
+		if err := json.Unmarshal(recorder.Body.Bytes(), &result); recorder.Code != http.StatusOK || err != nil {
+			t.Fatalf("status=%d response=%s err=%v", recorder.Code, recorder.Body.String(), err)
+		}
+		global := result.Proxies["GLOBAL"]
+		if len(result.Proxies) != 3 || global.Now != "node" || !slices.Contains(global.All, "wg-ep") || result.Proxies["wg-ep"].Type != C.ProxyDisplayName(C.TypeWireGuard) {
+			t.Fatalf("proxy collection did not use the published graph: %s", recorder.Body.String())
+		}
+	})
 }
 
 func TestProxyDelayCanceledRequestPreservesHistoryBeforeCancellationCallback(t *testing.T) {
