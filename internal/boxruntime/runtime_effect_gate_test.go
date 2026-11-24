@@ -103,14 +103,12 @@ func TestRuntimeApplyWaitingForControlEffectCancelsWithoutPublication(t *testing
 	_, request := f.plan(t, runtimeTestConfig(1081, "example.org"))
 	_, competing := f.plan(t, runtimeTestConfig(1082, "example.org"))
 	f.box.runtime.controlEffects.Lock()
-	var release sync.Once
-	unlock := func() { release.Do(f.box.runtime.controlEffects.Unlock) }
+	unlock := sync.OnceFunc(f.box.runtime.controlEffects.Unlock)
 	t.Cleanup(unlock)
 	t.Cleanup(barrier.open)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	done := make(chan RuntimeConfigOperation, 1)
-	go func() { operation, _ := f.box.applyRuntimeConfig(ctx, "actor-a", request); done <- operation }()
+	done := runtimeTestApplyAsync(f, ctx, request)
 	runtimeTestWait(t, barrier.entered, "candidate reached final lifecycle stage")
 	rejected, err := f.box.applyRuntimeConfig(context.Background(), "actor-a", competing)
 	if err != nil || rejected.State != "REJECTED_UNAPPLIED" || rejected.Active != request.Expected {
@@ -123,13 +121,13 @@ func TestRuntimeApplyWaitingForControlEffectCancelsWithoutPublication(t *testing
 	lease.Release()
 	barrier.open()
 	cancel()
-	select {
-	case operation := <-done:
-		if operation.State != "ABORTING_UNAPPLIED" || f.identity() != request.Expected {
-			t.Fatalf("canceled candidate published: %+v", operation)
-		}
-	case <-runtimeTestContext(t).Done():
-		t.Fatal("Apply could not cancel while prior effect remained admitted")
+	operation := runtimeTestReceiveApply(t, done)
+	if (operation.State != "ABORTING_UNAPPLIED" && operation.State != "ABORTED_UNAPPLIED") ||
+		operation.Before != request.Expected || operation.Active != request.Expected || f.identity() != request.Expected {
+		t.Fatalf("canceled candidate did not abort without publication: %+v", operation)
+	}
+	if got := operation.Errors; len(got) != 2 || got[0].Code != "PREPARATION_FAILED" || got[1].Code != "PREPARATION_CANCELED" {
+		t.Fatalf("canceled candidate receipt lacks cancellation detail: %+v", got)
 	}
 	unlock()
 	replayed, err := f.box.applyRuntimeConfig(context.Background(), "actor-a", competing)
