@@ -27,7 +27,6 @@ func (e *Endpoint) WritePackets(packets [][]byte) error {
 	if wgDevice == nil {
 		return E.New("WireGuard device is not ready")
 	}
-	e.resume()
 	packetRefs := make([]*device.InputPacketRef, 0, len(packets))
 	refs := make([]device.InputPacketRef, len(packets))
 	packetSlices := make([][]byte, len(packets))
@@ -59,6 +58,9 @@ func (e *Endpoint) WritePackets(packets [][]byte) error {
 	}
 	if len(packetRefs) == 0 {
 		return nil
+	}
+	if err := e.resume(); err != nil {
+		return err
 	}
 	unmatchedRefs := wgDevice.InputPackets(packetRefs)
 	if len(unmatchedRefs) == 0 {

@@ -21,6 +21,7 @@ var _ Device = (*stackDevice)(nil)
 type stackDevice struct {
 	stack        deviceIPStack
 	router       *peerRouter
+	suspended    bool
 	mtu          uint32
 	events       chan wgTun.Event
 	closed       chan struct{}
@@ -43,6 +44,7 @@ func newStackDevice(options DeviceOptions) (*stackDevice, error) {
 		closeDone:    make(chan struct{}),
 		stack:        stack,
 		router:       router,
+		suspended:    options.StartSuspended,
 		mtu:          options.MTU,
 		events:       make(chan wgTun.Event, 1),
 		closed:       make(chan struct{}),
@@ -123,7 +125,10 @@ func (w *stackDevice) Start() error {
 	if err != nil {
 		return err
 	}
-	w.events <- wgTun.EventUp
+	// An on-demand stack leaves native WireGuard down until the first reference or flow.
+	if !w.suspended {
+		w.events <- wgTun.EventUp
+	}
 	return nil
 }
 

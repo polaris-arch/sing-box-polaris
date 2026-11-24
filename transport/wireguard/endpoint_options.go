@@ -36,6 +36,7 @@ type EndpointOptions struct {
 	ResolvePeer       func(domain string) ([]netip.Addr, error)
 	Peers             []PeerOptions
 	Workers           int
+	StartSuspended    bool
 }
 
 type PeerOptions struct {

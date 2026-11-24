@@ -2,6 +2,10 @@ package wireguard
 
 import (
 	"context"
+	"crypto/ecdh"
+	"crypto/rand"
+	"encoding/base64"
+	"encoding/binary"
 	"errors"
 	"go/ast"
 	"go/parser"
@@ -11,15 +15,119 @@ import (
 	"os"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"testing"
 	"time"
 
 	"github.com/sagernet/sing-box/adapter/outbound"
 	"github.com/sagernet/sing-box/common/interrupt"
 	"github.com/sagernet/sing-box/log"
+	"github.com/sagernet/sing/common/control"
 	M "github.com/sagernet/sing/common/metadata"
+	N "github.com/sagernet/sing/common/network"
 	"github.com/sagernet/wireguard-go/conn"
 )
+
+type wireguardIdleTestDialer struct {
+	N.Dialer
+	control control.Func
+}
+
+func (d wireguardIdleTestDialer) UDPListenerControl() (control.Func, bool) {
+	return d.control, false
+}
+
+func TestEndpointStartsSuspendedAndRetriesActivation(t *testing.T) {
+	peer, err := net.ListenUDP("udp4", &net.UDPAddr{IP: net.IPv4(127, 0, 0, 1)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = peer.Close() })
+	privateKey, err := ecdh.X25519().GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	peerKey, err := ecdh.X25519().GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	attempted := make(chan struct{}, 1)
+	bindFailure := errors.New("test bind failure")
+	var failBind atomic.Bool
+	endpoint, err := NewEndpoint(EndpointOptions{
+		Context:        t.Context(),
+		Logger:         log.NewNOPFactory().Logger(),
+		StartSuspended: true,
+		Address:        []netip.Prefix{netip.MustParsePrefix("192.0.2.1/32")},
+		PrivateKey:     base64.StdEncoding.EncodeToString(privateKey.Bytes()),
+		Peers: []PeerOptions{{
+			Endpoint:                    M.SocksaddrFromNet(peer.LocalAddr()),
+			PublicKey:                   base64.StdEncoding.EncodeToString(peerKey.PublicKey().Bytes()),
+			AllowedIPs:                  []netip.Prefix{netip.MustParsePrefix("192.0.2.2/32")},
+			PersistentKeepaliveInterval: 25,
+		}},
+		Dialer: wireguardIdleTestDialer{control: func(_, _ string, _ syscall.RawConn) error {
+			select {
+			case attempted <- struct{}{}:
+			default:
+			}
+			if failBind.Load() {
+				return bindFailure
+			}
+			return nil
+		}},
+		Workers: 1,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := endpoint.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	if err := endpoint.Initialize(nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := endpoint.Start(false); err != nil {
+		t.Fatal(err)
+	}
+	destination := M.ParseSocksaddr("192.0.2.2:443")
+	canceled, cancel := context.WithCancel(t.Context())
+	cancel()
+	if packet, err := endpoint.ListenPacket(canceled, destination); !errors.Is(err, context.Canceled) {
+		if packet != nil {
+			_ = packet.Close()
+		}
+		t.Fatalf("canceled flow did not report cancellation: %v", err)
+	}
+	select {
+	case <-attempted:
+		t.Fatal("unreferenced endpoint opened its bind before any flow")
+	case <-time.After(100 * time.Millisecond):
+	}
+
+	failBind.Store(true)
+	if packet, err := endpoint.ListenPacket(t.Context(), destination); !errors.Is(err, bindFailure) {
+		if packet != nil {
+			_ = packet.Close()
+		}
+		t.Fatalf("first flow did not report activation failure: %v", err)
+	}
+	failBind.Store(false)
+	endpoint.SetIdle(false)
+	if err := peer.SetReadDeadline(time.Now().Add(5 * time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	var packet [256]byte
+	size, _, err := peer.ReadFromUDP(packet[:])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if size != 148 || binary.LittleEndian.Uint32(packet[:4]) != 1 {
+		t.Fatalf("activation did not send a WireGuard handshake initiation: size %d, type %d", size, binary.LittleEndian.Uint32(packet[:4]))
+	}
+}
 
 // This structural regression protects terminal ordering even on platforms
 // without native sockets. It is not a replacement for native race coverage.

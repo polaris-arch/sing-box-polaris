@@ -67,18 +67,7 @@ func (r *endpointRuntime) startPause(e *Endpoint) {
 			case <-r.stopSignal:
 				return
 			case <-r.wake:
-				paused := e.pause.IsNetworkPaused()
-				e.stateAccess.Lock()
-				native := e.device.Load()
-				if native != nil {
-					e.networkPaused = paused
-					if paused {
-						native.Down()
-					} else if !e.suspended.Load() {
-						native.Up()
-					}
-				}
-				e.stateAccess.Unlock()
+				e.setNetworkPaused(e.pause.IsNetworkPaused())
 			}
 		}
 	}()

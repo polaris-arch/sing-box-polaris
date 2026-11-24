@@ -114,6 +114,7 @@ func NewEndpoint(options EndpointOptions) (*Endpoint, error) {
 	if options.MTU == 0 {
 		options.MTU = 1408
 	}
+	options.StartSuspended = options.StartSuspended && !options.System && options.ListenPort == 0
 	endpoint := &Endpoint{
 		closeDone:      make(chan struct{}),
 		options:        options,
@@ -121,6 +122,7 @@ func NewEndpoint(options EndpointOptions) (*Endpoint, error) {
 		ipcConf:        ipcConf,
 		allowedAddress: allowedAddresses,
 	}
+	endpoint.suspended.Store(options.StartSuspended)
 	if adapter.IsRuntimePreparation(options.Context) {
 		if err := endpoint.initializeRuntime(); err != nil {
 			return nil, err
@@ -135,6 +137,7 @@ func (e *Endpoint) Initialize(memoryPressure func() tun.MemoryPressure) error {
 		Context:         options.Context,
 		Logger:          options.Logger,
 		System:          options.System,
+		StartSuspended:  options.StartSuspended,
 		Handler:         options.Handler,
 		UDPTimeout:      options.UDPTimeout,
 		ICMPTimeout:     options.ICMPTimeout,
@@ -293,6 +296,11 @@ func (e *Endpoint) Start(postStart bool) error {
 			e.runtime.startPause(e)
 		}
 		e.pauseCallback = e.pause.RegisterCallback(e.onPauseUpdated)
+		if e.options.StartSuspended {
+			e.stateAccess.Lock()
+			e.networkPaused = e.pause.IsNetworkPaused()
+			e.stateAccess.Unlock()
+		}
 	}
 	e.allowedIPs = wgDevice.AllowedIPs()
 	return nil
@@ -302,7 +310,12 @@ func (e *Endpoint) DialContext(ctx context.Context, network string, destination 
 	if !destination.Addr.IsValid() {
 		return nil, E.Cause(os.ErrInvalid, "invalid non-IP destination")
 	}
-	e.resume()
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if err := e.resume(); err != nil {
+		return nil, err
+	}
 	return e.tunDevice.DialContext(ctx, network, destination)
 }
 
@@ -310,7 +323,12 @@ func (e *Endpoint) ListenPacket(ctx context.Context, destination M.Socksaddr) (n
 	if !destination.Addr.IsValid() {
 		return nil, E.Cause(os.ErrInvalid, "invalid non-IP destination")
 	}
-	e.resume()
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if err := e.resume(); err != nil {
+		return nil, err
+	}
 	return e.tunDevice.ListenPacket(ctx, destination)
 }
 
@@ -321,38 +339,42 @@ func (e *Endpoint) SetIdle(idle bool) {
 	if wgDevice == nil {
 		return
 	}
-	if idle {
-		if e.suspended.Load() {
-			return
+	if !idle {
+		if err := e.resumeLocked(wgDevice); err != nil {
+			e.options.Logger.Error(err)
 		}
+		return
+	}
+	if !e.suspended.Load() {
 		e.suspended.Store(true)
 		wgDevice.Down()
-	} else {
-		e.resumeLocked(wgDevice)
 	}
 }
 
-func (e *Endpoint) resume() {
+func (e *Endpoint) resume() error {
 	if !e.suspended.Load() {
-		return
+		return nil
 	}
 	e.stateAccess.Lock()
 	defer e.stateAccess.Unlock()
 	wgDevice := e.device.Load()
 	if wgDevice == nil {
-		return
+		return net.ErrClosed
 	}
-	e.resumeLocked(wgDevice)
+	return e.resumeLocked(wgDevice)
 }
 
-func (e *Endpoint) resumeLocked(wgDevice *device.Device) {
+func (e *Endpoint) resumeLocked(wgDevice *device.Device) error {
 	if !e.suspended.Load() {
-		return
+		return nil
+	}
+	if !e.networkPaused {
+		if err := wgDevice.Up(); err != nil {
+			return E.Cause(err, "resume WireGuard")
+		}
 	}
 	e.suspended.Store(false)
-	if !e.networkPaused {
-		wgDevice.Up()
-	}
+	return nil
 }
 
 func (e *Endpoint) Close() error {
@@ -418,20 +440,28 @@ func (e *Endpoint) onPauseUpdated(event int) {
 		e.runtime.notifyPause()
 		return
 	}
+	switch event {
+	case pause.EventNetworkPause:
+		e.setNetworkPaused(true)
+	case pause.EventNetworkWake:
+		e.setNetworkPaused(false)
+	}
+}
+
+func (e *Endpoint) setNetworkPaused(paused bool) {
 	e.stateAccess.Lock()
 	defer e.stateAccess.Unlock()
 	wgDevice := e.device.Load()
 	if wgDevice == nil {
 		return
 	}
-	switch event {
-	case pause.EventNetworkPause:
-		e.networkPaused = true
+	e.networkPaused = paused
+	if paused {
 		wgDevice.Down()
-	case pause.EventNetworkWake:
-		e.networkPaused = false
-		if !e.suspended.Load() {
-			wgDevice.Up()
+	} else if !e.suspended.Load() {
+		if err := wgDevice.Up(); err != nil {
+			e.suspended.Store(true)
+			e.options.Logger.Error(E.Cause(err, "resume WireGuard"))
 		}
 	}
 }
