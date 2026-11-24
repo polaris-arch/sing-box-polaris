@@ -69,22 +69,20 @@ func TestRuntimeRealmActualConstructorPlanApplyRetainsExactOldClosure(t *testing
 			if len(captured) != 1 || captured[0].http != initial.httpClients || captured[0].dns != initial.dns {
 				t.Fatal("actual initial Realm constructor missed its captured generation")
 			}
-			runtimeTestPublishPrivatePlatformClosure(t, f)
+			runtimeTestPublishBootstrapPlatformClosure(t, f)
 			oldLease, old := f.acquire(t)
 			oldID := old.componentIDs["outbound:realm"]
 			oldResource := runtimeTestResource(t, f, oldID)
-			// The first private platform changes DNS and its actual HTTP/Realm
-			// consumers even when a named HTTP detour ignores route.final.
-			if len(captured) != 2 || initial.componentIDs["outbound:realm"] == oldID ||
-				initial.componentIDs["http-manager"] == old.componentIDs["http-manager"] ||
-				initial.httpClients == old.httpClients || initial.dns == old.dns ||
-				captured[1].http != old.httpClients || captured[1].dns != old.dns ||
-				captured[0].http != initial.httpClients || captured[0].dns != initial.dns {
-				t.Fatal("bootstrap transition failed to retain distinct complete Realm closures")
+			// The first publication reuses the provisioned bootstrap closure, so
+			// the Realm consumer keeps its initial captured generation.
+			if len(captured) != 1 || initial.componentIDs["outbound:realm"] != oldID ||
+				initial.componentIDs["http-manager"] != old.componentIDs["http-manager"] ||
+				initial.httpClients != old.httpClients || initial.dns != old.dns {
+				t.Fatal("bootstrap transition rebuilt the provisioned Realm closure")
 			}
 			initialLease.Release()
-			oldCapture := captured[1]
-			const baselineConstructors = 2
+			oldCapture := captured[0]
+			const baselineConstructors = 1
 			if change == "named-http" {
 				for _, invalid := range []string{"missing-http", "self-http"} {
 					oldTag, oldDetour, oldFinal := realm.Realm.HTTPClient.Tag, candidate.HTTPClients[0].Detour, candidate.Route.Final

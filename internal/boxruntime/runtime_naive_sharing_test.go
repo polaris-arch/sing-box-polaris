@@ -172,7 +172,7 @@ func TestRuntimeNaiveSharedClientThroughPublication(t *testing.T) {
 			t.Cleanup(func() { require.NoError(t, instance.CloseWithResult()) })
 			require.NotNil(t, instance.runtime)
 			f.start(t)
-			runtimeTestPublishPrivatePlatformClosure(t, f)
+			runtimeTestPublishBootstrapPlatformClosure(t, f)
 
 			lease, view := f.acquire(t)
 			first, found := view.outbounds.Outbound("proxy-a")

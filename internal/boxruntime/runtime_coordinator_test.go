@@ -6,6 +6,8 @@ import (
 	stdjson "encoding/json"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -100,11 +102,11 @@ func TestRuntimeBoxInitialPublicationWaitsForActualStartedStage(t *testing.T) {
 	}
 }
 
-// The bootstrap platform resource intentionally has a distinct fingerprint:
-// an initial borrowed/failed monitor must never impersonate a prepared private
-// owner. Exercise and verify that first real publication before testing reuse
-// between two private generations. A NoOp cannot make this transition.
-func runtimeTestPublishPrivatePlatformClosure(t *testing.T, f *runtimeTestFixture) {
+// A bootstrap platform whose requested monitors were all provisioned is reused
+// by the first real publication; only an unprovisioned request quarantines it.
+// Exercise that publication before testing reuse between later generations.
+// A NoOp cannot make this transition.
+func runtimeTestPublishBootstrapPlatformClosure(t *testing.T, f *runtimeTestFixture) {
 	t.Helper()
 	initialLease, initial := f.acquire(t)
 	defer initialLease.Release()
@@ -141,34 +143,38 @@ func runtimeTestPublishPrivatePlatformClosure(t *testing.T, f *runtimeTestFixtur
 	currentLease, current := f.acquire(t)
 	defer currentLease.Release()
 	for name, initialID := range initial.componentIDs {
-		if name == "platform-runtime" || name == "route-router" || name == "dns-router" || strings.HasPrefix(name, "rule-set:") {
-			currentID, exists := current.componentIDs[name]
-			if !exists || initialID == currentID {
-				t.Errorf("bootstrap-dependent %s did not acquire its actual private owner", name)
-			}
-			if tag, ok := strings.CutPrefix(name, "rule-set:"); ok {
-				oldSet, oldExists := initial.router.RuleSet(tag)
-				newSet, newExists := current.router.RuleSet(tag)
-				if !oldExists || !newExists || oldSet == newSet {
-					t.Errorf("bootstrap-dependent %s retained its initial matcher object", name)
-				}
-			}
+		if current.componentIDs[name] != initialID {
+			t.Errorf("metadata transition unnecessarily reconstructed %s", name)
 		}
 	}
-	if initial.platform == current.platform || initial.router == current.router || initial.dns == current.dns {
-		t.Fatal("metadata transition did not replace actual platform/router/DNS objects")
+	if initial.platform != current.platform || initial.router != current.router || initial.dns != current.dns {
+		t.Fatal("metadata transition replaced the provisioned platform/router/DNS objects")
 	}
-	for _, name := range []string{"outbound:a", "outbound:b", "dns-transport:resolver"} {
-		if initialID, exists := initial.componentIDs[name]; exists && initialID != current.componentIDs[name] {
-			t.Errorf("platform-independent %s was unnecessarily reconstructed", name)
-		}
+}
+
+// DHCP lease files request a neighbor monitor that the cold start does not
+// provision, so the borrowed platform must not satisfy an unchanged graph.
+func TestRuntimeUnprovisionedBootstrapPlatformIsNotReused(t *testing.T) {
+	leases := filepath.Join(t.TempDir(), "dnsmasq.leases")
+	if err := os.WriteFile(leases, []byte("0 02:00:00:00:00:01 192.0.2.7 first-host *\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	f := newRuntimeTestFixture(t, bytes.Replace(runtimeTestConfig(1080, "example.org"), []byte(`"route":{`), fmt.Appendf(nil, `"route":{"dhcp_lease_files":[%q],`, leases), 1), nil)
+	f.start(t)
+	c := f.box.runtime
+	c.access.Lock()
+	options, root, current := c.options, c.rootDigest, append([]*runtimeResource(nil), c.resources...)
+	c.access.Unlock()
+	replaced, err := runtimeReplacementNames(c.ctx, options, nil, root, current)
+	if err != nil || !replaced["platform-runtime"] {
+		t.Fatal("an unprovisioned bootstrap platform would satisfy a later graph", replaced, err)
 	}
 }
 
 func TestRuntimeApplyReusesExactUnchangedResourcesAndRetiresAfterContinuation(t *testing.T) {
 	f := newRuntimeTestFixture(t, runtimeTestConfig(1080, "example.org"), nil)
 	f.start(t)
-	runtimeTestPublishPrivatePlatformClosure(t, f)
+	runtimeTestPublishBootstrapPlatformClosure(t, f)
 	before := f.identity()
 	oldLease, oldView := f.acquire(t)
 	oldA := f.object(t, "a", 0)
@@ -768,12 +774,12 @@ func TestRuntimeInlineSourceReplacementChangesOnlyCapturedClosure(t *testing.T) 
 		t.Fatalf("inline-source candidate failed: %+v %v", operation, err)
 	}
 	newLease, after := f.acquire(t)
-	for _, name := range []string{"rule-set:sites", "dns-router", "route-router"} {
+	for _, name := range []string{"rule-set:sites", "route-router"} {
 		if before.componentIDs[name] == after.componentIDs[name] {
 			t.Errorf("captured inline-source closure did not replace %s", name)
 		}
 	}
-	for _, name := range []string{"dns-transport:resolver", "outbound:a", "outbound:b", "outbound:select"} {
+	for _, name := range []string{"dns-router", "dns-transport:resolver", "outbound:a", "outbound:b", "outbound:select"} {
 		if before.componentIDs[name] != after.componentIDs[name] {
 			t.Errorf("source change unnecessarily replaced %s", name)
 		}
