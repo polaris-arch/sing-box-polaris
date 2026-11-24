@@ -16,6 +16,7 @@ import (
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/common/interrupt"
 	"github.com/sagernet/sing-box/common/sniff"
+	"github.com/sagernet/sing-box/common/urltest"
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/log"
 	R "github.com/sagernet/sing-box/route/rule"
@@ -231,6 +232,9 @@ func (r *Router) routeConnection(ctx context.Context, conn net.Conn, metadata ad
 	if err != nil {
 		buf.ReleaseMulti(buffers)
 		return err
+	}
+	if resolvedMember != nil {
+		ctx = urltest.ContextWithScopedProbe(ctx)
 	}
 	for _, buffer := range buffers {
 		conn = bufio.NewCachedConn(conn, buffer)

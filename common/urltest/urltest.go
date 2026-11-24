@@ -193,10 +193,20 @@ var ErrProbeNotRun = errors.New("URL test was not run")
 
 type (
 	backgroundProbeKey    struct{}
+	scopedProbeKey        struct{}
 	sharedBackgroundProbe struct {
 		check func(func(context.Context) bool) bool
 	}
 )
+
+// ContextWithScopedProbe marks a bounded measurement independently of its priority.
+func ContextWithScopedProbe(ctx context.Context) context.Context {
+	return context.WithValue(ctx, scopedProbeKey{}, true)
+}
+
+func IsScopedProbe(ctx context.Context) bool {
+	return ctx.Value(scopedProbeKey{}) == true
+}
 
 func ContextWithBackgroundProbe(ctx context.Context) context.Context {
 	return context.WithValue(ctx, backgroundProbeKey{}, true)
@@ -245,6 +255,7 @@ type ScopedDialer interface {
 }
 
 func URLTest(ctx context.Context, link string, detour N.Dialer) (uint16, error) {
+	ctx = ContextWithScopedProbe(ctx)
 	if scoped, ok := detour.(ScopedDialer); ok {
 		return scoped.WithURLTestDialer(ctx, func(ctx context.Context, dialer N.Dialer) (uint16, error) {
 			ctx, cancel := context.WithTimeout(ctx, C.TCPTimeout)

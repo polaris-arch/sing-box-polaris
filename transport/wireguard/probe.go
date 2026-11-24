@@ -3,6 +3,7 @@ package wireguard
 import (
 	"context"
 	"net"
+	"sync"
 	"sync/atomic"
 
 	"github.com/sagernet/sing-box/common/urltest"
@@ -19,21 +20,26 @@ const (
 type probeDialPathKey struct{}
 
 type probeDialPath struct {
-	parent *probeDialPath
-	phase  atomic.Uint32
+	parent     *probeDialPath
+	phase      atomic.Uint32
+	foreground atomic.Int32
 }
 
-func (path *probeDialPath) hasForeground() bool {
+func (path *probeDialPath) foregroundPriority() (foreground, persistent bool) {
 	for ; path != nil; path = path.parent {
-		if path.phase.Load() == probePromoted {
-			return true
+		switch phase := path.phase.Load(); {
+		case phase == probePromoted:
+			return true, true
+		case phase <= probeBorrowed && path.foreground.Load() > 0:
+			foreground = true
 		}
 	}
-	return false
+	return foreground, false
 }
 
 func (path *probeDialPath) isBackground(func(context.Context) bool) bool {
-	return path.phase.Load() <= probeBorrowed && !path.parent.hasForeground()
+	foreground, _ := path.foregroundPriority()
+	return path.phase.Load() <= probeBorrowed && !foreground
 }
 
 type probeActivation struct {
@@ -43,7 +49,8 @@ type probeActivation struct {
 	ready     chan struct{}
 	done      chan struct{}
 	path      *probeDialPath
-	borrowers int // protected by Endpoint.stateAccess
+	borrowers int   // protected by Endpoint.stateAccess
+	openErr   error // published by closing ready
 }
 
 func (e *Endpoint) activationContext() context.Context {
@@ -72,7 +79,8 @@ func (probe *probeActivation) promote() bool {
 	return probe.path.phase.CompareAndSwap(probeBorrowed, probePromoted) || probe.path.phase.Load() == probePromoted
 }
 
-func (e *Endpoint) lockState(ctx context.Context) error {
+func (e *Endpoint) lockState(ctx context.Context, borrowOpening bool) error {
+	parent, _ := ctx.Value(probeDialPathKey{}).(*probeDialPath)
 	for {
 		if err := ctx.Err(); err != nil {
 			return err
@@ -82,22 +90,25 @@ func (e *Endpoint) lockState(ctx context.Context) error {
 		if probe == nil || e.device.Load() == nil {
 			return nil
 		}
-		var wait <-chan struct{}
-		switch probe.path.phase.Load() {
-		case probeOpening:
-			wait = probe.ready
-		case probeRetiring:
-			wait = probe.done
-		default:
+		phase := probe.path.phase.Load()
+		if phase != probeOpening && phase != probeRetiring {
 			return nil
 		}
-		e.stateAccess.Unlock()
 		// A keepalive can resolve or detour through the device it is opening.
-		for path, _ := ctx.Value(probeDialPathKey{}).(*probeDialPath); path != nil; path = path.parent {
+		for path := parent; path != nil; path = path.parent {
 			if path == probe.path {
+				e.stateAccess.Unlock()
 				return net.ErrClosed
 			}
 		}
+		wait := probe.done
+		if phase == probeOpening {
+			if borrowOpening && probe.ctx.Err() == nil {
+				return nil
+			}
+			wait = probe.ready
+		}
+		e.stateAccess.Unlock()
 		select {
 		case <-wait:
 		case <-ctx.Done():
@@ -106,12 +117,25 @@ func (e *Endpoint) lockState(ctx context.Context) error {
 	}
 }
 
-func (e *Endpoint) acquireFlow(ctx context.Context) (func(), error) {
-	if !e.options.StartSuspended || !urltest.IsBackgroundProbe(ctx) {
+// HoldProbe bridges the destination lookup and the flow's own carrier borrow.
+func (e *Endpoint) HoldProbe(ctx context.Context) (func(), error) {
+	return e.acquireFlow(ctx, true)
+}
+
+func (e *Endpoint) acquireFlow(ctx context.Context, probeOnly bool) (_ func(), retErr error) {
+	scope := urltest.IsScopedProbe(ctx)
+	background := urltest.IsBackgroundProbe(ctx)
+	parent, _ := ctx.Value(probeDialPathKey{}).(*probeDialPath)
+	inherited, persistent := parent.foregroundPriority()
+	// An inherited native detour remains scoped while its priority changes.
+	if !e.options.StartSuspended || (!scope && !background && (parent == nil || persistent)) {
+		if probeOnly {
+			return nil, nil
+		}
 		return nil, e.resume(ctx)
 	}
-	parent, _ := ctx.Value(probeDialPathKey{}).(*probeDialPath)
-	if err := e.lockState(ctx); err != nil {
+	manual := scope && !background
+	if err := e.lockState(ctx, manual || (inherited && !persistent)); err != nil {
 		return nil, err
 	}
 	wgDevice := e.device.Load()
@@ -122,16 +146,32 @@ func (e *Endpoint) acquireFlow(ctx context.Context) (func(), error) {
 	probe := e.probe.Load()
 	// WireGuard detours can become foreground while this endpoint is waiting.
 	// The path contains only atomic state, so this check is safe under stateAccess.
-	foreground := parent.hasForeground()
-	if foreground && probe != nil {
-		probe.promote()
-	}
-	if probe != nil && probe.path.phase.Load() == probeBorrowed {
-		probe.borrowers++
+	_, persistent = parent.foregroundPriority()
+	if persistent && !scope {
+		if !probeOnly && probe != nil && probe.path.phase.Load() != probeOpening {
+			probe.promote()
+		}
 		e.stateAccess.Unlock()
-		return func() { e.releaseProbe(probe) }, nil
+		if probeOnly {
+			return nil, nil
+		}
+		return nil, e.resume(ctx)
 	}
-	if foreground || !e.suspended.Load() || e.returnAttached {
+	if probe != nil {
+		phase := probe.path.phase.Load()
+		if phase == probeOpening || phase == probeBorrowed {
+			release := e.borrowProbeLocked(probe, manual)
+			e.stateAccess.Unlock()
+			if phase == probeOpening {
+				if err := e.waitForProbe(ctx, probe); err != nil {
+					release()
+					return nil, err
+				}
+			}
+			return release, nil
+		}
+	}
+	if !e.suspended.Load() || e.returnAttached {
 		err := e.resumeLocked(wgDevice)
 		e.stateAccess.Unlock()
 		return nil, err
@@ -142,32 +182,45 @@ func (e *Endpoint) acquireFlow(ctx context.Context) (func(), error) {
 	}
 	probe = &probeActivation{
 		device: wgDevice, ready: make(chan struct{}), done: make(chan struct{}),
-		path: &probeDialPath{parent: parent}, borrowers: 1,
+		path: &probeDialPath{parent: parent},
 	}
 	probeContext := context.WithValue(e.options.Context, probeDialPathKey{}, probe.path)
 	probeContext = urltest.ContextWithSharedBackgroundProbe(probeContext, probe.path.isBackground)
 	probe.ctx, probe.cancel = context.WithCancel(probeContext)
+	release := e.borrowProbeLocked(probe, manual)
 	e.probe.Store(probe)
 	e.stateAccess.Unlock()
 	defer close(probe.ready)
+	defer func() {
+		if retErr != nil {
+			release()
+		}
+	}()
 
-	stop := context.AfterFunc(ctx, probe.cancel)
+	released := make(chan struct{})
+	stop := context.AfterFunc(ctx, func() {
+		release()
+		close(released)
+	})
 	err := wgDevice.Up()
 	if !stop() {
-		probe.cancel()
+		<-released
 	}
 	e.stateAccess.Lock()
 	if e.device.Load() != wgDevice {
+		probe.openErr = net.ErrClosed
 		e.stateAccess.Unlock()
-		return nil, net.ErrClosed
+		return nil, probe.openErr
 	}
 	if err != nil {
+		probe.openErr = err
 		e.probe.Store(nil)
 		probe.cancel()
 		e.stateAccess.Unlock()
 		return nil, err
 	}
 	if e.networkPaused || probe.ctx.Err() != nil {
+		probe.openErr = urltest.ErrProbeNotRun
 		e.retireProbeLocked(probe, true)
 		if err := ctx.Err(); err != nil {
 			return nil, err
@@ -177,16 +230,52 @@ func (e *Endpoint) acquireFlow(ctx context.Context) (func(), error) {
 	e.suspended.Store(false)
 	probe.path.phase.Store(probeBorrowed)
 	e.stateAccess.Unlock()
-	return func() { e.releaseProbe(probe) }, nil
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	return release, nil
 }
 
-func (e *Endpoint) releaseProbe(probe *probeActivation) {
+func (e *Endpoint) waitForProbe(ctx context.Context, probe *probeActivation) error {
+	select {
+	case <-probe.ready:
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if probe.openErr != nil {
+		return probe.openErr
+	}
+	if e.device.Load() != probe.device || e.probe.Load() != probe || probe.path.phase.Load() == probeRetiring {
+		return urltest.ErrProbeNotRun
+	}
+	return nil
+}
+
+func (e *Endpoint) borrowProbeLocked(probe *probeActivation, foreground bool) func() {
+	probe.borrowers++
+	if foreground {
+		probe.path.foreground.Add(1)
+	}
+	return sync.OnceFunc(func() { e.releaseProbe(probe, foreground) })
+}
+
+func (e *Endpoint) releaseProbe(probe *probeActivation, foreground bool) {
 	e.stateAccess.Lock()
+	if foreground {
+		probe.path.foreground.Add(-1)
+	}
 	if e.probe.Load() == probe && e.device.Load() == probe.device {
 		probe.borrowers--
-		if probe.borrowers == 0 && probe.path.phase.CompareAndSwap(probeBorrowed, probeRetiring) {
-			e.retireProbeLocked(probe, true)
-			return
+		if probe.borrowers == 0 {
+			if probe.path.phase.Load() == probeOpening {
+				probe.cancel()
+			} else if probe.path.phase.CompareAndSwap(probeBorrowed, probeRetiring) {
+				e.retireProbeLocked(probe, true)
+				return
+			}
 		}
 	}
 	e.stateAccess.Unlock()

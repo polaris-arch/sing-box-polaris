@@ -515,6 +515,13 @@ func (w *Endpoint) DialContext(ctx context.Context, network string, destination 
 		return nil, E.New("WireGuard is not ready yet")
 	}
 	if destination.IsDomain() {
+		release, err := w.endpoint.HoldProbe(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if release != nil {
+			defer release()
+		}
 		destinationAddresses, err := w.dnsRouter.Lookup(ctx, destination.Fqdn, adapter.DNSQueryOptions{})
 		if err != nil {
 			return nil, err
@@ -547,6 +554,13 @@ func (w *Endpoint) ListenPacketWithDestination(ctx context.Context, destination 
 		return nil, netip.Addr{}, E.New("WireGuard is not ready yet")
 	}
 	if destination.IsDomain() {
+		release, err := w.endpoint.HoldProbe(ctx)
+		if err != nil {
+			return nil, netip.Addr{}, err
+		}
+		if release != nil {
+			defer release()
+		}
 		destinationAddresses, err := w.dnsRouter.Lookup(ctx, destination.Fqdn, adapter.DNSQueryOptions{})
 		if err != nil {
 			return nil, netip.Addr{}, err

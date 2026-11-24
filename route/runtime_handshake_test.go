@@ -663,8 +663,12 @@ func TestRouteProbeConnectProofAfterFlowAdmission(t *testing.T) {
 			}
 			var dialCalls atomic.Int32
 			var resetProbe func()
-			leaf := &probeGraphTestOutbound{referenceTestOutbound: referenceTestOutbound{tag: member}, dial: func() (net.Conn, error) {
+			leaf := &probeGraphTestOutbound{referenceTestOutbound: referenceTestOutbound{tag: member}, dial: func(ctx context.Context) (net.Conn, error) {
 				dialCalls.Add(1)
+				wantScope := tc.resetProbe || tc.ticket == "valid"
+				if urltest.IsScopedProbe(ctx) != wantScope || urltest.IsBackgroundProbe(ctx) != tc.background {
+					t.Errorf("outbound probe attribution did not match scoped=%t background=%t", wantScope, tc.background)
+				}
 				if tc.cancelDial {
 					cancel()
 				}
@@ -803,12 +807,12 @@ func TestRouteProbeConnectProofAfterFlowAdmission(t *testing.T) {
 
 type probeGraphTestOutbound struct {
 	referenceTestOutbound
-	dial func() (net.Conn, error)
+	dial func(context.Context) (net.Conn, error)
 }
 
 func (o *probeGraphTestOutbound) Network() []string { return []string{N.NetworkTCP} }
-func (o *probeGraphTestOutbound) DialContext(context.Context, string, M.Socksaddr) (net.Conn, error) {
-	return o.dial()
+func (o *probeGraphTestOutbound) DialContext(ctx context.Context, _ string, _ M.Socksaddr) (net.Conn, error) {
+	return o.dial(ctx)
 }
 
 type handshakeSynchronousLeaf struct {

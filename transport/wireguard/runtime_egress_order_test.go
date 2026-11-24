@@ -138,8 +138,19 @@ func TestEndpointStartsSuspendedAndRetriesActivation(t *testing.T) {
 		}
 		t.Fatalf("first flow did not report activation failure: %v", err)
 	}
+	if release, err := endpoint.HoldProbe(urltest.ContextWithScopedProbe(t.Context())); release != nil || !errors.Is(err, bindFailure) || endpoint.probe.Load() != nil {
+		if release != nil {
+			release()
+		}
+		t.Fatalf("failed scoped activation retained its hold: %v", err)
+	}
 	failBind.Store(false)
 	endpoint.SetIdle(false)
+	readIdleHandshake(t, peer)
+}
+
+func readIdleHandshake(t *testing.T, peer *net.UDPConn) {
+	t.Helper()
 	if err := peer.SetReadDeadline(time.Now().Add(5 * time.Second)); err != nil {
 		t.Fatal(err)
 	}
@@ -150,6 +161,174 @@ func TestEndpointStartsSuspendedAndRetriesActivation(t *testing.T) {
 	}
 	if size != 148 || binary.LittleEndian.Uint32(packet[:4]) != 1 {
 		t.Fatalf("activation did not send a WireGuard handshake initiation: size %d, type %d", size, binary.LittleEndian.Uint32(packet[:4]))
+	}
+}
+
+func TestWireGuardProbeHoldsOneActivationAcrossDestinationLookup(t *testing.T) {
+	for _, scenario := range []struct {
+		name string
+		hold bool
+	}{
+		{"lookup releases before destination", false},
+		{"scoped foreground bridges lookup and destination", true},
+	} {
+		t.Run(scenario.name, func(t *testing.T) {
+			endpoint, peer := newIdleTestEndpoint(t, nil, nil)
+			ctx := urltest.ContextWithBackgroundProbe(t.Context())
+			var release func()
+			if scenario.hold {
+				const resolver = "dns-probe-exit-1"
+				ctx = urltest.ContextWithLegacyPoolProbeDNS(urltest.ContextWithScopedProbe(t.Context()), resolver)
+				var err error
+				release, err = endpoint.HoldProbe(ctx)
+				if err != nil || release == nil {
+					t.Fatalf("scoped lookup hold = %v", err)
+				}
+				defer release()
+				if !urltest.IsLegacyPoolProbeDNS(ctx, resolver) ||
+					urltest.IsLegacyPoolProbeDNS(endpoint.activationContext(), resolver) ||
+					urltest.IsBackgroundProbe(endpoint.activationContext()) {
+					t.Fatal("lookup hold changed foreground priority or let its App resolver into a native context")
+				}
+			}
+			// A resolver that closes its carrier before returning used to leave
+			// nothing to hold the device for the next destination dial.
+			lookup, err := endpoint.DialContext(ctx, N.NetworkUDP, M.ParseSocksaddr("192.0.2.2:53"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer lookup.Close()
+			readIdleHandshake(t, peer)
+			if err := lookup.Close(); err != nil {
+				t.Fatal(err)
+			}
+			if endpoint.suspended.Load() == scenario.hold {
+				t.Fatal("endpoint lifetime did not follow the lookup hold")
+			}
+
+			destination, err := N.DialSerial(ctx, endpoint, N.NetworkUDP, M.ParseSocksaddr("origin.test:443"), []netip.Addr{netip.MustParseAddr("192.0.2.2")})
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer destination.Close()
+			if !scenario.hold {
+				readIdleHandshake(t, peer)
+			} else {
+				release()
+				if endpoint.suspended.Load() {
+					t.Fatal("destination carrier did not take over the lookup hold")
+				}
+				if err := peer.SetReadDeadline(time.Now().Add(40 * time.Millisecond)); err != nil {
+					t.Fatal(err)
+				}
+				if _, _, err := peer.ReadFromUDP(make([]byte, 256)); !errors.Is(err, os.ErrDeadlineExceeded) {
+					t.Fatalf("lookup and destination sent more than one initial handshake: %v", err)
+				}
+			}
+			if err := destination.Close(); err != nil || !endpoint.suspended.Load() {
+				t.Fatalf("last scoped carrier did not suspend: %v", err)
+			}
+		})
+	}
+}
+
+func TestWireGuardScopedForegroundBorrowsWhileBackgroundIsOpening(t *testing.T) {
+	for _, cancelOpener := range []bool{false, true} {
+		name := "cancel manual waiter"
+		if cancelOpener {
+			name = "cancel original background opener"
+		}
+		t.Run(name, func(t *testing.T) {
+			entered := make(chan context.Context, 1)
+			unwind := make(chan struct{})
+			unblock := sync.OnceFunc(func() { close(unwind) })
+			endpoint, peer := newIdleTestEndpoint(t, nil, func(ctx context.Context, _ string) ([]netip.Addr, error) {
+				select {
+				case entered <- ctx:
+				default:
+				}
+				select {
+				case <-unwind:
+					return nil, nil
+				case <-ctx.Done():
+					return nil, ctx.Err()
+				}
+			})
+			defer unblock()
+			background, cancelBackground := context.WithCancel(urltest.ContextWithBackgroundProbe(t.Context()))
+			defer cancelBackground()
+			manual, cancelManual := context.WithCancel(urltest.ContextWithScopedProbe(t.Context()))
+			defer cancelManual()
+			type result struct {
+				carrier net.PacketConn
+				err     error
+			}
+			listen := func(ctx context.Context) <-chan result {
+				done := make(chan result, 1)
+				go func() {
+					carrier, err := endpoint.ListenPacket(ctx, M.ParseSocksaddr("192.0.2.2:443"))
+					done <- result{carrier, err}
+				}()
+				return done
+			}
+			wait := func(done <-chan result) result {
+				t.Helper()
+				select {
+				case got := <-done:
+					return got
+				case <-time.After(3 * time.Second):
+					t.Fatal("WireGuard admission did not return")
+					return result{}
+				}
+			}
+			cold := listen(background)
+			var lookup context.Context
+			select {
+			case lookup = <-entered:
+			case <-time.After(3 * time.Second):
+				t.Fatal("background activation did not reach its live resolver")
+			}
+			scoped := listen(manual)
+			deadline := time.NewTimer(3 * time.Second)
+			defer deadline.Stop()
+			ticker := time.NewTicker(time.Millisecond)
+			defer ticker.Stop()
+			for urltest.IsBackgroundProbe(lookup) {
+				select {
+				case <-ticker.C:
+				case <-deadline.C:
+					t.Fatal("the scoped foreground request did not affect the opening activation")
+				}
+			}
+			cancelled := cold
+			surviving := scoped
+			if cancelOpener {
+				cancelBackground()
+			} else {
+				cancelManual()
+				cancelled, surviving = scoped, cold
+				if got := wait(cancelled); !errors.Is(got.err, context.Canceled) || !urltest.IsBackgroundProbe(lookup) {
+					t.Fatalf("cancelled manual demand did not restore background priority: %v", got.err)
+				}
+			}
+			if lookup.Err() != nil {
+				t.Fatal("an individual cancellation stopped its surviving borrow")
+			}
+			unblock()
+			if cancelOpener {
+				if got := wait(cancelled); !errors.Is(got.err, context.Canceled) {
+					t.Fatalf("cancelled original opener = %v", got.err)
+				}
+			}
+			got := wait(surviving)
+			if got.err != nil {
+				t.Fatal(got.err)
+			}
+			readIdleHandshake(t, peer)
+			if err := got.carrier.Close(); err != nil || !endpoint.suspended.Load() {
+				t.Fatalf("temporary scoped waiter became a persistent activation: %v", err)
+			}
+		})
 	}
 }
 

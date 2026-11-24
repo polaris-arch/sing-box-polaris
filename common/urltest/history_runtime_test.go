@@ -95,13 +95,13 @@ func TestSharedBackgroundProbeChecksDistinctWaitersAcrossACycle(t *testing.T) {
 type runtimeCapacityProbeDialer struct {
 	adapter.Outbound
 	multiplex bool
-	dial      func() (net.Conn, error)
+	dial      func(context.Context) (net.Conn, error)
 }
 
 func (d runtimeCapacityProbeDialer) MultiplexEnabled() bool { return d.multiplex }
 
-func (d runtimeCapacityProbeDialer) DialContext(context.Context, string, M.Socksaddr) (net.Conn, error) {
-	return d.dial()
+func (d runtimeCapacityProbeDialer) DialContext(ctx context.Context, _ string, _ M.Socksaddr) (net.Conn, error) {
+	return d.dial(ctx)
 }
 
 func (d runtimeCapacityProbeDialer) ListenPacket(context.Context, M.Socksaddr) (net.PacketConn, error) {
@@ -136,7 +136,10 @@ func TestURLTestDefersPureForegroundReservationAtTargetDial(t *testing.T) {
 					}
 				}()
 			}
-			dialer := runtimeCapacityProbeDialer{multiplex: test.warm, dial: func() (net.Conn, error) {
+			dialer := runtimeCapacityProbeDialer{multiplex: test.warm, dial: func(ctx context.Context) (net.Conn, error) {
+				if !IsScopedProbe(ctx) || IsBackgroundProbe(ctx) {
+					t.Error("URLTest did not retain scoped foreground attribution")
+				}
 				if first != nil {
 					conn := first
 					first = nil

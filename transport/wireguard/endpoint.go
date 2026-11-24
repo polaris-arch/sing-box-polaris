@@ -319,7 +319,7 @@ func (e *Endpoint) DialContext(ctx context.Context, network string, destination 
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	release, err := e.acquireFlow(ctx)
+	release, err := e.acquireFlow(ctx, false)
 	if err != nil {
 		return nil, err
 	}
@@ -341,7 +341,7 @@ func (e *Endpoint) ListenPacket(ctx context.Context, destination M.Socksaddr) (n
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	release, err := e.acquireFlow(ctx)
+	release, err := e.acquireFlow(ctx, false)
 	if err != nil {
 		return nil, err
 	}
@@ -357,7 +357,7 @@ func (e *Endpoint) ListenPacket(ctx context.Context, destination M.Socksaddr) (n
 }
 
 func (e *Endpoint) SetIdle(idle bool) {
-	if err := e.lockState(e.options.Context); err != nil {
+	if err := e.lockState(e.options.Context, false); err != nil {
 		return
 	}
 	wgDevice := e.device.Load()
@@ -394,7 +394,7 @@ func (e *Endpoint) resume(ctx context.Context) error {
 	if !e.suspended.Load() && e.probe.Load() == nil && !e.suspended.Load() {
 		return nil
 	}
-	if err := e.lockState(ctx); err != nil {
+	if err := e.lockState(ctx, false); err != nil {
 		return err
 	}
 	defer e.stateAccess.Unlock()
