@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/sagernet/sing-box/adapter"
+	"github.com/sagernet/sing-box/common/srs"
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/option"
 	R "github.com/sagernet/sing-box/route/rule"
@@ -184,15 +185,52 @@ func TestRuntimeRemoteSourceScheduledReuseDoesNotRedownloadNonDueSource(t *testi
 }
 
 func TestRuntimeRemoteSourceLimitClosesOriginalBody(t *testing.T) {
-	var closed atomic.Bool
-	transport := runtimeSourceTestTransport(func(*http.Request) (*http.Response, error) {
-		return &http.Response{StatusCode: 200, Body: &runtimeSourceTestBody{Reader: strings.NewReader("unused"), closed: &closed}, ContentLength: runtimeSourceByteLimit + 1}, nil
-	})
-	if _, err := runtimeDownloadSource(context.Background(), "https://rules.example/sites.json", transport); err == nil {
-		t.Fatal("oversize accepted")
-	}
-	if !closed.Load() {
-		t.Fatal("oversize original body leaked")
+	const content = `{"version":3,"rules":[]}`
+	for _, test := range []struct {
+		name          string
+		inputLimit    int64
+		contentLength int64
+		wantRead      int
+		wantError     bool
+	}{
+		{"managed maximum", 0, runtimeSourceByteLimit + 1, 0, true},
+		{"configured above managed maximum", runtimeSourceByteLimit + 2, runtimeSourceByteLimit + 1, 0, true},
+		{"configured maximum with length", 4, int64(len(content)), 0, true},
+		{"configured maximum without length", 4, -1, 5, true},
+		{"exact length", int64(len(content)), -1, len(content), false},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			options := runtimeRemoteTestOptions()
+			if test.inputLimit > 0 {
+				options.Route.RuleSet[0].ResourceLimits = &option.RuleSetResourceLimits{InputBytes: test.inputLimit}
+			}
+			digest := runtimeRemoteTestDigest(t, options)
+			var closed atomic.Bool
+			body := strings.NewReader(content)
+			transport := runtimeSourceTestTransport(func(*http.Request) (*http.Response, error) {
+				return &http.Response{StatusCode: 200, Body: &runtimeSourceTestBody{Reader: body, closed: &closed}, ContentLength: test.contentLength}, nil
+			})
+			session := runtimeRemoteTestSession(digest, transport, func() error { return nil })
+			batch, err := runtimePrepareRemoteSources(context.Background(), options, digest, session)
+			if test.wantError {
+				if batch != nil || !errors.Is(err, srs.ErrResourceLimit) {
+					t.Fatalf("oversize response did not fail the batch: %v", err)
+				}
+			} else if len(batch) != 1 || err != nil {
+				t.Fatalf("exact limit did not admit the response: %v", err)
+			}
+			var configured runtimeRemoteSourceInputLimitError
+			wantConfigured := test.wantError && test.inputLimit > 0 && test.inputLimit < runtimeSourceByteLimit
+			if errors.As(err, &configured) != wantConfigured || (wantConfigured && configured != 0) {
+				t.Fatalf("wrong source limit classification: %v", err)
+			}
+			if read := len(content) - body.Len(); read != test.wantRead {
+				t.Fatalf("read %d bytes, want %d", read, test.wantRead)
+			}
+			if !closed.Load() {
+				t.Fatal("original response body leaked")
+			}
+		})
 	}
 }
 
@@ -225,7 +263,7 @@ func TestRuntimeRemoteSourceReadFailureStillClosesBody(t *testing.T) {
 	transport := runtimeSourceTestTransport(func(*http.Request) (*http.Response, error) {
 		return &http.Response{StatusCode: 200, Body: &runtimeSourceTestBody{Reader: runtimeSourceReadFailure{}, closed: &closed}}, nil
 	})
-	content, err := runtimeDownloadSource(context.Background(), "https://rules.example/sites.json", transport)
+	content, err := runtimeDownloadSource(context.Background(), "https://rules.example/sites.json", transport, runtimeSourceByteLimit)
 	if err == nil || content != nil || !closed.Load() {
 		t.Fatal("failed read lost original body ownership")
 	}

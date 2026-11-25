@@ -286,7 +286,7 @@ func newRuntimeBox(options Options, scope *adapter.Scope, factory log.Factory, c
 	}
 	frozen, sources, _, sourceErrors := runtimeSnapshotSources(ctx, ctx, options.Options, initialRemote)
 	if len(sourceErrors) != 0 {
-		return nil, errors.New("initial runtime source preparation failed")
+		return nil, errRuntimeInitialSourcePreparation
 	}
 	coordinator.canonical = canonical
 	coordinator.options = frozen

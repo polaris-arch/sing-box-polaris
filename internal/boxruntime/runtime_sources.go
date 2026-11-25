@@ -7,7 +7,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"path/filepath"
@@ -24,6 +23,8 @@ import (
 
 const runtimeSourceByteLimit = 16 << 20
 
+var errRuntimeInitialSourcePreparation = errors.New("initial runtime source preparation failed")
+
 type runtimeSourceSnapshot struct {
 	identity                 string
 	path                     string
@@ -35,11 +36,18 @@ type runtimeSourceSnapshot struct {
 	updateInterval           time.Duration
 }
 
-func runtimeReadSource(ctx context.Context, path string) ([]byte, error) {
+func runtimeSourceInputLimit(limits *option.RuleSetResourceLimits) int64 {
+	if limits != nil && limits.InputBytes > 0 {
+		return min(runtimeSourceByteLimit, limits.InputBytes)
+	}
+	return runtimeSourceByteLimit
+}
+
+func runtimeReadSource(ctx context.Context, path string, inputLimit int64) ([]byte, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	content, err := srs.ReadFile(ctx, path, runtimeSourceByteLimit)
+	content, err := srs.ReadFile(ctx, path, inputLimit)
 	if err != nil {
 		return nil, err
 	}
@@ -74,6 +82,7 @@ func runtimeSnapshotSources(request context.Context, registry context.Context, o
 		if err := request.Err(); err != nil {
 			return options, nil, "", []RuntimePlanError{{Code: "CANCELED", Path: "route.rule_set"}}
 		}
+		inputLimit := runtimeSourceInputLimit(source.ResourceLimits)
 		for _, tag := range source.Tag {
 			identityBytes, err := json.Marshal(source)
 			if err != nil {
@@ -97,7 +106,7 @@ func runtimeSnapshotSources(request context.Context, registry context.Context, o
 				}
 				// The read retains registry filesystem bindings and request cancellation
 				// is checked before/after; no successful resource lifetime uses request.
-				content, err = runtimeReadSource(registry, path)
+				content, err = runtimeReadSource(registry, path, inputLimit)
 			case C.RuleSetTypeRemote:
 				if snapshot, ok := trusted[identity]; ok {
 					if snapshot.identity != identity || snapshot.digest != runtimeDigest(snapshot.content) || snapshot.remoteURL != strings.ReplaceAll(source.RemoteOptions.URL, C.RuleSetTagPlaceholder, tag) || snapshot.candidateDigest != candidateDigest || snapshot.downloadDependencyDigest == "" {
@@ -111,7 +120,11 @@ func runtimeSnapshotSources(request context.Context, registry context.Context, o
 				err = fmt.Errorf("unsupported source format")
 			}
 			if err != nil {
-				return options, nil, "", []RuntimePlanError{{Code: "SOURCE_READ_FAILED", Path: fmt.Sprintf("route.rule_set[%d]", i)}}
+				code := "SOURCE_READ_FAILED"
+				if inputLimit < runtimeSourceByteLimit && errors.Is(err, srs.ErrResourceLimit) {
+					code = "INVALID_SOURCE"
+				}
+				return options, nil, "", []RuntimePlanError{{Code: code, Path: fmt.Sprintf("route.rule_set[%d]", i)}}
 			}
 			if request.Err() != nil {
 				return options, nil, "", []RuntimePlanError{{Code: "CANCELED", Path: "route.rule_set"}}
@@ -186,11 +199,12 @@ func runtimeCheckSources(ctx context.Context, snapshots []runtimeSourceSnapshot)
 		if snapshot.path == "" {
 			continue
 		}
-		content, err := runtimeReadSource(ctx, snapshot.path)
-		if err != nil {
+		// A larger file cannot match the frozen snapshot.
+		content, err := runtimeReadSource(ctx, snapshot.path, int64(max(1, len(snapshot.content))))
+		if err != nil && !errors.Is(err, srs.ErrResourceLimit) {
 			return fmt.Errorf("source unavailable before commit")
 		}
-		if runtimeDigest(content) != snapshot.digest {
+		if err != nil || runtimeDigest(content) != snapshot.digest {
 			return fmt.Errorf("source revision changed before commit")
 		}
 	}
@@ -214,6 +228,14 @@ type runtimeSourceDownloadSession struct {
 	closeAndWait     func() error
 	previous         map[string]runtimeSourceSnapshot
 }
+
+type runtimeRemoteSourceInputLimitError int
+
+func (runtimeRemoteSourceInputLimitError) Error() string {
+	return "configured remote source input limit exceeded"
+}
+
+func (runtimeRemoteSourceInputLimitError) Unwrap() error { return srs.ErrResourceLimit }
 
 // runtimePrepareRemoteSources keeps source authority transaction-owned. The
 // returned private batch is consumed once by the same Plan, whose dependency
@@ -252,7 +274,7 @@ func runtimePrepareRemoteSources(request context.Context, options option.Options
 		return result, nil
 	}
 	total := 0
-	for _, source := range options.Route.RuleSet {
+	for i, source := range options.Route.RuleSet {
 		if source.Type != C.RuleSetTypeRemote {
 			continue
 		}
@@ -260,6 +282,7 @@ func runtimePrepareRemoteSources(request context.Context, options option.Options
 		if err != nil {
 			return nil, errors.New("remote source identity is invalid")
 		}
+		inputLimit := runtimeSourceInputLimit(source.ResourceLimits)
 		for _, tag := range source.Tag {
 			if len(result) >= 256 {
 				return nil, errors.New("remote source count exceeds budget")
@@ -294,9 +317,12 @@ func runtimePrepareRemoteSources(request context.Context, options option.Options
 			// Timeout requests cancellation; synchronous return/body close and the
 			// session join, not the timeout, establish actual worker completion.
 			fetchContext, fetchCancel := context.WithTimeout(ctx, C.RuleSetDownloadTimeout)
-			content, err := runtimeDownloadSource(fetchContext, address, transport)
+			content, err := runtimeDownloadSource(fetchContext, address, transport, inputLimit)
 			fetchCancel()
 			if err != nil {
+				if inputLimit < runtimeSourceByteLimit && errors.Is(err, srs.ErrResourceLimit) && !errors.Is(err, errRuntimeCleanupIncomplete) {
+					return nil, runtimeRemoteSourceInputLimitError(i)
+				}
 				return nil, err
 			}
 			total += len(content)
@@ -316,7 +342,7 @@ func runtimePrepareRemoteSources(request context.Context, options option.Options
 	return result, nil
 }
 
-func runtimeDownloadSource(ctx context.Context, address string, transport http.RoundTripper) (content []byte, resultErr error) {
+func runtimeDownloadSource(ctx context.Context, address string, transport http.RoundTripper, inputLimit int64) (content []byte, resultErr error) {
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, address, nil)
 	if err != nil {
 		return nil, errors.New("remote source request is invalid")
@@ -342,15 +368,15 @@ func runtimeDownloadSource(ctx context.Context, address string, transport http.R
 	if response.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("remote source returned HTTP status %d", response.StatusCode)
 	}
-	if response.ContentLength > runtimeSourceByteLimit {
-		return nil, errors.New("remote source exceeds bounded size")
+	if response.ContentLength > inputLimit {
+		return nil, srs.ErrResourceLimit
 	}
-	content, err = io.ReadAll(io.LimitReader(response.Body, runtimeSourceByteLimit+1))
+	content, err = srs.ReadContent(response.Body, inputLimit)
 	if err != nil {
+		if errors.Is(err, srs.ErrResourceLimit) {
+			return nil, err
+		}
 		return nil, errors.New("remote source body read failed")
-	}
-	if len(content) > runtimeSourceByteLimit {
-		return nil, errors.New("remote source exceeds bounded size")
 	}
 	if err = ctx.Err(); err != nil {
 		return nil, err
@@ -391,6 +417,7 @@ func runtimeInitialRemoteSources(ctx context.Context, options option.Options, ca
 		if err != nil {
 			return nil, errors.New("remote source identity is invalid")
 		}
+		inputLimit := runtimeSourceInputLimit(source.ResourceLimits)
 		for _, tag := range source.Tag {
 			if len(result) >= 256 {
 				return nil, errors.New("remote source count exceeds budget")
@@ -404,8 +431,11 @@ func runtimeInitialRemoteSources(ctx context.Context, options option.Options, ca
 			if err != nil {
 				return nil, errors.New("remote initial path is invalid")
 			}
-			content, err := runtimeReadSource(ctx, path)
+			content, err := runtimeReadSource(ctx, path, inputLimit)
 			if err != nil {
+				if inputLimit < runtimeSourceByteLimit && errors.Is(err, srs.ErrResourceLimit) {
+					return nil, errRuntimeInitialSourcePreparation
+				}
 				return nil, errors.New("remote initial source is unavailable")
 			}
 			total += len(content)

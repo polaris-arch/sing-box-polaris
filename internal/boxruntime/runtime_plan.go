@@ -301,7 +301,12 @@ func (s *Box) planRuntimeConfigInternal(ctx context.Context, actor string, expec
 		var downloadErr error
 		trusted, downloadErr = runtimePrepareRemoteSources(ctx, options, plan.CandidateDigest, session)
 		if downloadErr != nil {
-			plan.Errors = []RuntimePlanError{{Code: "SOURCE_PREPARATION_FAILED", Path: "route.rule_set", Message: "source bytes could not be prepared; active configuration unchanged"}}
+			var inputLimit runtimeRemoteSourceInputLimitError
+			if errors.As(downloadErr, &inputLimit) && !errors.Is(downloadErr, errRuntimeCleanupIncomplete) {
+				plan.Errors = []RuntimePlanError{{Code: "INVALID_SOURCE", Path: fmt.Sprintf("route.rule_set[%d]", inputLimit)}}
+			} else {
+				plan.Errors = []RuntimePlanError{{Code: "SOURCE_PREPARATION_FAILED", Path: "route.rule_set", Message: "source bytes could not be prepared; active configuration unchanged"}}
+			}
 			return cloneRuntimePlan(plan), nil
 		}
 	}
