@@ -1,24 +1,19 @@
 # Polaris kernel and platform-library asset contract
 
-The current immutable `v1.15.0-alpha.12.polaris.1` release remains available while
-its active consumer migrates. Historical alpha.11 role tags/receipts retain their
-original identity. Candidate source review or a historical compile does not
-create a new published tag, index or mobile artifact.
-
-This wider capability inventory includes the existing Android/Apple build helper
-and non-Naive presets. Their source implementation is distinct from the current
-desktop/OpenWrt publisher scope and does not certify all native slices or devices.
+The publisher takes its desktop workflow inputs from the
+[checked producer scope](ci/publisher-upstream-scope.json). Historical tags,
+archives, and receipts retain their original identities. The Android/Apple build
+helper and the non-Naive presets are source capabilities. Mobile builds and
+device validation use the App's separate verification flows.
 See [fork maintenance](POLARIS_FORK_MAINTENANCE.md) for the original functionality,
 released-baseline policy and invalidated receipt responsibilities.
 
 ## gVisor and stack selection
 
 The upstream `sing-tun` baseline is `5c2edb183cc92eb190d41c04dedfa5519ca3e78c`.
-The product uses the complete source-owned local replacement under
-`third_party/sing-tun`, including the Windows DNS changes. Its actual tree,
-file inventory and source patch are pinned by
-`release/dependency-sources/sing-tun-replacement.json`; the original module h1
-does not authenticate modified replacement bytes.
+The product's `go.mod` selects the local replacement under `third_party/sing-tun`,
+including the Windows DNS changes. The product source commit identifies the
+exact replacement tree.
 `stack.go` selects `NewGo` for the empty stack and `go`; explicit `system`, `mixed`
 and `gvisor` select their respective implementations. Compiling `with_gvisor`
 provides a capability and does not change that default or the App's configuration.
@@ -29,13 +24,10 @@ have native gVisor TUN adapters, guarded by `with_gvisor`. Go's Android build al
 selects Linux files; iOS also selects Darwin files.
 
 All Polaris CLI release presets and the Android/Apple libbox build helper include
-`with_gvisor`. The non-Naive `DEFAULT_BUILD_TAGS_OTHERS` also includes `with_gvisor` and does
-not require Cronet. Its actual `build.yml` consumers include Linux 386 (SSE2 and
-softfloat), ARM5/6/7, MIPS/MIPSLE/MIPS64/MIPS64LE variants, s390x, ppc64le,
-riscv64, loong64, Android four architectures, Windows 386 and Windows 7 legacy
-amd64/386 rows, plus the legacy macOS amd64 row (with USBIP removed). Go 1.25.5
-Netstack/TUN package compilation is distinct from a complete CLI build or legacy
-OS runtime acceptance; the custom legacy Go toolchains remain separate gates.
+`with_gvisor`. The source preset `DEFAULT_BUILD_TAGS_OTHERS` also includes
+`with_gvisor` and omits Cronet. The wider and legacy upstream rows belong to the
+pinned upstream matrix. The Polaris release workflow uses the published CLI
+matrix below.
 Windows retains `with_purego`, independently: Cronet's MSVC DLL
 cannot be linked by the Go MinGW CGO path at this dependency revision. Netstack's
 32-bit implementations must be evaluated by compilation; Google's runsc host
@@ -43,20 +35,22 @@ restrictions do not establish restrictions of the SagerNet Netstack dependency.
 The constructor regression opens no system TUN and does not prove packet routing
 through a real Wintun, VpnService or Network Extension.
 
-## Proposed actual asset matrix
+## Published CLI matrix
 
-The existing App consumes Linux amd64, Windows amd64, macOS amd64/arm64. ARM64
-Linux/Windows are additional fork CLI candidates and require their own native
-validation. Dependency support is not consumer support. Each row below is a
-candidate until the native producer succeeds on the frozen source SHA.
+The [12.42 prerelease](https://github.com/polaris-arch/sing-box-polaris/releases/tag/v1.15.0-polaris-alpha.12.42)
+contains these five desktop archives. In the filenames, `<version>` is the
+archive version, for example `1.15.0-alpha.12.42`.
 
-| Artifact | OS / architecture | Cronet integration | Proposed external filename |
-|---|---|---|---|
-| CLI | Linux amd64, arm64 | `with_purego`, sibling `libcronet.so` | `polaris-box-<version>-linux-<arch>.tar.gz` |
-| CLI | Windows amd64, arm64 | `with_purego`, sibling `libcronet.dll` | `polaris-box-<version>-windows-<arch>.zip` |
-| CLI | macOS amd64, arm64 | CGO links the matching static `libcronet.a` | `polaris-box-<version>-darwin-<arch>.tar.gz` |
-| Go/JNI library | Android arm, arm64, 386, amd64 | matching static `.a` linked into AAR `jni/<ABI>/libbox.so` | `polaris-box-<version>-android-<arch>.aar` |
-| Go/ObjC library | iOS arm64 device; arm64/amd64 simulator | matching static `.a` linked into `Libbox.framework` | `polaris-box-<version>-apple.xcframework.zip` |
+| OS / architecture | Cronet integration | Public filename |
+|---|---|---|
+| Linux amd64, arm64 | glibc, `with_purego`, sibling `libcronet.so` | `sing-box-polaris-<version>-linux-<arch>.tar.gz` |
+| Windows amd64 | `with_purego`, sibling `libcronet.dll` | `sing-box-polaris-<version>-windows-amd64.zip` |
+| macOS amd64, arm64 | CGO links the matching static `libcronet.a` | `sing-box-polaris-<version>-darwin-<arch>.tar.gz` |
+
+OpenWrt `.ipk` and `.apk` packages belonged to the earlier publication matrix.
+The 12.42 fw4 acceptance applies to a separately built static CLI without Naive.
+Android AAR and Apple XCFramework inputs link the matching static Cronet
+libraries and use separate App build and verification flows.
 
 Android ABI names are `armeabi-v7a`, `arm64-v8a`, `x86`, `x86_64`. Android mobile
 libraries are not CLI executables; Apple framework slices are not macOS CLI
@@ -69,11 +63,9 @@ validation; do not promote them from dependency inventory alone. tvOS and other
 Linux architectures are outside the established Polaris delivery matrix.
 
 Keep internal `sing-box`/`sing-box.exe`, `libcronet.so`/`.dll`, JNI `libbox.so`,
-`Libbox.framework`, ObjC/Swift modules and Go module names unchanged. A CLI archive
-has one root `polaris-box-<version>-<os>-<arch>/`, containing the executable and
-required sibling shared library, `provenance.json`, `SHA256SUMS` and `licenses/`.
-A separate shared-library download, if requested, must carry the same module/raw
-byte identity and is not a substitute for a complete CLI archive.
+`Libbox.framework`, ObjC/Swift modules and Go module names unchanged. The producer
+run's native asset index records the executable and required sibling library in
+each CLI archive. The release page provides the public archive digests.
 
 ## Cronet source, ABI and operating-system limits
 
@@ -102,8 +94,9 @@ Current Darwin `.a` objects declare macOS 13, even though the dependency README
 says 12. Final native link/deployment checks must use the actual objects and cannot
 claim macOS 12 support. iOS objects declare iOS 15 with separate device/simulator
 platforms. The libbox helper already requests macOS 13 and iOS 15. Linux glibc
-builds require the actual DT_NEEDED libraries and symbol versions, not just a
-Linux label. Windows targets require validation on the actual amd64/arm64 host.
+builds require the actual DT_NEEDED libraries and symbol versions. The published
+Windows archive requires validation on an amd64 Windows host. Any future arm64
+archive would require separate validation.
 
 ## Load and package verification
 
@@ -142,11 +135,11 @@ workflow SHA/run/job, Go/gomobile/gobind, CGO, complete tags/linker flags, compi
 and effective SDK/NDK version, architecture, raw/member/final archive hashes,
 Cronet module/blob identity, native ABI/dependencies and load result. Downloaded
 NDK archive revision is not proof of the compiler selected by the helper.
-The current publisher uses root `SHA256SUMS` and `polaris-box-assets.json`
-to cover exact published assets; archive-internal provenance remains measured
-producer evidence. Historical release filenames are not new upload requirements. Mobile receipts additionally record all JNI or
-framework slice binaries and final native link evidence. Never fill unknown
-hashes from an unbuilt artifact.
+The publisher verifies the native index and inventory before attaching the
+desktop archives. GitHub records each archive digest under the unsigned
+prerelease policy in [the publication settings](ci/github-release.json).
+Mobile receipts additionally record all JNI or framework slice binaries and
+final native link evidence. Obtain digests from built artifacts.
 
 Package sing-box/Cronet Go wrapper GPL-3.0-or-later license/source instructions,
 matching Naiveproxy/Chromium BSD license texts and all required third-party
