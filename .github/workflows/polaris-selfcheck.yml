@@ -131,21 +131,7 @@ jobs:
           ref: ${{ env.SOURCE_COMMIT }}
           path: .polaris-format-source
           persist-credentials: false
-      - name: Restore pinned official formatter archive
-        uses: actions/cache@v4
-        with:
-          path: ${{ runner.temp }}/polaris-format-archive
-          key: polaris-format-linux-amd64-v2.15.0-9b7fe6a6bf6334b98decf8d86b11415ea7889afdabdd1959fdce23af2a9ebcea
-      - name: Verify and extract pinned official formatter (no product compilation)
-        run: |
-          set -euo pipefail
-          archive="$RUNNER_TEMP/polaris-format-archive/golangci-lint.tar.gz"
-          mkdir -p "$(dirname "$archive")" "$RUNNER_TEMP/polaris-format-bin"
-          if [ ! -f "$archive" ]; then
-            curl --fail --location --retry 2 --max-time 120 --output "$archive" https://github.com/golangci/golangci-lint/releases/download/v2.15.0/golangci-lint-2.15.0-linux-amd64.tar.gz
-          fi
-          printf '%s  %s\n' 9b7fe6a6bf6334b98decf8d86b11415ea7889afdabdd1959fdce23af2a9ebcea "$archive" | sha256sum -c -
-          tar -xzf "$archive" --strip-components=1 -C "$RUNNER_TEMP/polaris-format-bin" golangci-lint-2.15.0-linux-amd64/golangci-lint
+      - uses: ./.github/actions/pinned-formatter
       - name: Check owned remediation formatting before platform builds
         env:
           GOLANGCI_LINT: ${{ runner.temp }}/polaris-format-bin/golangci-lint
