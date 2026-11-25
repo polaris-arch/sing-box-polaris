@@ -157,7 +157,7 @@ message ClashModeStatus {
 
 message SubscribeConnectionsRequest {
   int64 interval = 1;
-  // Opt in to bounded native frames and an explicit end to the initial reset.
+  // Opt in to bounded frames and an explicit end to the initial reset.
   bool batchFrames = 2;
 }
 

@@ -1086,7 +1086,7 @@ func (x *ClashModeStatus) GetCurrentMode() string {
 type SubscribeConnectionsRequest struct {
 	state    protoimpl.MessageState `protogen:"open.v1"`
 	Interval int64                  `protobuf:"varint,1,opt,name=interval,proto3" json:"interval,omitempty"`
-	// Opt in to bounded native frames and an explicit end to the initial reset.
+	// Opt in to bounded frames and an explicit end to the initial reset.
 	BatchFrames   bool `protobuf:"varint,2,opt,name=batchFrames,proto3" json:"batchFrames,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

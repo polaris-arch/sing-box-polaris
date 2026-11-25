@@ -429,27 +429,31 @@ func (s *admissionSendStream[T]) Send(chunk *T) error {
 }
 
 func TestSubscribeConnectionsResetFraming(t *testing.T) {
-	manager := trafficcontrol.NewManager()
-	scope := adapter.NewScope(t.Context(), nil)
-	if err := manager.Start(adapter.StartStateInitialize, scope); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		if err := scope.Close(); err != nil {
-			t.Error(err)
-		}
-	})
-	want := make(map[string]bool)
 	wide := strings.Repeat("x", 49*1024)
-	for range 128 {
-		conn := snapshotTestConnection(t, manager, "selector", "outbound")
-		conn.Metadata().Metadata.Domain = wide
-		want[conn.Metadata().ID.String()] = false
-	}
-	service := &StartedService{
-		ctx:           t.Context(),
-		serviceStatus: &ServiceStatus{Status: ServiceStatus_STARTED},
-		instance:      &Instance{ctx: t.Context(), trafficManager: manager},
+	newService := func(t *testing.T) (*StartedService, *trafficcontrol.Manager, map[string]bool) {
+		t.Helper()
+		manager := trafficcontrol.NewManager()
+		scope := adapter.NewScope(t.Context(), nil)
+		if err := manager.Start(adapter.StartStateInitialize, scope); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() {
+			if err := scope.Close(); err != nil {
+				t.Error(err)
+			}
+		})
+		want := make(map[string]bool)
+		for range 128 {
+			conn := snapshotTestConnection(t, manager, "selector", "outbound")
+			conn.Metadata().Metadata.Domain = wide
+			want[conn.Metadata().ID.String()] = false
+		}
+		service := &StartedService{
+			ctx:           t.Context(),
+			serviceStatus: &ServiceStatus{Status: ServiceStatus_STARTED},
+			instance:      &Instance{ctx: t.Context(), trafficManager: manager},
+		}
+		return service, manager, want
 	}
 	for _, test := range []struct {
 		name  string
@@ -457,16 +461,18 @@ func TestSubscribeConnectionsResetFraming(t *testing.T) {
 		batch bool
 	}{
 		{name: "legacy_native"},
-		{name: "web", web: true, batch: true},
+		{name: "legacy_web", web: true},
+		{name: "batched_web", web: true, batch: true},
 		{name: "batched_native", batch: true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			service, manager, want := newService(t)
 			ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
 			defer cancel()
 			if test.web {
 				ctx = ContextWithBoundedConnectionEvents(ctx)
 			}
-			batchedNative := test.batch && !test.web
+			bounded := test.web || test.batch
 			got := make(map[string]bool)
 			var frames, bytes int
 			var deltaID string
@@ -479,11 +485,11 @@ func TestSubscribeConnectionsResetFraming(t *testing.T) {
 					return nil
 				}
 				size := proto.Size(frame)
-				if test.batch && size > connectionEventFrameLimit {
+				if bounded && size > connectionEventFrameLimit {
 					t.Fatalf("oversized bounded frame: %d bytes", size)
 				}
 				if frame.GetSnapshotComplete() {
-					if !batchedNative || frame.Reset_ || len(frame.Events) != 0 || !maps.Equal(got, want) {
+					if !test.batch || frame.Reset_ || len(frame.Events) != 0 || !maps.Equal(got, want) {
 						t.Fatal("invalid or premature snapshot completion")
 					}
 					deltaID = snapshotTestConnection(t, manager, "new").Metadata().ID.String()
@@ -491,7 +497,7 @@ func TestSubscribeConnectionsResetFraming(t *testing.T) {
 				}
 				frames++
 				bytes += size
-				if frame.Reset_ != (frames == 1) || (frame.SnapshotComplete != nil) != batchedNative {
+				if frame.Reset_ != (frames == 1) || (frame.SnapshotComplete != nil) != test.batch {
 					t.Fatalf("frame=%d reset=%t invalid snapshot framing", frames, frame.Reset_)
 				}
 				for _, event := range frame.Events {
@@ -500,7 +506,7 @@ func TestSubscribeConnectionsResetFraming(t *testing.T) {
 					}
 					got[event.Id] = event.Connection.ClosedAt != 0
 				}
-				if !batchedNative && len(got) >= len(want) {
+				if !test.batch && len(got) >= len(want) {
 					cancel()
 				}
 				return nil
@@ -508,12 +514,13 @@ func TestSubscribeConnectionsResetFraming(t *testing.T) {
 			if err := service.SubscribeConnections(&SubscribeConnectionsRequest{BatchFrames: test.batch}, stream); !errors.Is(err, context.Canceled) {
 				t.Fatalf("frames=%d records=%d unexpected stream result: %v", frames, len(got), err)
 			}
-			if !maps.Equal(got, want) || (test.batch != (frames > 1)) || bytes < 6*1024*1024 {
+			if !maps.Equal(got, want) || (bounded != (frames > 1)) || bytes < 6*1024*1024 {
 				t.Fatalf("frames=%d records=%d bytes=%d", frames, len(got), bytes)
 			}
 		})
 	}
 	t.Run("oversized_batched_native", func(t *testing.T) {
+		service, manager, _ := newService(t)
 		for range ConnectionEventSnapshotLimit / len(wide) {
 			snapshotTestConnection(t, manager, "outbound").Metadata().Metadata.Domain = wide
 		}
@@ -535,14 +542,33 @@ func TestSubscribeConnectionsResetFraming(t *testing.T) {
 			t.Fatalf("sent %d snapshot bytes and returned %v", sentBytes, err)
 		}
 	})
-	t.Run("retired_oversized_snapshot", func(t *testing.T) {
+	t.Run("snapshot_budget", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(t.Context())
-		frame := &ConnectionEvents{SnapshotComplete: proto.Bool(false), Events: []*ConnectionEvent{{Id: "retired"}}}
+		defer cancel()
+		frame := &ConnectionEvents{Reset_: true, SnapshotComplete: proto.Bool(false), Events: []*ConnectionEvent{{Id: "initial"}}}
+		size := proto.Size(frame)
+		var writes int
 		batch := connectionEventBatch{
-			server:       &admissionSendStream[ConnectionEvents]{ctx: ctx},
+			server: &admissionSendStream[ConnectionEvents]{ctx: ctx, send: func(frame *ConnectionEvents) error {
+				writes++
+				if writes != 1 || !frame.Reset_ || frame.SnapshotComplete == nil || frame.GetSnapshotComplete() {
+					t.Fatal("sent an unexpected frame at the snapshot budget")
+				}
+				return nil
+			}},
 			frame:        frame,
-			size:         proto.Size(frame),
-			snapshotSize: ConnectionEventSnapshotLimit,
+			limit:        connectionEventFrameLimit,
+			size:         size,
+			snapshotSize: ConnectionEventSnapshotLimit - size,
+		}
+		if err := batch.send(); err != nil || writes != 1 {
+			t.Fatalf("exact-budget snapshot made %d writes and returned %v", writes, err)
+		}
+		if err := batch.add(&ConnectionEvent{Id: "over-budget"}); err != nil {
+			t.Fatal(err)
+		}
+		if err := batch.send(); !errors.Is(err, ErrConnectionEventSnapshotTooLarge) {
+			t.Fatalf("oversized snapshot returned %v", err)
 		}
 		cancel()
 		if err := batch.send(); !errors.Is(err, context.Canceled) {

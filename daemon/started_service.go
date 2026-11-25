@@ -1105,11 +1105,11 @@ func (s *StartedService) SubscribeConnections(request *SubscribeConnectionsReque
 		instance:     boxService,
 	}
 	web := server.Context().Value(boundedConnectionEventsKey{}) == true
-	batchedNative := request.GetBatchFrames() && !web
-	if batchedNative {
+	batchedSnapshot := request.GetBatchFrames()
+	if batchedSnapshot {
 		batch.frame.SnapshotComplete = proto.Bool(false)
 	}
-	if web || batchedNative {
+	if web || batchedSnapshot {
 		batch.limit = connectionEventFrameLimit
 		batch.size = proto.Size(batch.frame)
 	}
@@ -1119,7 +1119,7 @@ func (s *StartedService) SubscribeConnections(request *SubscribeConnectionsReque
 	if err := batch.send(); err != nil {
 		return err
 	}
-	if batchedNative {
+	if batchedSnapshot {
 		if err := batch.sendFrame(&ConnectionEvents{SnapshotComplete: proto.Bool(true)}); err != nil {
 			return err
 		}
