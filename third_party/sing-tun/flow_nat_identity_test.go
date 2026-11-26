@@ -3,12 +3,35 @@ package tun
 import (
  "net/netip"
  "testing"
+ "time"
 
  "github.com/sagernet/sing-tun/gtcpip/header"
 )
 
 type natIdentityPort struct { *ownershipPort; physical Port }
 func (p *natIdentityPort) NATIdentity() Port { return p.physical }
+
+// Runtime endpoints return themselves from UpstreamPort without implementing
+// selector capabilities; the lookup must stop there instead of spinning.
+type selfUpstreamPort struct{ *ownershipPort }
+func (p *selfUpstreamPort) UpstreamPort() any { return p }
+
+func TestSelfUpstreamPortStopsCapabilityLookup(t *testing.T) {
+ port:=&selfUpstreamPort{&ownershipPort{}}
+ n:=acquirePortNAT(port);defer releasePortNAT(n)
+ d,_:=ownershipDispatcher(&ownershipHandler{},&ownershipWriteback{});defer d.Close()
+ protocol:=uint8(header.TCPProtocolNumber)
+ done:=make(chan bool,1)
+ go func(){
+  reservation,ok:=n.reserve(d,protocol,netip.MustParseAddr("192.0.2.1"),netip.MustParseAddrPort("198.18.0.1:1234"),netip.MustParseAddrPort("203.0.113.1:443"))
+  if ok{n.cancelReservation(protocol,reservation)}
+  done<-ok
+ }()
+ select{
+ case ok:=<-done:if !ok{t.Fatal("reservation failed")}
+ case <-time.After(5*time.Second):t.Fatal("capability lookup did not stop at self-referencing upstream port")
+ }
+}
 
 func TestPhysicalNATIdentitySharesNamespace(t *testing.T) {
  physical:=&ownershipPort{}

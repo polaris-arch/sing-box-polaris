@@ -104,7 +104,10 @@ func portCapability[T any](port any) (T, bool) {
 		if !isWrapper {
 			break
 		}
-		port = wrapper.UpstreamPort()
+		// A runtime endpoint names itself as its upstream to expose no child.
+		if port = wrapper.UpstreamPort(); port == wrapper {
+			break
+		}
 	}
 	var zero T
 	return zero, false
