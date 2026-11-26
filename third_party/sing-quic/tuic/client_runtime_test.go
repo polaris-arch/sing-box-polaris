@@ -2,9 +2,66 @@ package tuic
 
 import (
  "context"
+ "crypto/tls"
+ "crypto/x509"
+ "net/http/httptest"
+ "sync/atomic"
  "testing"
  "time"
+
+ "github.com/sagernet/quic-go"
 )
+
+func TestClientStreamCloseAfterPeerReset(t *testing.T) {
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancel()
+	fixture := httptest.NewTLSServer(nil)
+	fixture.Close()
+	protocols := []string{"tuic-test"}
+	fixture.TLS.NextProtos = protocols
+	listener, err := quic.ListenAddr("127.0.0.1:0", fixture.TLS, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer listener.Close()
+	certs := x509.NewCertPool()
+	certs.AddCert(fixture.Certificate())
+	client, err := quic.DialAddr(ctx, listener.Addr().String(), &tls.Config{ServerName: "127.0.0.1", RootCAs: certs, NextProtos: protocols}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer client.CloseWithError(0, "")
+	server, err := listener.Accept(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer server.CloseWithError(0, "")
+	stream, err := client.OpenStreamSync(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := stream.Write([]byte("x")); err != nil {
+		t.Fatal(err)
+	}
+	peer, err := server.AcceptStream(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Any peer STOP_SENDING code completes this stream's send side.
+	peer.CancelRead(42)
+	select {
+	case <-stream.Context().Done():
+	case <-ctx.Done():
+		t.Fatal("peer reset did not reach the client")
+	}
+	owner := &clientQUICConnection{streams: 1, closeIdle: new(atomic.Bool)}
+	if err := (&clientConn{Stream: stream, parent: owner}).Close(); err != nil {
+		t.Fatalf("Close after this stream's peer reset returned %v", err)
+	}
+	if owner.streams != 0 {
+		t.Fatalf("client owns %d streams after close", owner.streams)
+	}
+}
 
 func TestClientRuntimeJoinsActualWorkerAndRejectsNewWork(t *testing.T){
  c:=&Client{ctx:context.Background()};c.initRuntime()
