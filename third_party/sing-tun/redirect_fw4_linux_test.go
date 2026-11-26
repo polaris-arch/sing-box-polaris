@@ -17,13 +17,17 @@ import (
 )
 
 func TestFW4ExclusiveInclude(t *testing.T) {
-	for _, kind := range []string{"file", "symlink", "new"} {
+	// Only an identical regular file is a killed instance's include to adopt.
+	for _, kind := range []string{"file", "symlink", "new", "identical", "identical-symlink"} {
 		t.Run(kind, func(t *testing.T) {
 			dir := t.TempDir()
 			path := filepath.Join(dir, "include.nft")
 			original := []byte("external rules")
+			if strings.HasPrefix(kind, "identical") {
+				original = []byte("new rules")
+			}
 			target := path
-			if kind == "symlink" {
+			if strings.HasSuffix(kind, "symlink") {
 				target = filepath.Join(dir, "external.nft")
 				if err := os.Symlink(target, path); err != nil {
 					t.Fatal(err)
@@ -36,7 +40,7 @@ func TestFW4ExclusiveInclude(t *testing.T) {
 			}
 			r := &autoRedirect{}
 			err := r.createFW4Rules(path, []byte("new rules"))
-			if kind == "new" {
+			if kind == "new" || kind == "identical" {
 				if err != nil || r.fw4RulesPath != path {
 					t.Fatalf("err=%v receipt=%q", err, r.fw4RulesPath)
 				}

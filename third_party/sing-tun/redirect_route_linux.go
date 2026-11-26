@@ -33,8 +33,11 @@ func (r *autoRedirect) setupRedirectRoutes() (err error) {
 	if err = r.cleanupRedirectRoutesLocked(); err != nil {
 		return err
 	}
-	// Priority/table discovery is not ownership. Never sweep another live
-	// instance's rules as a substitute for explicit crash recovery.
+	// Priority/table discovery is not ownership. Crash recovery takes only
+	// tagged rules, after the exclusive backend lease is held: the owner nft
+	// table, or the bound NFQUEUE whose stale chains were reclaimed.
+	r.cleanupStaleRouteRules(redirectRouteRulePriority, 0)
+	r.cleanupStaleRouteRules(redirectRouteRulePriority, r.tunOptions.AutoRedirectTProxyMark)
 	r.redirectRouteTableIndex = tableIndex
 	defer func() {
 		if err != nil {
@@ -386,7 +389,7 @@ func (r *autoRedirect) cleanupStaleRouteRules(priority int, mark uint32) {
 		}
 		for index := range rules {
 			staleRule := &rules[index]
-			if staleRule.Mark != mark || staleRule.Table <= 255 {
+			if staleRule.Mark != mark || staleRule.Table <= 255 || staleRule.Protocol != ownedRuleProtocol {
 				continue
 			}
 			flushRouteTable(staleRule.Table)

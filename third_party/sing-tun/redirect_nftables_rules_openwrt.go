@@ -3,6 +3,7 @@
 package tun
 
 import (
+	"bytes"
 	"errors"
 	"os"
 	"os/exec"
@@ -92,6 +93,15 @@ func (r *autoRedirect) createFW4Rules(path string, content []byte) error {
 	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
 	if err != nil {
 		if os.IsExist(err) {
+			// A killed instance leaves its include behind. The caller holds the
+			// exclusive owner table and the content is fixed by the table and TUN
+			// names, so only an identical regular file is adopted as the receipt.
+			if info, statErr := os.Lstat(path); statErr == nil && info.Mode().IsRegular() {
+				if existing, readErr := os.ReadFile(path); readErr == nil && bytes.Equal(existing, content) {
+					r.fw4RulesPath = path
+					return nil
+				}
+			}
 			return E.Cause(err, "fw4 include already exists; preserve it and resolve its ownership before retrying")
 		}
 		return err
