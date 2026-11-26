@@ -40,6 +40,7 @@ var moduleRunners = map[string]moduleRunner{
 	"third_party/sing-quic":       {"github.com/sagernet/sing-quic", "sing-quic-selected"},
 	"third_party/go-nat":          {"github.com/libp2p/go-nat", "go-nat-selected"},
 	"third_party/google-nftables": {"github.com/google/nftables", "google-nftables-selected"},
+	"third_party/netlink":         {"github.com/sagernet/netlink", "netlink-selected"},
 	"third_party/tailscale":       {tailscaleModule, "tailscale-selected"},
 	"third_party/wireguard-go":    {"github.com/sagernet/wireguard-go", "wireguard-go-selected"},
 	"third_party/tfo-go":          {"github.com/database64128/tfo-go/v2", "tfo-go-selected"},

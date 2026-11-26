@@ -179,6 +179,7 @@ func (r *autoRedirect) addOwnedRedirectRoute(route *netlink.Route, add func(*net
 }
 
 func (r *autoRedirect) addOwnedRedirectRule(rule *netlink.Rule) error {
+	rule.Protocol = ownedRuleProtocol
 	if err := netlink.RuleAdd(rule); err != nil {
 		return err
 	}

@@ -1,0 +1,636 @@
+{
+  "module": "github.com/sagernet/netlink",
+  "version": "v0.0.0-20260814022025-64455d367bbf",
+  "repository": "https://github.com/sagernet/netlink",
+  "commit": "64455d367bbf83b8d61570372bd30d485bdce2cb",
+  "moduleH1": "h1:b/3rm+KvxzuYRcnMdLq/hmcqX6/2B8k24l6SDHL2Piw=",
+  "goModH1": "h1:xLnfdiJbSp8rNqYEdIW/6eDO4mVoogml14Bh2hSiFpM=",
+  "scope": "Complete official module archive, including original LICENSE, module metadata, tests and tooling. No copied cache or git directory. Routing rules gain one optional attribute; no other request or dump field changes.",
+  "localChanges": [
+    "rule.go Rule: add Protocol uint8 (FRA_PROTOCOL, the rule originator), with the same field name, type, send condition and readback as vishvananda/netlink v1.3.1.",
+    "rule_linux.go ruleHandle: send FRA_PROTOCOL when Protocol is nonzero; RuleListFiltered: read FRA_PROTOCOL back into Protocol. Rules without a protocol produce byte-identical requests."
+  ],
+  "removalCondition": "Remove both root and sing-tun local replace directives and this source copy when an official sagernet/netlink version sends and reads FRA_PROTOCOL through Rule, keeps RuleListFiltered leaving Type and MarkSet unset (bypass and VPNService readback comparisons depend on it), and passes the sing-tun rule ownership tests plus the Linux crash-residue KVM regression.",
+  "upstreamFiles": [
+    {
+      "path": ".github/scripts/modprobe.sh",
+      "bytes": 246,
+      "sha256": "047d0d5dfc98625a882bda502e1c8cfb9fadb6527630526d1881c16b932cc042"
+    },
+    {
+      "path": ".gitignore",
+      "bytes": 7,
+      "sha256": "0a44bd2b8e7c35cfad385b8f440c3ec6ebcf8bd10248cf5925d2ceacc92f8078"
+    },
+    {
+      "path": "CHANGELOG.md",
+      "bytes": 59,
+      "sha256": "c071ddfa04c375579faa3112e6793414476e77d69369078dd0f0a37fad1cfea9"
+    },
+    {
+      "path": "LICENSE",
+      "bytes": 10796,
+      "sha256": "04cf148229e562c643203d1ee8c43aae2022e5130e95ceb8ba8357a27c1a9abe"
+    },
+    {
+      "path": "Makefile",
+      "bytes": 755,
+      "sha256": "03c33ae5a505144e27aa512500f8a151d38dcee984bc862bba1141e959995871"
+    },
+    {
+      "path": "README.md",
+      "bytes": 80,
+      "sha256": "3289fdb7bc8a25908b9e4fdb5ba9cd393b3a5e7135e6cdabd4cd17a472dccf37"
+    },
+    {
+      "path": "addr.go",
+      "bytes": 1308,
+      "sha256": "6a2f0e158fc9c8bc39b017969dd962d49c0ff75ddf0ebff717bc67f43f90ebfa"
+    },
+    {
+      "path": "addr_linux.go",
+      "bytes": 11803,
+      "sha256": "3ef9988fa884c9d624bda12b07d8317afdcfe40758b88b5c9643cc944559c706"
+    },
+    {
+      "path": "addr_test.go",
+      "bytes": 6754,
+      "sha256": "4c6f31396ee5b77529dd78d4ee49b9639acaea047c867791dc885127778073f4"
+    },
+    {
+      "path": "bpf_linux.go",
+      "bytes": 1739,
+      "sha256": "23253698a7f9c3b8f0228e6f5476ef0dca137b075acbc9961fbd90810e99fdfe"
+    },
+    {
+      "path": "bridge_linux.go",
+      "bytes": 3603,
+      "sha256": "f37d10756188bfed04cf12ab4015c1f7c8d625119e9cc1b40a5a22c3daca7b07"
+    },
+    {
+      "path": "bridge_linux_test.go",
+      "bytes": 1975,
+      "sha256": "4aec6061f6eaeb4ed40b3f0d1b424f3869ed3eebf14e457de3b1a69a07bad43b"
+    },
+    {
+      "path": "class.go",
+      "bytes": 6931,
+      "sha256": "4d7cee32512710fecf04cdfccf65e3d33ef47bf6f05f0f6ed253b928f4e13b38"
+    },
+    {
+      "path": "class_linux.go",
+      "bytes": 11057,
+      "sha256": "80f2b15e9c90a7ffa5e29c16deea0e9ffc3da7c3b6ee91fe277620adf598588f"
+    },
+    {
+      "path": "class_test.go",
+      "bytes": 15212,
+      "sha256": "35750b315675fb80b27f40b87d4993215340af9a473dc073524010569b779f10"
+    },
+    {
+      "path": "cmd/ipset-test/main.go",
+      "bytes": 3245,
+      "sha256": "b9ddfed119d2d0ac4bb4411caedba1cc5b41349b8022c09238245efc8d4827e0"
+    },
+    {
+      "path": "conntrack_linux.go",
+      "bytes": 18648,
+      "sha256": "24daec1fb37b32b57b6caa56e63a046b8b1117a485810e3fc70332bcbb38dbda"
+    },
+    {
+      "path": "conntrack_test.go",
+      "bytes": 26552,
+      "sha256": "1e29dc23fd7781aa5b73ccf05e5ccae27fbb71f71e4c3eb514313030341e3c13"
+    },
+    {
+      "path": "conntrack_unspecified.go",
+      "bytes": 2152,
+      "sha256": "af45328eccdde2daaee2dea173719537f9c012fdfd91c41ff8bf353f4f6ee652"
+    },
+    {
+      "path": "devlink_linux.go",
+      "bytes": 20863,
+      "sha256": "82b5609142676a926e65fbabe1e4ffa1088b78948f317cb97bb70a7f48bac8da"
+    },
+    {
+      "path": "devlink_test.go",
+      "bytes": 8144,
+      "sha256": "ddd2ba4635c9340a03e7a630adbd872f8b918b5862da85b09b0cc3a672b5dc1a"
+    },
+    {
+      "path": "filter.go",
+      "bytes": 7800,
+      "sha256": "6d50384d64195360fb1c0f310642942d8e9ae4d7710470b83c95152dfb386ff7"
+    },
+    {
+      "path": "filter_linux.go",
+      "bytes": 28894,
+      "sha256": "1bc591696777bfc509be83dc581e232fd68107208e00a4d2e0471084f49784ae"
+    },
+    {
+      "path": "filter_test.go",
+      "bytes": 40153,
+      "sha256": "0fbafffce46a913ebdcbc57f85e5b486ef4c32239d1eebe1ed9dbf1e3d68eb82"
+    },
+    {
+      "path": "fou.go",
+      "bytes": 436,
+      "sha256": "50119ed770bf7a781d99b0e6ea6f3e852cab92b5087bceefbe984fd381279a39"
+    },
+    {
+      "path": "fou_linux.go",
+      "bytes": 3916,
+      "sha256": "efb7478b0dcaeebd225d8f27b5b1b52def52be72eca3ae6b72d8d36c3f9ade33"
+    },
+    {
+      "path": "fou_test.go",
+      "bytes": 2681,
+      "sha256": "d8d311c8f99e13fe0056b154e6b782979010f6fe0f56e4f60709b36c79cfdeb0"
+    },
+    {
+      "path": "fou_unspecified.go",
+      "bytes": 237,
+      "sha256": "7946ed3e73b426288e95e85755118defdf4166e64b54714f461c8d66899f2f17"
+    },
+    {
+      "path": "genetlink_linux.go",
+      "bytes": 3845,
+      "sha256": "4d8b45730d7b21b943c833831aaac987fbbb15007e43eecc31eefa4b7b2b7e73"
+    },
+    {
+      "path": "genetlink_unspecified.go",
+      "bytes": 498,
+      "sha256": "303d86d34ccd1a943a916d67503763df67452e15e4dce0cbf6fa8f10e4b746d0"
+    },
+    {
+      "path": "go.mod",
+      "bytes": 175,
+      "sha256": "43e97dc4045dd409cea4b36c8de8f02e0bf6fe1e3eddfdc1a3a4585f747c2d2e"
+    },
+    {
+      "path": "go.sum",
+      "bytes": 545,
+      "sha256": "a54c5c356e3c2f1a2c2b74288225b75fd8832e45b3b87415239a4e8ed1ffb80b"
+    },
+    {
+      "path": "gtp_linux.go",
+      "bytes": 6816,
+      "sha256": "2204a71f29638381f58136c7cf726101e18ab24a0d9382406fc7b2bc11854338"
+    },
+    {
+      "path": "gtp_test.go",
+      "bytes": 2170,
+      "sha256": "075c88f10dbdcb007490a487527c63d0717306008bbcfdbf46b65b524e627556"
+    },
+    {
+      "path": "handle_linux.go",
+      "bytes": 5392,
+      "sha256": "93e6ee5e1d63d0f4d5c34a274dc7de89ce7ef7273dfdd649eeb718e369a00b9a"
+    },
+    {
+      "path": "handle_linux_test.go",
+      "bytes": 388,
+      "sha256": "0040b9a55f69a8c73599e2dc31f53b4633536bbbe75cdae39e31287019659165"
+    },
+    {
+      "path": "handle_test.go",
+      "bytes": 7610,
+      "sha256": "686e1d1adf98a1e1b63dedd4c9a7cf88fae384947120e8b2c13f523cd06cdc56"
+    },
+    {
+      "path": "handle_unspecified.go",
+      "bytes": 6190,
+      "sha256": "53e4ab1f5d3f3f592ceb6f7dc8ce87954bf9c90b528c50548f644536e96b793a"
+    },
+    {
+      "path": "inet_diag.go",
+      "bytes": 523,
+      "sha256": "bf5e7b3c9ecc5cf5c8c350fffeb84e9d33e01b65da0d2460f6404d2e9f47eaea"
+    },
+    {
+      "path": "ioctl_linux.go",
+      "bytes": 2295,
+      "sha256": "9114f7ec2a6a62deecbad218c0dae7269d31b62065901846609c0c1569dc7cbf"
+    },
+    {
+      "path": "ipset_linux.go",
+      "bytes": 14860,
+      "sha256": "d884b21dedf5cbe904e93a622ba6f0a17eda86f8d5699e39f694ae3f5ea21ef1"
+    },
+    {
+      "path": "ipset_linux_test.go",
+      "bytes": 15511,
+      "sha256": "62e49f61537cb7f9553396021ad4526b9a52460a9bb127e93be34668efe411aa"
+    },
+    {
+      "path": "link.go",
+      "bytes": 28983,
+      "sha256": "5435c5ae891b069308377828e07d6e4c9285e3ddf6232061bdd56f5bbe80697d"
+    },
+    {
+      "path": "link_linux.go",
+      "bytes": 104703,
+      "sha256": "ef634e8603fcd1677eb5129158cab4f6a2f2ae3b1b10936f6c868529c455cbb2"
+    },
+    {
+      "path": "link_test.go",
+      "bytes": 66667,
+      "sha256": "ab42bb6a346995ca3117a9148bf708d576eb5ecbb61fb00f2ad0f97aa9e993d0"
+    },
+    {
+      "path": "link_tuntap_linux.go",
+      "bytes": 282,
+      "sha256": "1dd7dffe799832da01eb0d33a54b1f583df74bdfc1598fcec61f762b069f57db"
+    },
+    {
+      "path": "neigh.go",
+      "bytes": 656,
+      "sha256": "3ba090fc707301c977895ccdacbf0e90dcff7e2e3feace29431b4909d9758d97"
+    },
+    {
+      "path": "neigh_linux.go",
+      "bytes": 11755,
+      "sha256": "60fa26c066f04999bf58c3a5a3eca7aaad3fe29d001f2ba3db3976922e894749"
+    },
+    {
+      "path": "neigh_test.go",
+      "bytes": 14016,
+      "sha256": "e3b06749c022d07edebd5bca3b4ad054d6aed533109c48cb1982583214f60a09"
+    },
+    {
+      "path": "netlink.go",
+      "bytes": 1373,
+      "sha256": "9cbb68c81aa13d1f0b0f3969b022760ab93e1ddadd09175700a5840c351c1692"
+    },
+    {
+      "path": "netlink_linux.go",
+      "bytes": 210,
+      "sha256": "0a818e2e003e9f32642a2419eb4071c64a96cf3364376b33492bf0dd4535d5ce"
+    },
+    {
+      "path": "netlink_test.go",
+      "bytes": 4960,
+      "sha256": "4b440ed4f643fe0a770d79b74de4962a5efa20f4989e9c4cc410df516e180ed2"
+    },
+    {
+      "path": "netlink_unspecified.go",
+      "bytes": 5149,
+      "sha256": "04c91a51e87c5a245252f67faeb645ede0090fefcc823f5ab28f5ffbd2ae9074"
+    },
+    {
+      "path": "netns_linux.go",
+      "bytes": 4449,
+      "sha256": "554186043778a38d856da18469daadc6664739bbd8a3eb4ff9ee0a1471e91b9a"
+    },
+    {
+      "path": "netns_test.go",
+      "bytes": 2109,
+      "sha256": "9bf8bcee71d196de73dcc33d2bc60d1301a7450b670592448d5ac324152b9274"
+    },
+    {
+      "path": "netns_unspecified.go",
+      "bytes": 348,
+      "sha256": "b565a33d27353c7ed706471d90f94f049c9dcaa95efef4240fdf428080f15b13"
+    },
+    {
+      "path": "nl/addr_linux.go",
+      "bytes": 1515,
+      "sha256": "79b332916aa73ebbcea6c21aad196ec67afbb681f17a6584dc87e2509fb0afc3"
+    },
+    {
+      "path": "nl/addr_linux_test.go",
+      "bytes": 1676,
+      "sha256": "3a79625cf52e31ba46cdeea6bd77223dc5d1918371ea203029af88155719d272"
+    },
+    {
+      "path": "nl/bridge_linux.go",
+      "bytes": 1416,
+      "sha256": "e702265d201ae2c80b61ffc13ee32cc4d1f29f930e96766ca3d08f847820d550"
+    },
+    {
+      "path": "nl/bridge_linux_test.go",
+      "bytes": 811,
+      "sha256": "14026d54fe73f8bc8454fc37793b34208a30cf8983b850e43a97cdd9d0628972"
+    },
+    {
+      "path": "nl/conntrack_linux.go",
+      "bytes": 4962,
+      "sha256": "9120fff537b63a628c96a57c7df49086c05f0444f6dfb7c925f0994d85b6e6dd"
+    },
+    {
+      "path": "nl/devlink_linux.go",
+      "bytes": 2468,
+      "sha256": "f2e2a0e37dc5308f25323b387627dc8fa7b8ce329d424b323ad8cf0c588ffbed"
+    },
+    {
+      "path": "nl/genetlink_linux.go",
+      "bytes": 1426,
+      "sha256": "8be7fb97bafca0792b8313bb5e186cff768795b478d339e04cdb0a893d6df12c"
+    },
+    {
+      "path": "nl/ipset_linux.go",
+      "bytes": 5911,
+      "sha256": "d21e6899efb44ac552fbd58b68fd6a7e5f770a5ab4e9dbade549bfe0c6b2ef50"
+    },
+    {
+      "path": "nl/link_linux.go",
+      "bytes": 14568,
+      "sha256": "1c6efdf7fe3aa6655bb2dad63e19253e03c9650c293cea388dd38888bc06efa9"
+    },
+    {
+      "path": "nl/link_linux_test.go",
+      "bytes": 4966,
+      "sha256": "7a9adb769fc29f863759dd1f895ee4b62cb7ace3b2bfff849f84e7292613ccbe"
+    },
+    {
+      "path": "nl/lwt_linux.go",
+      "bytes": 354,
+      "sha256": "cbb60b5e7f7e124ffd20a10bb175594e3159f5d4dac1229e64cef456446b7d1c"
+    },
+    {
+      "path": "nl/mpls_linux.go",
+      "bytes": 688,
+      "sha256": "176268d68cb4fd5072373f8ee5a0d74204f91524b4d3ab2c4041f7a1e364ab04"
+    },
+    {
+      "path": "nl/nl_linux.go",
+      "bytes": 21988,
+      "sha256": "00f5ccc743bccf5d608290a66154f986716393276a8328d58a4cca99bf9eabfe"
+    },
+    {
+      "path": "nl/nl_linux_test.go",
+      "bytes": 3132,
+      "sha256": "753fc5572707bd96322af310044ade0b4280bd065f76c431c2a57c41c3e5ced0"
+    },
+    {
+      "path": "nl/nl_unspecified.go",
+      "bytes": 162,
+      "sha256": "ef690f2d7d7c42611ad8048cefa3f37d3dd1d210b307c75943d8a390df20b43b"
+    },
+    {
+      "path": "nl/parse_attr_linux.go",
+      "bytes": 1725,
+      "sha256": "2a98c8d1dc17900147490237ce0437928d66aef7fcaa7fb37c771ccc1e4382e4"
+    },
+    {
+      "path": "nl/rdma_link_linux.go",
+      "bytes": 948,
+      "sha256": "15fc0bb2127539c3c3538df4fede81dc631fde4198677637016d8bb281bfe993"
+    },
+    {
+      "path": "nl/route_linux.go",
+      "bytes": 2041,
+      "sha256": "a2064bbb2c7bb6542fce550e0907dc78cc45eaae2ad542f2d2a8bf80af6168e6"
+    },
+    {
+      "path": "nl/route_linux_test.go",
+      "bytes": 1531,
+      "sha256": "6b56739e82a68a9baa7b92a71c2bde7570ca9e00d5176cd7fd535e7f8b8ccc8e"
+    },
+    {
+      "path": "nl/seg6_linux.go",
+      "bytes": 4113,
+      "sha256": "7d0b9c3c0d967a87bca7b6c35754e939502b0c53bd0adac903a45571871eaf4a"
+    },
+    {
+      "path": "nl/seg6local_linux.go",
+      "bytes": 1884,
+      "sha256": "1cc463b59c824c090ee3d3d7bb59bea54f1555258148ec1148ab6648df36fe2f"
+    },
+    {
+      "path": "nl/syscall.go",
+      "bytes": 1900,
+      "sha256": "68015a6541e4c647c0d2a50b3541a972f519d4b75a7ba5924bbb35be536e5593"
+    },
+    {
+      "path": "nl/tc_linux.go",
+      "bytes": 24127,
+      "sha256": "b8c8fce1bc694e6042efa7effd78d62e303cd57278c761960b309cbc2597edec"
+    },
+    {
+      "path": "nl/tc_linux_test.go",
+      "bytes": 4354,
+      "sha256": "d1fe44f0b7dbd8274ca896ebd3282e7078396011d42e2f419086bc280fa94828"
+    },
+    {
+      "path": "nl/xfrm_linux.go",
+      "bytes": 7430,
+      "sha256": "6403dbefa22c4b5ff33a21a4898575122a9f99bd7ff42a584b4eae1a8060e837"
+    },
+    {
+      "path": "nl/xfrm_linux_test.go",
+      "bytes": 4672,
+      "sha256": "0d3ebf9537c6506e5a8f37d5e39a482aaa47c3e6c85c5a57ba365da30258fea6"
+    },
+    {
+      "path": "nl/xfrm_monitor_linux.go",
+      "bytes": 594,
+      "sha256": "92bf56ecab59e1e1a11982c85e91383abe2ca5b4528c9b36c8f6e4b2ac1255bf"
+    },
+    {
+      "path": "nl/xfrm_monitor_linux_test.go",
+      "bytes": 850,
+      "sha256": "ece91ec2cc67a38cfb190aab834b7c3e8787bf4914a4c7a1e945a382790548bb"
+    },
+    {
+      "path": "nl/xfrm_policy_linux.go",
+      "bytes": 2632,
+      "sha256": "65db4a8166b8c5fab4b30d15a9c4980ceba4cdf97339ebf5157becfa7fb4e2e8"
+    },
+    {
+      "path": "nl/xfrm_policy_linux_test.go",
+      "bytes": 3313,
+      "sha256": "33c69bbd82eabf8e846f93ca4d303900d2772f52a04e6c6e8d9a879dccfb3bad"
+    },
+    {
+      "path": "nl/xfrm_state_linux.go",
+      "bytes": 8440,
+      "sha256": "fe1174fd9825f365b5ede3004ece28ef9f34402f514f6220615b4600eaf6cfc6"
+    },
+    {
+      "path": "nl/xfrm_state_linux_test.go",
+      "bytes": 8782,
+      "sha256": "1427ec1276f7991056fa30fc53c6fa4fe96a25274d77bebba3aa2e71eefe7048"
+    },
+    {
+      "path": "order.go",
+      "bytes": 532,
+      "sha256": "13b7e14e628579b77872fc078f2bd4db3c8824cdddfe89309028b9096de5caad"
+    },
+    {
+      "path": "proc_event_linux.go",
+      "bytes": 3917,
+      "sha256": "f626fde54d7b7a72723f9926746fc6ef9d26236c07bb599652a8d4193775d3d6"
+    },
+    {
+      "path": "proc_event_test.go",
+      "bytes": 1407,
+      "sha256": "56b8f04ea028292d96b7bcdac2563a65e4c92ef5211f0dfc61a0579a6a2f4776"
+    },
+    {
+      "path": "protinfo.go",
+      "bytes": 1162,
+      "sha256": "18221e394e250dd3d3470fbef1eadf433ab16ea0b56c0891b2270c6ebf592a7b"
+    },
+    {
+      "path": "protinfo_linux.go",
+      "bytes": 1811,
+      "sha256": "9b5f6202d7b54d900d3322f29212f936248e21aee8c337ccde5b426dfe3b95c5"
+    },
+    {
+      "path": "protinfo_test.go",
+      "bytes": 4577,
+      "sha256": "a31b973ca2f0a5670f2ea919f60d5913d5889bab32f18014f4774fa676e3af17"
+    },
+    {
+      "path": "qdisc.go",
+      "bytes": 8165,
+      "sha256": "8ce6f2b85f60b1e8ff0e18baffc82fc21afbc69ce4aa0bb5b59be4c86bbf378c"
+    },
+    {
+      "path": "qdisc_linux.go",
+      "bytes": 19598,
+      "sha256": "5c8d70b293e49ec8886f0b5b7d148c749a53113c12eb02b9ce136201bc56aa83"
+    },
+    {
+      "path": "qdisc_test.go",
+      "bytes": 12315,
+      "sha256": "153434c59784fbf1900f155dfec17eaf4ef1f2ed735fa65b488ef8697e2869b7"
+    },
+    {
+      "path": "rdma_link_linux.go",
+      "bytes": 9646,
+      "sha256": "937f5ba076d710ef37e390dc2f5ce723e52fb672134638f9e8383c4a52f15d9e"
+    },
+    {
+      "path": "rdma_link_test.go",
+      "bytes": 4146,
+      "sha256": "ecde5d6b413e5f3881838eda43208efe9bf603f25066d9113cc1ba77791471d1"
+    },
+    {
+      "path": "route.go",
+      "bytes": 5391,
+      "sha256": "2e57f2a28a080e208631184f153bd0fd42f7b56c6b3da9f79748031157c322c6"
+    },
+    {
+      "path": "route_linux.go",
+      "bytes": 42343,
+      "sha256": "eb1fe90cbccea04d869feca808db9da92281683d5ff81a94d573240b201f7e2d"
+    },
+    {
+      "path": "route_test.go",
+      "bytes": 38235,
+      "sha256": "9b780b3b5e93330d02d123a3603766af4780e585506546a5b15775d75e874046"
+    },
+    {
+      "path": "route_unspecified.go",
+      "bytes": 325,
+      "sha256": "df664d1204dfa357039e778bc9867bc0e1460672e282409a58449f5cda99abda"
+    },
+    {
+      "path": "rule.go",
+      "bytes": 1756,
+      "sha256": "a23ad202d0f3d6424aad3ac004c857c7a6146b155a5ee943dd6fea63eec0be68"
+    },
+    {
+      "path": "rule_linux.go",
+      "bytes": 9150,
+      "sha256": "12bb315914903771e99060b2da9efff988a91bb5acfcfad46cb8de1e178c7c9b"
+    },
+    {
+      "path": "rule_test.go",
+      "bytes": 9725,
+      "sha256": "6c9740017bc2e0a68cd0d2eab99aedca6a3eb4ea2a5815e7336427138c05d097"
+    },
+    {
+      "path": "socket.go",
+      "bytes": 464,
+      "sha256": "4e41a30a9296a6cdeb37fa84c487b9e3fbc313a51c0ba09fbf22ac7b75b55340"
+    },
+    {
+      "path": "socket_linux.go",
+      "bytes": 7042,
+      "sha256": "c3da754eaa1b8b0e9887b9655916b91ed29720ef78a89abc403026b58ba97f36"
+    },
+    {
+      "path": "socket_linux_test.go",
+      "bytes": 2744,
+      "sha256": "1c57f715f2c13f0e2f9bd69b255724a21302771c158e781e1d17f58bc32dee32"
+    },
+    {
+      "path": "socket_test.go",
+      "bytes": 1815,
+      "sha256": "04072e932f1a33501cfaaf0ba2e2a02d2f3e53fc50012fdf87637968bdabf6ed"
+    },
+    {
+      "path": "tcp.go",
+      "bytes": 2891,
+      "sha256": "d25bdcd6e36677b9e55749947108c0b49eff6f209b9c157f19f2daff9d58a534"
+    },
+    {
+      "path": "tcp_linux.go",
+      "bytes": 5753,
+      "sha256": "2cddbb220a6805071bcc28ff213a1884327bafa77bdabcdfccc0dcf2bf84187f"
+    },
+    {
+      "path": "tcp_linux_test.go",
+      "bytes": 3404,
+      "sha256": "ff21434ef81a215783108b056d66917a8a55a31ad386de5f81ac2c87d6363efc"
+    },
+    {
+      "path": "testdata/ipset_list_result",
+      "bytes": 228,
+      "sha256": "64589b67513e2cfe8a9df4993afe4fc2e602773f7758a9bc6a51c86f4b586aa5"
+    },
+    {
+      "path": "testdata/ipset_protocol_result",
+      "bytes": 12,
+      "sha256": "6d9478bf2d395e64515d599bb95bc8347e65ccf5f31223ab0cb4f85b7d7e855e"
+    },
+    {
+      "path": "xfrm.go",
+      "bytes": 1500,
+      "sha256": "4724d0a5643b4a51b8c5101ca46aab1622329792ae22cac2f5b717f13e934b87"
+    },
+    {
+      "path": "xfrm_monitor_linux.go",
+      "bytes": 1845,
+      "sha256": "cdf52c23e4c2f6f77e7e1aec050c61b7d100febe9ec0e0ae95db629ee59485b1"
+    },
+    {
+      "path": "xfrm_monitor_test.go",
+      "bytes": 1219,
+      "sha256": "f58a989c206c19c80d8e408824d7e48b06dfd5d060ff2a4c57baa09cda0be858"
+    },
+    {
+      "path": "xfrm_policy.go",
+      "bytes": 2189,
+      "sha256": "2090026b5522d835a73c15ee9ed0aaaabb03268a92b2defc635766d87b07a51f"
+    },
+    {
+      "path": "xfrm_policy_linux.go",
+      "bytes": 8304,
+      "sha256": "de56a9cf968a444b6f7cb1af3e3414de8961b42eb5187b5da7945b544fce354a"
+    },
+    {
+      "path": "xfrm_policy_test.go",
+      "bytes": 6257,
+      "sha256": "4c4863f05cee24539571a6a5add973b81ca17acfb02de9ef304472750df2e729"
+    },
+    {
+      "path": "xfrm_state.go",
+      "bytes": 4350,
+      "sha256": "c6f4ef4d9bad1af9585b461d6a4ea5b83cffee05b0099000d578987c199a23c6"
+    },
+    {
+      "path": "xfrm_state_linux.go",
+      "bytes": 14839,
+      "sha256": "006a67e122dd2e59386db3889a2a28ba2304c8945758a889ee1bf474514407cf"
+    },
+    {
+      "path": "xfrm_state_test.go",
+      "bytes": 8099,
+      "sha256": "b05b24b2ea0a813ad04d918bdcb79975e0ef38ca80560b5726a9b3755f51c814"
+    }
+  ]
+}

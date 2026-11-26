@@ -34,3 +34,6 @@ require (
 
 // Pinned official nftables: one 32-bit panic-format fix; provenance/removal gate in third_party/google-nftables/UPSTREAM.json.
 replace github.com/google/nftables => ../google-nftables
+
+// Pinned netlink: FRA_PROTOCOL rule tag; provenance/removal gate in third_party/netlink/UPSTREAM.json.
+replace github.com/sagernet/netlink => ../netlink

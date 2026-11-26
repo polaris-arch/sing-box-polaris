@@ -8,6 +8,12 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+// FRA_PROTOCOL of every rule this program installs (unregistered in iproute2
+// rt_protos). It is the only kernel-readable mark of a rule left by a killed
+// instance; untagged rules, identical external ones included, are never
+// reclaimed, and receipts carrying it only delete the tagged rule.
+const ownedRuleProtocol = 80
+
 // Keep the exact selectors successfully installed by this instance. Priority
 // ranges are not ownership: another interface may use the same priorities.
 // Callers serialize access with NativeTun.ruleAccess.
@@ -27,6 +33,7 @@ func (o *ownedLinuxRules) install(rules []*netlink.Rule, add func(*netlink.Rule)
 		if rule.Priority < 0 {
 			return fmt.Errorf("rule %d has no explicit priority", i)
 		}
+		rule.Protocol = ownedRuleProtocol
 		if err := add(rule); err != nil {
 			return fmt.Errorf("add rule %d/%d: %w", i, len(rules), err)
 		}

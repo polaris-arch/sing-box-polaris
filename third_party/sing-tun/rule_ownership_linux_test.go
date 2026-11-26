@@ -2,6 +2,8 @@ package tun
 
 import (
 	"errors"
+	"net"
+	"os"
 	"testing"
 
 	"github.com/sagernet/netlink"
@@ -192,5 +194,69 @@ func TestOwnedRulesResetRollsBackPartialInstallAndRetainsFailedCleanup(t *testin
 	owned.closed = true
 	if err := owned.clear(func(*netlink.Rule) error { return nil }); err != nil || len(owned.rules) != 0 {
 		t.Fatalf("final close cleanup failed: %v", err)
+	}
+}
+
+func TestReclaimStaleRules(t *testing.T) {
+	if os.Getuid() != 0 {
+		t.SkipNow()
+	}
+	lookup := func(protocol uint8) *netlink.Rule {
+		rule := ownershipRule(9001, DefaultIPRoute2TableIndex)
+		rule.Protocol = protocol
+		return rule
+	}
+	unreachable := func() *netlink.Rule {
+		rule := netlink.NewRule()
+		rule.Priority = 9002
+		rule.Type = unix.FR_ACT_UNREACHABLE
+		rule.Family = unix.AF_INET6
+		rule.Protocol = ownedRuleProtocol
+		return rule
+	}
+	for _, c := range []struct {
+		name     string
+		rules    []*netlink.Rule
+		occupied bool
+		reject   bool
+		remain   int
+	}{
+		{"empty table reclaimed", []*netlink.Rule{lookup(ownedRuleProtocol), unreachable()}, false, false, 0},
+		{"live table refused", []*netlink.Rule{lookup(ownedRuleProtocol), unreachable()}, true, true, 2},
+		{"no lookup reclaimed", []*netlink.Rule{unreachable()}, false, false, 0},
+		{"untagged kept", []*netlink.Rule{lookup(0)}, false, false, 1},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			route := &netlink.Route{Table: DefaultIPRoute2TableIndex, Type: unix.RTN_BLACKHOLE, Dst: &net.IPNet{IP: net.IPv4(192, 0, 2, 0), Mask: net.CIDRMask(24, 32)}}
+			if c.occupied {
+				if err := netlink.RouteAdd(route); err != nil {
+					t.Fatal(err)
+				}
+				defer netlink.RouteDel(route)
+			}
+			for _, rule := range c.rules {
+				if err := netlink.RuleAdd(rule); err != nil {
+					t.Fatal(err)
+				}
+				defer netlink.RuleDel(rule)
+			}
+			tun := &NativeTun{options: Options{IPRoute2RuleIndex: DefaultIPRoute2RuleIndex, IPRoute2AutoRedirectFallbackRuleIndex: DefaultIPRoute2AutoRedirectFallbackRuleIndex}}
+			if err := tun.reclaimStaleRules(); (err != nil) != c.reject {
+				t.Fatalf("reclaim: %v", err)
+			}
+			rules, err := netlink.RuleList(netlink.FAMILY_ALL)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var remain int
+			for _, rule := range rules {
+				if rule.Priority >= 9000 && rule.Priority <= 9010 {
+					remain++
+				}
+			}
+			if remain != c.remain {
+				t.Fatalf("%d rules left in band, want %d", remain, c.remain)
+			}
+		})
 	}
 }

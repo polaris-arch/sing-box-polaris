@@ -445,6 +445,11 @@ func (t *NativeTun) start(ctx context.Context) error {
 		t.options.IPRoute2TableIndex = tableIndex
 	}
 
+	err = t.reclaimStaleRules()
+	if err != nil {
+		return E.Cause(err, "reclaim stale rules")
+	}
+
 	err = t.setRoute(tunLink)
 	if err != nil {
 		return E.Cause(err, "set routes")
@@ -1312,6 +1317,43 @@ func (t *NativeTun) unsetRules() error {
 	t.ruleAccess.Lock()
 	defer t.ruleAccess.Unlock()
 	return t.ownedRules.clear(netlink.RuleDel)
+}
+
+// Rules outlive a killed instance. Reclaim only tagged rules in this rule band,
+// and only when every table they look up is empty: a live instance adds its
+// routes before its rules and removes them after. Runs before setRoute.
+func (t *NativeTun) reclaimStaleRules() error {
+	rules, err := netlink.RuleList(netlink.FAMILY_ALL)
+	if err != nil {
+		return E.Cause(err, "list rules")
+	}
+	stale := rules[:0]
+	for _, rule := range rules {
+		if rule.Protocol != ownedRuleProtocol || rule.Priority != t.options.IPRoute2AutoRedirectFallbackRuleIndex &&
+			(rule.Priority < t.options.IPRoute2RuleIndex || rule.Priority > t.options.IPRoute2RuleIndex+10) {
+			continue
+		}
+		if rule.Table > unix.RT_TABLE_UNSPEC && (rule.Table < unix.RT_TABLE_DEFAULT || rule.Table > unix.RT_TABLE_LOCAL) {
+			occupied, err := routeTableOccupied(rule.Table)
+			if err != nil {
+				return E.Cause(err, "query route table ", rule.Table)
+			}
+			if occupied {
+				return E.New("rule ", rule.Priority, " looks up non-empty route table ", rule.Table, ": in use by a running instance or another program")
+			}
+		} else if rule.Table == unix.RT_TABLE_UNSPEC {
+			// The dump omits the action: delete goto by target, nop and unreachable by tag and priority.
+			rule.Table = -1
+		}
+		stale = append(stale, rule)
+	}
+	for i := range stale {
+		err = netlink.RuleDel(&stale[i])
+		if err != nil {
+			return E.Cause(err, "delete stale rule ", stale[i].Priority)
+		}
+	}
+	return nil
 }
 
 func (t *NativeTun) unsetAddresses() {
