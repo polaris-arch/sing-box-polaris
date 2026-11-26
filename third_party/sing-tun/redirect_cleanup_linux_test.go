@@ -71,7 +71,7 @@ func redirectCleanupRead(t *testing.T, path string) string {
 }
 
 func TestAutoRedirectCloseBeforeFirewallSetupPreservesRunningInstance(t *testing.T) {
-	for _, stage := range []string{"unstarted", "initialize-error", "nfqueue-error"} {
+	for _, stage := range []string{"unstarted", "initialize-error", "nfqueue-error", "foreign-chains"} {
 		t.Run(stage, func(t *testing.T) {
 			r, state, trace, active := redirectCleanupFixture(t)
 			switch stage {
@@ -90,6 +90,11 @@ func TestAutoRedirectCloseBeforeFirewallSetupPreservesRunningInstance(t *testing
 				if r.redirectServer != nil {
 					t.Fatal("custom redirect port unexpectedly acquired a listener")
 				}
+			case "foreign-chains":
+				// The bound queue proves nothing about chains that never queue to it.
+				if err := r.startWithNFQueue(func() error { return nil }); err == nil || !strings.Contains(err.Error(), "do not queue only to NFQUEUE") {
+					t.Fatalf("chains without this instance's NFQUEUE were not refused: %v", err)
+				}
 			}
 			for range 2 {
 				if err := r.Close(); err != nil {
@@ -101,14 +106,14 @@ func TestAutoRedirectCloseBeforeFirewallSetupPreservesRunningInstance(t *testing
 			}
 			commands := redirectCleanupRead(t, trace)
 			for _, line := range strings.Split(strings.TrimSpace(commands), "\n") {
-				if line != "" && line != "-w -t nat -S" {
+				if line != "" && !strings.HasSuffix(line, " -S") {
 					t.Fatalf("unexpected command before firewall setup: %q", line)
 				}
 			}
 			if stage == "nfqueue-error" && commands != "-w -t nat -S\n" {
 				t.Fatalf("expected only the original read-only capability probe: %q", commands)
 			}
-			if stage != "nfqueue-error" && commands != "" {
+			if (stage == "unstarted" || stage == "initialize-error") && commands != "" {
 				t.Fatalf("unstarted/initialization failure invoked iptables: %q", commands)
 			}
 		})

@@ -180,6 +180,11 @@ func (r *autoRedirect) startWithNFQueue(startNFQueue func() error) error {
 		}
 		return nil
 	}
+	err = r.reclaimStaleIPTables()
+	if err != nil {
+		_ = r.Close()
+		return E.Cause(err, "reclaim stale iptables")
+	}
 	r.firewallSetupAttempted.Store(true)
 	r.redirectRoutesSetupAttempted.Store(true)
 	err = r.setupRedirectRoutes()

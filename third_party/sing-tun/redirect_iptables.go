@@ -835,6 +835,63 @@ func (r *autoRedirect) cleanupIPTables() error {
 	return r.removeIPTables(nil)
 }
 
+// Chains outlive a killed instance and xtables has no owner. This instance has
+// just bound its NFQUEUE exclusively, so prefixed chains queueing to it belong
+// to no live instance. Any other NFQUEUE target, or none, is refused unchanged.
+// Every family is read, so a live instance of the other family is seen too.
+func (r *autoRedirect) reclaimStaleIPTables() error {
+	prefix := r.tableName + "-"
+	queue := " -j NFQUEUE --queue-num " + strconv.Itoa(int(r.effectiveNFQueue())) + " --queue-bypass"
+	var owned, foreign bool
+	var commands []iptablesReceipt
+	for _, isIPv6 := range []bool{false, true} {
+		path, err := findIPTablesBinary(isIPv6)
+		if err != nil {
+			continue
+		}
+		for _, table := range []string{iptablesTableMangle, iptablesTableNAT, iptablesTableFilter} {
+			if isIPv6 && table == iptablesTableNAT {
+				continue
+			}
+			output, err := exec.Command(path, "-w", "-t", table, "-S").Output()
+			if err != nil {
+				return E.Cause(err, path, " -t ", table, " -S")
+			}
+			var chains []string
+			for _, line := range strings.Split(string(output), "\n") {
+				switch {
+				case strings.HasPrefix(line, "-N "+prefix):
+					chains = append(chains, line[3:])
+				case strings.HasPrefix(line, "-A "+prefix):
+					owned = owned || strings.HasSuffix(line, queue)
+					foreign = foreign || strings.Contains(line, " -j NFQUEUE ") && !strings.HasSuffix(line, queue)
+				case strings.HasPrefix(line, "-A ") && strings.Contains(line, " -j "+prefix):
+					// Replay the base chain jump as its deletion.
+					commands = append(commands, iptablesReceipt{path, slices.Concat([]string{"-t", table, "-D"}, strings.Fields(line)[1:])})
+				}
+			}
+			for _, chain := range chains {
+				commands = append(commands, iptablesReceipt{path, []string{"-t", table, "-F", chain}})
+			}
+			for _, chain := range chains {
+				commands = append(commands, iptablesReceipt{path, []string{"-t", table, "-X", chain}})
+			}
+		}
+	}
+	if len(commands) == 0 {
+		return nil
+	}
+	if !owned || foreign {
+		return E.New("iptables chains ", prefix, "* do not queue only to NFQUEUE ", r.effectiveNFQueue(), ": in use by a running instance or another program")
+	}
+	for _, command := range commands {
+		if err := iptablesRun(command.path, command.args...); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // netd runs its own iptables commands whenever a network (including the VPN
 // interface) appears or disappears, so a run without -w fails with "Can't
 // lock /system/etc/xtables.lock" while netd holds the lock.
