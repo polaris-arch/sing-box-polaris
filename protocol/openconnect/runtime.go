@@ -274,6 +274,13 @@ func (c *runtimeCSTPConn) Close() error {
 	return err
 }
 
+type runtimeDTLSConn struct {
+	runtimeCSTPConn
+	net.PacketConn
+}
+
+func (c *runtimeDTLSConn) Close() error { return c.runtimeCSTPConn.Close() }
+
 func (d *runtimeClientDialer) DialContext(ctx context.Context, network string, destination M.Socksaddr) (net.Conn, error) {
 	r := d.runtime
 	creation, err := r.carriers.Begin()
@@ -301,6 +308,9 @@ func (d *runtimeClientDialer) DialContext(ctx context.Context, network string, d
 	}
 	if N.NetworkName(network) == N.NetworkTCP {
 		return &runtimeCSTPConn{wrapped}, nil
+	}
+	if packet, ok := wrapped.(net.PacketConn); ok && N.NetworkName(network) == N.NetworkUDP {
+		return &runtimeDTLSConn{runtimeCSTPConn{wrapped}, packet}, nil
 	}
 	return wrapped, nil
 }
