@@ -698,5 +698,11 @@ func (c *clientConn) Close() error {
 	// but a past write deadline does; buffered data and the FIN are unaffected.
 	c.Stream.SetWriteDeadline(time.Now())
 	c.closeOnce.Do(func() { c.parent.releaseStream(c.keepSession) })
+	// quic-go reports an already reset send side after completing the stream.
+	// That reset is a terminal result for this logical connection.
+	var reset *quic.StreamError
+	if err != nil && errors.As(context.Cause(c.Stream.Context()), &reset) && reset.StreamID == c.StreamID() {
+		return nil
+	}
 	return err
 }
