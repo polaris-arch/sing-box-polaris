@@ -297,7 +297,7 @@ func (c *ClientEndpoint) SetKeepIdleConnections(keep bool) {
 
 func (c *ClientEndpoint) waitReady(ctx context.Context) (func(), error) {
 	if c.scopedProbes {
-		if urltest.HasProbeAdmission(ctx) {
+		if urltest.HasProbeAdmission(ctx) || urltest.IsScopedProbe(ctx) {
 			return c.client.WaitReadyForProbe(ctx)
 		}
 		if err := ctx.Err(); err != nil {

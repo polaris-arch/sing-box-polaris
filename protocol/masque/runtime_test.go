@@ -404,6 +404,26 @@ func TestMasqueProbeLateForegroundAndReferenceKeep(t *testing.T) {
 	}
 }
 
+func TestMasqueManualProbeReleasesUnreferencedTunnel(t *testing.T) {
+	endpoint, dials := fixtureMasqueProbeEndpoint(t)
+	// Clash API manual tests carry only the measurement scope, not background admission.
+	ctx := urltest.ContextWithScopedProbe(t.Context())
+	result := make(chan masqueProbeDialResult, 1)
+	go func() {
+		conn, err := endpoint.DialContext(ctx, N.NetworkTCP, M.ParseSocksaddr("192.0.2.9:80"))
+		result <- masqueProbeDialResult{conn: conn, err: err}
+	}()
+	tunnelDone := masqueProbeServeTunnel(t, masqueProbeReceive(t, dials))
+	probe := masqueProbeReceive(t, result)
+	if probe.err != nil {
+		t.Fatal(probe.err)
+	}
+	if err := probe.conn.Close(); err != nil {
+		t.Fatal(err)
+	}
+	masqueProbeReceive(t, tunnelDone)
+}
+
 func TestMasqueProbeReferenceReleaseFollowsSession(t *testing.T) {
 	for _, mode := range []string{"cold", "warm", "foreground", "device pause", "network pause", "stop", "restart cold", "restart warm", "peer EOF"} {
 		t.Run(mode, func(t *testing.T) {
