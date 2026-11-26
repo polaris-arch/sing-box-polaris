@@ -306,13 +306,10 @@ func (d *runtimeClientDialer) DialContext(ctx context.Context, network string, d
 	if err != nil || registered != nil || r.ctx.Err() != nil {
 		return nil, errors.Join(err, registered, r.ctx.Err(), fence.RuntimeCloseAndWait())
 	}
-	if N.NetworkName(network) == N.NetworkTCP {
-		return &runtimeCSTPConn{wrapped}, nil
-	}
-	if packet, ok := wrapped.(net.PacketConn); ok && N.NetworkName(network) == N.NetworkUDP {
+	if packet, ok := wrapped.(net.PacketConn); ok {
 		return &runtimeDTLSConn{runtimeCSTPConn{wrapped}, packet}, nil
 	}
-	return wrapped, nil
+	return &runtimeCSTPConn{wrapped}, nil
 }
 
 func (d *runtimeClientDialer) ListenPacket(ctx context.Context, destination M.Socksaddr) (net.PacketConn, error) {

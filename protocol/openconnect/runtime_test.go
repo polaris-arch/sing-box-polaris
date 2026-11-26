@@ -257,11 +257,15 @@ func (runtimeClientTestDialer) ListenPacket(context.Context, M.Socksaddr) (net.P
 
 func TestRuntimeClientJoinsPendingDTLSCarrierClose(t *testing.T) {
 	for _, tt := range []struct {
-		name string
-		err  error
+		name   string
+		packet bool
+		err    error
 	}{
-		{name: "successful carrier close"},
-		{name: "failed carrier close", err: errors.New("physical close failed")},
+		// common/dialer wraps *net.UDPConn as udpConn{net.Conn}: no PacketConn.
+		{name: "default dialer conn/successful carrier close"},
+		{name: "default dialer conn/failed carrier close", err: errors.New("physical close failed")},
+		{name: "packet conn/successful carrier close", packet: true},
+		{name: "packet conn/failed carrier close", packet: true, err: errors.New("physical close failed")},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			r := fixtureRuntimeClient()
@@ -277,14 +281,17 @@ func TestRuntimeClientJoinsPendingDTLSCarrierClose(t *testing.T) {
 				t.Fatal(err)
 			}
 			blocked := &blockedRuntimeClientConn{Conn: conn, started: make(chan struct{}), release: make(chan struct{}), err: tt.err}
-			raw := &blockedRuntimeClientPacketConn{UDPConn: conn, blocked: blocked}
+			var raw net.Conn = blocked
+			if tt.packet {
+				raw = &blockedRuntimeClientPacketConn{UDPConn: conn, blocked: blocked}
+			}
 			lease, _ := r.source.Acquire()
 			ctx := adapter.ContextWithRuntimeResourceLease(context.Background(), lease)
 			udpConn, err := r.wrapDialer(runtimeClientTestDialer{raw}).DialContext(ctx, N.NetworkUDP, M.ParseSocksaddr(peer.LocalAddr().String()))
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, ok := udpConn.(net.PacketConn); !ok {
+			if _, ok := udpConn.(net.PacketConn); tt.packet && !ok {
 				t.Fatalf("UDP carrier %T lost the net.PacketConn method set", udpConn)
 			}
 			release := sync.OnceFunc(func() { close(blocked.release) })
