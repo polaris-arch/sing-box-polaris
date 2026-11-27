@@ -584,6 +584,7 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 				return prepared, contextErr
 			}
 			component.history = urltest.NewIncarnationHistory(service.PtrFromContext[urltest.HistoryStorage](c.ctx))
+			component.history.BindCertificateStore(service.FromContext[adapter.CertificateStore](ctx))
 			service.MustRegisterPtr(ctx, component.history)
 			bindings[node.Name].scope.Add(component.history.Close)
 			value, createErr := service.FromContext[adapter.EndpointRegistry](ctx).Create(ctx, c.gateway, s.logFactory.NewLogger(node.Name), config.endpoint.Tag, config.endpoint.Type, config.endpoint.Options)
@@ -638,6 +639,7 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 				ctx = getComponent(config.naiveClient).naiveClient(ctx)
 			}
 			component.history = urltest.NewIncarnationHistory(service.PtrFromContext[urltest.HistoryStorage](c.ctx))
+			component.history.BindCertificateStore(service.FromContext[adapter.CertificateStore](ctx))
 			service.MustRegisterPtr(ctx, component.history)
 			bindings[node.Name].scope.Add(component.history.Close)
 			value, createErr := outboundRegistry.CreateOutbound(ctx, leaf, s.logFactory.NewLogger(node.Name), config.outbound.Tag, config.outbound.Type, config.outbound.Options)

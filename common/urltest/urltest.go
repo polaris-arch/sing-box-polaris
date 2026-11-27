@@ -32,6 +32,7 @@ type HistoryStorage struct {
 	views            map[*HistoryStorage]struct{}
 	delayHistory     map[string]*adapter.URLTestHistory
 	updateHooks      []*observable.Subscriber[struct{}]
+	roots            adapter.CertificateStore
 }
 
 func NewHistoryStorage() *HistoryStorage {
@@ -62,6 +63,12 @@ func NewIncarnationHistory(parent *HistoryStorage) *HistoryStorage {
 		root.views[view] = struct{}{}
 	}
 	return view
+}
+
+// BindCertificateStore must run before the history is published; probes trust
+// exactly the owning component's snapshot, which shares its resource lifetime.
+func (s *HistoryStorage) BindCertificateStore(store adapter.CertificateStore) {
+	s.roots = store
 }
 
 func (s *HistoryStorage) AddUpdateHook(hook *observable.Subscriber[struct{}]) {

@@ -2,8 +2,13 @@ package boxruntime
 
 import (
 	"context"
+	"encoding/pem"
 	"errors"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -109,6 +114,33 @@ func TestRuntimeEndpointHistoryFollowsActualOwner(t *testing.T) {
 	}
 	if !urltest.PublishRuntimeResult(probe.Context(), probe.Epoch(), tag, &adapter.URLTestHistory{Delay: 99}) || root.LoadURLTestHistory(tag) != nil {
 		t.Fatal("late endpoint result lost its private graph or reached the replacement")
+	}
+}
+
+func TestRuntimeURLTestTrustsComponentCertificateStore(t *testing.T) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) }))
+	defer server.Close()
+	path := filepath.Join(t.TempDir(), "roots.pem")
+	if err := os.WriteFile(path, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: server.Certificate().Raw}), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	config := []byte(`{"log":{"disabled":true},"dns":{"servers":[{"type":"udp","tag":"resolver","server":"192.0.2.53"}],"final":"resolver"},"outbounds":[{"type":"direct","tag":"direct"}],"route":{"final":"direct"}}`)
+	for _, configured := range []bool{false, true} {
+		content := config
+		if configured {
+			content = r3SourceRootConfig(t, config, path)
+		}
+		f := newRuntimeTestFixture(t, content, nil)
+		f.start(t)
+		probe, connected, err := f.box.AcquireRuntimeURLTest(runtimeTestContext(t), "direct")
+		if !connected || err != nil {
+			t.Fatalf("probe admission failed: connected=%t, err=%v", connected, err)
+		}
+		_, err = urltest.URLTest(probe.Context(), server.URL, probe.Outbound())
+		probe.Release()
+		if (err == nil) != configured {
+			t.Fatalf("configured=%t: runtime probe trust diverged from the component store: %v", configured, err)
+		}
 	}
 }
 

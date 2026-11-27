@@ -76,6 +76,9 @@ func AcquireRuntimeProbe(ctx context.Context, admission adapter.RuntimeAdmission
 	}
 	ctx = adapter.ContextWithRuntimeLease(ctx, graph)
 	ctx = adapter.ContextWithRuntimeResourceLease(ctx, resource)
+	if history.roots != nil {
+		ctx = service.ContextWith[adapter.CertificateStore](service.ExtendContext(ctx), history.roots)
+	}
 	epoch := history.Epoch()
 	ctx, stop, err := history.ProbeContext(ctx, epoch)
 	if err != nil {
