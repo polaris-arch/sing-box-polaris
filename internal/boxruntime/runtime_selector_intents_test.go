@@ -10,6 +10,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/adapter/inbound"
@@ -453,6 +454,53 @@ func TestRuntimeColdStartJudgesSelectorDefaultOverCache(t *testing.T) {
 				if got := selector.(adapter.OutboundGroup).Selected(N.NetworkTCP).Tag(); got != test.defaultTag {
 					t.Fatalf("select selected %s; want %s", got, test.defaultTag)
 				}
+			}
+		})
+	}
+}
+
+func TestRuntimeSelectorIntentInterruptsRetiredFlowsOnChangedSelection(t *testing.T) {
+	for _, testCase := range []struct {
+		name      string
+		interrupt bool
+		selected  string
+		closed    bool
+	}{
+		{"switch on, changed", true, "b", true},
+		{"switch off, changed", false, "b", false},
+		{"switch on, unchanged", true, "a", false},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			content := runtimeTestConfig(1080, "example.com")
+			content = bytes.Replace(content, []byte(`"default":"a"}`), []byte(fmt.Sprintf(`"default":"a","interrupt_exist_connections":%t}`, testCase.interrupt)), 1)
+			f := newRuntimeTestFixture(t, content, nil)
+			f.start(t)
+			previous, _ := f.box.Outbound().Outbound("select")
+			conn, peer := net.Pipe()
+			defer peer.Close()
+			defer previous.(adapter.OutboundGroup).AttachConnection(conn)()
+			remote, internalPeer := net.Pipe()
+			defer internalPeer.Close()
+			f.object(t, "a", 0).dialHook = func(context.Context, string, M.Socksaddr) (net.Conn, error) { return remote, nil }
+			internal, err := previous.DialContext(t.Context(), N.NetworkTCP, M.Socksaddr{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer internal.Close()
+			intent := RuntimeSelectorIntent{Group: "select", Selected: testCase.selected, ExpectedSelectionPath: []string{"select", "a"}}
+			plan, err := f.box.planRuntimeConfig(t.Context(), "actor-a", f.identity(), content, intent)
+			if err != nil || !plan.Applicable {
+				t.Fatalf("intent plan rejected: %+v, %v", plan, err)
+			}
+			operation, err := f.box.applyRuntimeConfig(t.Context(), "actor-a", RuntimeConfigApply{ContractVersion: RuntimeConfigContractVersion, PlanID: plan.PlanID, TransactionID: plan.TransactionID, Expected: plan.Expected, CandidateDigest: plan.CandidateDigest, AcceptedImpactDigest: plan.ImpactDigest})
+			if err != nil || operation.Active.Revision != plan.Expected.Revision+1 {
+				t.Fatalf("intent not published: %+v, %v", operation, err)
+			}
+			if closed := conn.SetDeadline(time.Time{}) != nil; closed != testCase.closed {
+				t.Fatalf("retired external flow closed=%t; want %t", closed, testCase.closed)
+			}
+			if closed := remote.SetDeadline(time.Time{}) != nil; closed != (testCase.selected != "a") {
+				t.Fatalf("retired internal flow closed=%t; want %t", closed, testCase.selected != "a")
 			}
 		})
 	}

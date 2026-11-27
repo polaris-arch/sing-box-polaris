@@ -269,6 +269,20 @@ func (s *Selector) RuntimeSelectInitial(tag string) bool {
 	return true
 }
 
+// RuntimeInterruptReplaced applies a published replacement's changed selection
+// to flows retained by this retired selector; the replacement's switch decides
+// external flows, as SelectOutbound does.
+func (s *Selector) RuntimeInterruptReplaced(next adapter.Outbound) {
+	replacement, ok := next.(*Selector)
+	if !ok || s.ephemeralPoolProbe {
+		return
+	}
+	previous, selected := s.selectedOutbound(), replacement.selectedOutbound()
+	if previous != nil && selected != nil && previous.Tag() != selected.Tag() {
+		s.interruptGroup.Interrupt(replacement.interruptExternalConnections)
+	}
+}
+
 func (s *Selector) DialContext(ctx context.Context, network string, destination M.Socksaddr) (net.Conn, error) {
 	selection := s.selected.Load()
 	var scoped bool

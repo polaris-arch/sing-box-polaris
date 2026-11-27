@@ -5,6 +5,7 @@ import (
 	"errors"
 	"math"
 
+	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/common/urltest"
 	"github.com/sagernet/sing-box/experimental/clashmode"
 	"github.com/sagernet/sing-box/log"
@@ -420,6 +421,13 @@ func (s *Box) applyRuntimeConfig(ctx context.Context, actor string, request Runt
 		}
 		resource.owner.Seal()
 		retired = append(retired, resource)
+		for _, component := range resource.components {
+			if replaced, ok := component.outbound.(interface{ RuntimeInterruptReplaced(adapter.Outbound) }); ok {
+				if next, exists := prepared.view.outbounds.Outbound(component.outbound.Tag()); exists {
+					replaced.RuntimeInterruptReplaced(next)
+				}
+			}
+		}
 	}
 	s.logger.Info("runtime candidate published: created=", len(prepared.created), " reused=", len(prepared.resources)-len(prepared.created), " retired=", len(retired))
 	coordinator.access.Lock()
