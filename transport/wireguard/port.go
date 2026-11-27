@@ -101,6 +101,10 @@ func (e *Endpoint) resumeRaw(wgDevice *device.Device) error {
 		return net.ErrClosed
 	}
 	if probe := e.probe.Load(); probe != nil && !probe.promote() {
+		// The opener promotes an attached path after Up; wireguard-go stages these packets until then.
+		if e.returnAttached && probe.path.phase.Load() == probeOpening {
+			return nil
+		}
 		return net.ErrClosed
 	}
 	return e.resumeLocked(wgDevice)

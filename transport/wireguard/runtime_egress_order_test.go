@@ -378,6 +378,10 @@ func TestWireGuardReturnAttachesWhileProbeOpens(t *testing.T) {
 		t.Fatal("return attachment waited for native WireGuard open")
 	}
 	defer endpoint.DetachReturn(returnPath)
+	packet := []byte{0x45, 0, 0, 20, 0, 0, 0, 0, 64, 17, 0, 0, 192, 0, 2, 1, 192, 0, 2, 2}
+	if err := endpoint.WritePackets([][]byte{packet}); err != nil {
+		t.Fatalf("raw packet written while the probe opens was rejected: %v", err)
+	}
 	unblock()
 	select {
 	case err := <-finished:
