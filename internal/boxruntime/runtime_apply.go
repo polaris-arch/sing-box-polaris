@@ -421,6 +421,7 @@ func (s *Box) applyRuntimeConfig(ctx context.Context, actor string, request Runt
 		resource.owner.Seal()
 		retired = append(retired, resource)
 	}
+	s.logger.Info("runtime candidate published: created=", len(prepared.created), " reused=", len(prepared.resources)-len(prepared.created), " retired=", len(retired))
 	coordinator.access.Lock()
 	persist := coordinator.persist
 	coordinator.access.Unlock()

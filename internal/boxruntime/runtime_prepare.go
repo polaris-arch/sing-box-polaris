@@ -201,7 +201,13 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 			case c.stopped || c.resourceSequence == math.MaxUint64:
 				admissionErr = errors.New("runtime resource admission stopped")
 			case len(c.catalog) >= runtimeResourceLimit:
-				admissionErr = fmt.Errorf("runtime resource capacity exhausted: catalog=%d current=%d", len(c.catalog), len(c.resources))
+				retiring := 0
+				for _, record := range c.plans {
+					if record.operation != nil && record.operation.RetirementState != "DRAINED" {
+						retiring++
+					}
+				}
+				admissionErr = fmt.Errorf("runtime resource capacity exhausted: catalog=%d current=%d created=%d reused=%d pending=%d retained=%d retiring=%d", len(c.catalog), len(c.resources), len(owned), len(prepared.resources)-len(owned), len(cohorts)-i, len(c.catalog)-len(c.resources)-len(prepared.created), retiring)
 			}
 			if admissionErr != nil {
 				c.access.Unlock()
