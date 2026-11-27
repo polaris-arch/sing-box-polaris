@@ -267,11 +267,24 @@ jobs:
         timeout-minutes: 5
         with:
           go-version: ${{ env.GO_VERSION }}
-          cache-dependency-path: |
-            go.mod
-            go.sum
-            third_party/sing-tun/go.mod
-            third_party/sing-tun/go.sum
+          cache: false
+      - &apple-go-cache-paths
+        name: Resolve Go cache paths
+        id: go-cache-paths
+        run: |
+          {
+            echo 'paths<<EOF'
+            go env GOMODCACHE GOCACHE
+            echo EOF
+          } >> "$GITHUB_OUTPUT"
+      - &apple-go-cache-restore
+        name: Restore Apple Go cache
+        id: go-cache
+        uses: actions/cache/restore@v4
+        timeout-minutes: 5
+        with:
+          path: ${{ steps.go-cache-paths.outputs.paths }}
+          key: polaris-selfcheck-apple-go-${{ runner.arch }}-${{ env.GO_VERSION }}-${{ hashFiles('go.mod', 'go.sum', 'third_party/sing-tun/go.mod', 'third_party/sing-tun/go.sum') }}
       - name: Build
         timeout-minutes: 77
         run: |
@@ -279,6 +292,12 @@ jobs:
           CGO_ENABLED=1 GOOS=darwin GOARCH=${{ matrix.arch }} /usr/bin/time -l go build -trimpath -o /dev/null \
             -tags "$(cat release/DEFAULT_BUILD_TAGS),with_gvisor" \
             -ldflags "$(cat release/LDFLAGS)" ./cmd/sing-box
+      - name: Save Apple Go cache
+        if: ${{ matrix.arch == 'amd64' && steps.go-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@v4
+        with: &apple-go-cache-save-inputs
+          path: ${{ steps.go-cache-paths.outputs.paths }}
+          key: ${{ steps.go-cache.outputs.cache-primary-key }}
   android:
     needs: format
     timeout-minutes: 120
@@ -390,11 +409,9 @@ jobs:
         timeout-minutes: 5
         with:
           go-version: ${{ env.GO_VERSION }}
-          cache-dependency-path: |
-            go.mod
-            go.sum
-            third_party/sing-tun/go.mod
-            third_party/sing-tun/go.sum
+          cache: false
+      - *apple-go-cache-paths
+      - *apple-go-cache-restore
       - name: Native monitor lifecycle regressions
         timeout-minutes: 47
         run: |
@@ -441,6 +458,10 @@ jobs:
           else
             test "$present" -eq 0
           fi
+      - name: Save Apple Go cache
+        if: ${{ inputs.source_role == 'mobile' && steps.go-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@v4
+        with: *apple-go-cache-save-inputs
   patch_tests:
     needs: format
     timeout-minutes: 90
