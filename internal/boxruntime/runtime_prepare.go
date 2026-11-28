@@ -203,7 +203,7 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 			case len(c.catalog) >= runtimeResourceLimit:
 				retiring := 0
 				for _, record := range c.plans {
-					if record.operation != nil && record.operation.RetirementState != "DRAINED" {
+					if record.operation != nil && (record.operation.RetirementState == "PENDING" || record.operation.RetirementState == "DRAINING" || record.operation.RetirementState == "UNKNOWN") {
 						retiring++
 					}
 				}

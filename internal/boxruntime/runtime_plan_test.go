@@ -3,9 +3,16 @@ package boxruntime
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math"
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/sagernet/sing-box/adapter"
+	"github.com/sagernet/sing-box/internal/runtimegraph"
+	"github.com/sagernet/sing-box/option"
+	"github.com/sagernet/sing/common/json"
 )
 
 func TestRuntimePlanPreconditionsRejectBeforeAnyConstruction(t *testing.T) {
@@ -202,5 +209,43 @@ func TestRuntimePublicCapabilityRequiresStartedGraphAndPreservesReplay(t *testin
 	}
 	if _, err := f.box.ApplyRuntimeConfig(context.Background(), "another-owner", request); err == nil {
 		t.Fatal("foreign actor acquired a receipt")
+	}
+}
+
+func TestRuntimeCapacityDiagnosticCountsOnlyUnconfirmedRetirements(t *testing.T) {
+	f := newRuntimeTestFixture(t, runtimeTestConfig(1080, "example.org"), nil)
+	f.start(t)
+	c := f.box.runtime
+	c.access.Lock()
+	for seq := uint64(1); len(c.catalog) < runtimeResourceLimit; seq++ {
+		id := adapter.RuntimeResourceID{Incarnation: "capacity-diagnostic", Sequence: seq}
+		owner, err := runtimegraph.NewResourceOwner(context.Background(), id, nil, func() error { return nil })
+		if err != nil {
+			c.access.Unlock()
+			t.Fatal(err)
+		}
+		c.catalog[id] = &runtimeResource{id: id, owner: owner}
+	}
+	// Failed and rejected receipts carry no retirement state; only unconfirmed
+	// retirements of published generations are charged as retiring.
+	for index, state := range []RuntimeConfigOperation{
+		{State: "ABORTED_UNAPPLIED"}, {State: "REJECTED_UNAPPLIED"}, {RetirementState: "DRAINED"},
+		{RetirementState: "PENDING"}, {RetirementState: "DRAINING"}, {RetirementState: "UNKNOWN"},
+	} {
+		c.plans[fmt.Sprint("capacity-diagnostic-", index)] = &runtimePlanRecord{operation: &state}
+	}
+	c.access.Unlock()
+	var options option.Options
+	if err := json.UnmarshalContext(f.ctx, runtimeTestConfig(1081, "example.org"), &options); err != nil {
+		t.Fatal(err)
+	}
+	identity := f.identity()
+	identity.Revision++
+	prepared, err := f.box.constructRuntimeGraph(context.Background(), identity, options)
+	if prepared != nil {
+		prepared.abort()
+	}
+	if err == nil || !strings.Contains(err.Error(), " retiring=3") {
+		t.Fatalf("unexpected capacity diagnostic: %v", err)
 	}
 }
