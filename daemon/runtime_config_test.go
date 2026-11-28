@@ -368,3 +368,31 @@ func TestAuthorizePoolProbeUsesAdmittedGraphAndDoesNotSelect(t *testing.T) {
 		t.Fatalf("issuing a ticket changed active or control revision: %v", err)
 	}
 }
+
+func TestRuntimeAttachedServicePlansWithHostOOMPolicy(t *testing.T) {
+	host, _ := retirementPureHost(t)
+	observeRuntimeHostOOMKiller(host)
+	host.SetOOMKillerOptions(true, true, 50<<20)
+	ctx := ContextWithRuntimeActor(t.Context(), "local-owner")
+	const initial = `{"log":{"disabled":true},"outbounds":[{"type":"direct","tag":"node-a"}]}`
+	if err := host.StartOrReloadService(ctx, initial, nil); err != nil {
+		t.Fatal(err)
+	}
+	attached := NewAttachedService(host.instance.ctx)
+	active := host.instance.instance.RuntimeCapabilities().Identity
+	for content, restart := range map[string]bool{
+		strings.Replace(initial, "node-a", "node-b", 1):                false,
+		`{"log":{"disabled":true},"services":[{"type":"oom-killer"}]}`: true,
+	} {
+		plan, err := attached.PlanRuntimeConfig(ctx, &PlanRuntimeConfigRequest{
+			ContractVersion:         box.RuntimeConfigContractVersion,
+			ConfigContent:           content,
+			Expected:                runtimeIdentity(active),
+			ExpectedControlRevision: active.ControlRevision,
+		})
+		restarted := plan != nil && len(plan.Errors) == 1 && plan.Errors[0].Code == "RESTART_REQUIRED"
+		if err != nil || restarted != restart || plan.Applicable == restart {
+			t.Fatalf("attached plan did not keep the host OOM policy: %+v, %v", plan, err)
+		}
+	}
+}
