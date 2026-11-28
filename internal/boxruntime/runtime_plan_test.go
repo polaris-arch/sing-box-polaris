@@ -253,3 +253,36 @@ func TestRuntimeCapacityDiagnosticCountsOnlyUnconfirmedRetirements(t *testing.T)
 		t.Fatalf("unexpected capacity diagnostic: %v", err)
 	}
 }
+
+// runtimePlanAdvancingContext advances the active identity on the first
+// cancellation check, which Plan performs only after its admission check.
+type runtimePlanAdvancingContext struct {
+	context.Context
+	advance func()
+}
+
+func (c *runtimePlanAdvancingContext) Err() error {
+	if c.advance != nil {
+		c.advance()
+		c.advance = nil
+	}
+	return c.Context.Err()
+}
+
+func TestRuntimePlanReportsStaleRuntimeWhenActiveAdvancesBeforeRootCapture(t *testing.T) {
+	f := newRuntimeTestFixture(t, runtimeTestConfig(1080, "example.org"), nil)
+	f.start(t)
+	coordinator := f.box.runtime
+	ctx := &runtimePlanAdvancingContext{
+		Context: t.Context(),
+		advance: func() {
+			coordinator.access.Lock()
+			coordinator.active.ControlRevision++
+			coordinator.access.Unlock()
+		},
+	}
+	plan, err := f.box.planRuntimeConfig(ctx, "actor-a", f.identity(), runtimeTestConfig(1081, "example.org"))
+	if err == nil || err.Error() != "stale or stopped runtime" || len(plan.Errors) != 0 {
+		t.Fatalf("active change before root capture became a plan error: errors=%+v, err=%v", plan.Errors, err)
+	}
+}

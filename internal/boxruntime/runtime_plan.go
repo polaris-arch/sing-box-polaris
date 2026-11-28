@@ -353,6 +353,12 @@ func (s *Box) planRuntimeConfigInternal(ctx context.Context, actor string, expec
 	}
 	plannedRootDigest, rootErr := coordinator.runtimeCaptureRootDigest(ctx, expected)
 	if rootErr != nil {
+		coordinator.access.Lock()
+		stale := coordinator.initialPhase != 2 || coordinator.stopped || coordinator.active != expected
+		coordinator.access.Unlock()
+		if stale {
+			return RuntimeConfigPlan{}, errors.New("stale or stopped runtime")
+		}
 		plan.Errors = []RuntimePlanError{{Code: "ROOT_SNAPSHOT_UNAVAILABLE", Path: "certificate", Message: "root content could not be frozen; current configuration retained"}}
 		return plan, nil
 	}
