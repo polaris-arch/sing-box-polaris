@@ -9,6 +9,7 @@ import (
 	"github.com/sagernet/sing-box/common/urltest"
 	"github.com/sagernet/sing-box/experimental/clashmode"
 	"github.com/sagernet/sing-box/log"
+	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing/common/json"
 	"github.com/sagernet/sing/service"
 )
@@ -92,6 +93,7 @@ func (s *Box) applyRuntimeConfig(ctx context.Context, actor string, request Runt
 			ImpactDigest:    record.plan.ImpactDigest,
 			Errors:          []RuntimePlanError{{Code: "PLAN_PRECONDITION_CHANGED", Path: "runtime.apply", Message: "runtime plan precondition changed"}},
 		}
+		record.options, record.sources = option.Options{}, nil // only Apply reads these; receipts keep metadata
 		record.receiptExpires = coordinator.now().Add(runtimePlanLifetime).UnixMilli()
 		operation := cloneRuntimeOperation(*record.operation)
 		coordinator.access.Unlock()
@@ -138,6 +140,7 @@ func (s *Box) applyRuntimeConfig(ctx context.Context, actor string, request Runt
 			desiredDigest = coordinator.durableDesiredDigest
 			desiredRevision = coordinator.durableDesiredRevision
 		}
+		record.options, record.sources = option.Options{}, nil // only Apply reads these; receipts keep metadata
 		record.operation = &RuntimeConfigOperation{ContractVersion: RuntimeConfigContractVersion, TransactionID: request.TransactionID, State: state, Before: coordinator.active, Active: coordinator.active, CandidateDigest: record.plan.CandidateDigest, ImpactDigest: record.plan.ImpactDigest, Durable: durable, PersistenceMode: coordinator.persistenceMode, OwnerReloadAcknowledged: durable && coordinator.durableOwnerReload, DesiredStateDigest: desiredDigest, DesiredStateRevision: desiredRevision, RetirementState: "DRAINED"}
 		record.receiptExpires = coordinator.now().Add(runtimePlanLifetime).UnixMilli()
 		operation := cloneRuntimeOperation(*record.operation)
@@ -365,6 +368,7 @@ func (s *Box) applyRuntimeConfig(ctx context.Context, actor string, request Runt
 				record.operation.Errors = append(record.operation.Errors, structured.RuntimePlanError())
 			}
 		}
+		record.options, record.sources = option.Options{}, nil // only Apply reads these; receipts keep metadata
 		operation = cloneRuntimeOperation(*record.operation)
 	}()
 	if prepareErr != nil {

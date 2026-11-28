@@ -2,11 +2,17 @@ package boxruntime
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"testing"
 )
 
 func TestRuntimeNoOpPreservesIdentityAndConsumesTicket(t *testing.T) {
-	config := runtimeTestConfig(1080, "example.org")
+	path := filepath.Join(t.TempDir(), "sites.json")
+	if err := os.WriteFile(path, runtimeTestSourceBytes("example.org"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	config := runtimeTestLocalConfig(path)
 	f := newRuntimeTestFixture(t, config, nil)
 	f.start(t)
 	before := f.identity()
@@ -27,6 +33,13 @@ func TestRuntimeNoOpPreservesIdentityAndConsumesTicket(t *testing.T) {
 	repeated, err := f.box.applyRuntimeConfig(context.Background(), "actor-a", request)
 	if err != nil || repeated.Active != before || repeated.State != operation.State {
 		t.Fatal("no-op ticket replay lost exact receipt")
+	}
+	f.box.runtime.access.Lock()
+	record := f.box.runtime.plans[request.TransactionID]
+	retained := record.options.Outbounds != nil || record.sources != nil
+	f.box.runtime.access.Unlock()
+	if retained {
+		t.Fatal("no-op receipt retained Apply-only options or sources")
 	}
 }
 

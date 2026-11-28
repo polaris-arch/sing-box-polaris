@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -19,7 +21,11 @@ func TestRuntimePlanPreconditionsRejectBeforeAnyConstruction(t *testing.T) {
 	f := newRuntimeTestFixture(t, runtimeTestConfig(1080, "example.org"), nil)
 	f.start(t)
 	_, valid := f.plan(t, runtimeTestConfig(1081, "example.org"))
-	_, competing := f.plan(t, runtimeTestConfig(1082, "example.org"))
+	path := filepath.Join(t.TempDir(), "sites.json")
+	if err := os.WriteFile(path, runtimeTestSourceBytes("example.org"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	_, competing := f.plan(t, runtimeTestLocalConfig(path))
 	for name, mutate := range map[string]func(*RuntimeConfigApply){
 		"contract":         func(v *RuntimeConfigApply) { v.ContractVersion++ },
 		"incarnation":      func(v *RuntimeConfigApply) { v.Expected.Incarnation = "foreign" },
@@ -64,6 +70,13 @@ func TestRuntimePlanPreconditionsRejectBeforeAnyConstruction(t *testing.T) {
 	if err != nil || rejected.State != "REJECTED_UNAPPLIED" || rejected.Before != competing.Expected ||
 		rejected.Active != competing.Expected || len(rejected.Errors) != 1 || rejected.Errors[0].Code != "PLAN_PRECONDITION_CHANGED" {
 		t.Fatalf("stale Apply did not return an unapplied receipt: %+v %v", rejected, err)
+	}
+	f.box.runtime.access.Lock()
+	record := f.box.runtime.plans[competing.TransactionID]
+	retained := record.options.Outbounds != nil || record.sources != nil
+	f.box.runtime.access.Unlock()
+	if retained {
+		t.Fatal("rejected receipt retained Apply-only options or sources")
 	}
 	status, err := f.box.GetRuntimeConfigStatus("actor-a", competing.Expected.Incarnation, competing.TransactionID)
 	if err != nil || status.Active != operation.Active || status.LookupState != "FOUND" || status.Operation == nil ||
@@ -167,7 +180,11 @@ func TestRuntimePublicCapabilityRequiresStartedGraphAndPreservesReplay(t *testin
 	if !capability.Enabled || capability.FullConfiguration || capability.ImplementationManifestDigest != initial.ImplementationManifestDigest {
 		t.Fatal("started daily capability or stable implementation manifest is incorrect")
 	}
-	plan, err := f.box.PlanRuntimeConfig(context.Background(), "actor-a", before, runtimeTestConfig(1081, "example.org"))
+	path := filepath.Join(t.TempDir(), "sites.json")
+	if err := os.WriteFile(path, runtimeTestSourceBytes("example.org"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	plan, err := f.box.PlanRuntimeConfig(context.Background(), "actor-a", before, runtimeTestLocalConfig(path))
 	if err != nil || !plan.Applicable {
 		t.Fatalf("public Plan: %+v %v", plan, err)
 	}
@@ -206,6 +223,13 @@ func TestRuntimePublicCapabilityRequiresStartedGraphAndPreservesReplay(t *testin
 	f.box.runtime.access.Unlock()
 	if err != nil || replay.Active != operation.Active || f.count("a") != count {
 		t.Fatal("public replay reconstructed the graph")
+	}
+	f.box.runtime.access.Lock()
+	record := f.box.runtime.plans[request.TransactionID]
+	retained := record.options.Outbounds != nil || record.sources != nil || record.canonical == nil
+	f.box.runtime.access.Unlock()
+	if retained {
+		t.Fatal("consumed receipt retained Apply-only options or sources")
 	}
 	if _, err := f.box.ApplyRuntimeConfig(context.Background(), "another-owner", request); err == nil {
 		t.Fatal("foreign actor acquired a receipt")
