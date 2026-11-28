@@ -229,8 +229,12 @@ func TestRuntimeCapacityDiagnosticCountsOnlyUnconfirmedRetirements(t *testing.T)
 	// Failed and rejected receipts carry no retirement state; only unconfirmed
 	// retirements of published generations are charged as retiring.
 	for index, state := range []RuntimeConfigOperation{
-		{State: "ABORTED_UNAPPLIED"}, {State: "REJECTED_UNAPPLIED"}, {RetirementState: "DRAINED"},
-		{RetirementState: "PENDING"}, {RetirementState: "DRAINING"}, {RetirementState: "UNKNOWN"},
+		{State: "ABORTED_UNAPPLIED"},
+		{State: "REJECTED_UNAPPLIED"},
+		{RetirementState: "DRAINED"},
+		{RetirementState: "PENDING"},
+		{RetirementState: "DRAINING"},
+		{RetirementState: "UNKNOWN"},
 	} {
 		c.plans[fmt.Sprint("capacity-diagnostic-", index)] = &runtimePlanRecord{operation: &state}
 	}
